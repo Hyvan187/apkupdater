@@ -164,6 +164,7 @@ val mainModule = module {
 
 	single { KryptoBuilder.nocrypt(get(), "APKUpdater Glass") }
     single { com.apkupdater.glass.AppearanceStore(get()) }
+    single { com.apkupdater.glass.ReleaseFilterStore(get()) }
     single { com.apkupdater.glass.AppSelection(get()) }
 
 	single { Prefs(get(), androidContext().isAndroidTv()) }

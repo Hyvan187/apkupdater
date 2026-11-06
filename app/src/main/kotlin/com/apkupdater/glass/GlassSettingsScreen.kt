@@ -3,6 +3,9 @@ package com.apkupdater.glass
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,23 +19,29 @@ import com.apkupdater.worker.UpdatesWorker
 import org.koin.compose.koinInject
 
 @Composable
-fun GlassSettingsScreen(onBack: () -> Unit, onAppearance: () -> Unit) {
+fun GlassSettingsScreen(onBack: () -> Unit, onAppearance: () -> Unit, onFiltersChanged: () -> Unit = {}) {
     val prefs = koinInject<Prefs>()
     val selection = koinInject<AppSelection>()
     val scope by selection.scope.collectAsState()
     val health by SourceHealth.flow.collectAsState()
+    val filters = koinInject<ReleaseFilterStore>()
     val context = LocalContext.current
+    var folderProblem by remember { mutableStateOf<String?>(null) }
+    val folder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if(uri!=null) runCatching { context.contentResolver.takePersistableUriPermission(uri,android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION);prefs.downloadTree.put(uri.toString()) }.onFailure { folderProblem="Ordnerzugriff nicht möglich. Bitte einen anderen Ordner auswählen." }
+    }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
         ScreenHeader("Einstellungen", "DEINE UPDATE-ZENTRALE", onBack = onBack)
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(Modifier.weight(1f).navigationBarsPadding(), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text("Updateprüfung", style = MaterialTheme.typography.titleMedium) }
         item { GlassPanel {
             SecondaryText("Welche Apps sollen die Quellen prüfen?")
             ScopeChoices(scope, selection::select)
-            SettingSwitch("Beta-Versionen ausblenden", "Vorabversionen werden nicht empfohlen.", { prefs.ignoreBeta.get() }, { prefs.ignoreBeta.put(it) })
-            SettingSwitch("Alpha-Versionen ausblenden", "Experimentelle Versionen überspringen.", { prefs.ignoreAlpha.get() }, { prefs.ignoreAlpha.put(it) })
+            SettingSwitch("Beta-Versionen ausblenden", "Vorabversionen werden nicht empfohlen.", { prefs.ignoreBeta.get() }, { filters.change(beta=it);onFiltersChanged() })
+            SettingSwitch("Alpha-Versionen ausblenden", "Experimentelle Versionen überspringen.", { prefs.ignoreAlpha.get() }, { filters.change(alpha=it);onFiltersChanged() })
         } }
+        item { GlassPanel { SettingSwitch("Alle Vorabversionen ausblenden", "Auch RC, Preview, Nightly und markierte Vorabversionen ausblenden.", {prefs.ignorePreRelease.get()}, {filters.change(preview=it);onFiltersChanged()}) } }
         item { Text("Hintergrund", style = MaterialTheme.typography.titleMedium) }
         item { GlassPanel {
             SettingSwitch("Täglich nach Updates suchen", "Die Installation erfordert immer deine Bestätigung.", { prefs.enableAlarm.get() }, {
@@ -41,6 +50,13 @@ fun GlassSettingsScreen(onBack: () -> Unit, onAppearance: () -> Unit) {
                 if(it) { UpdatesWorker.launch(wm); if(android.os.Build.VERSION.SDK_INT >= 33) permission.launch(android.Manifest.permission.POST_NOTIFICATIONS) } else UpdatesWorker.cancel(wm)
             })
             SettingSwitch("Nur ungetaktete Verbindung", "Vermeidet automatische Prüfungen über getaktete Netze.", { prefs.wifiOnly.get() }, { prefs.wifiOnly.put(it); if(prefs.enableAlarm.get()) UpdatesWorker.launch(WorkManager.getInstance(context)) })
+        } }
+        item { GlassPanel {
+            Text("Downloads",style=MaterialTheme.typography.titleMedium)
+            SecondaryText(if(android.os.Build.VERSION.SDK_INT>=29) "Manuell direkt geladene APKs: Download/Liquid-APK-Updater. Automatische Prüfdateien bleiben privat." else "Bitte einen sichtbaren Downloadordner auswählen.")
+            SettingSwitch("APKs nach Installation behalten","Aus: öffentliche Kopie erst nach erfolgreicher Installation löschen. Bei Abbruch oder Fehler bleibt sie erhalten.",{prefs.keepDownloadedApks.get()},{prefs.keepDownloadedApks.put(it)})
+            if(android.os.Build.VERSION.SDK_INT<29) OutlinedButton(onClick={folder.launch(null)}){Text("Downloadordner auswählen")}
+            folderProblem?.let{SecondaryText(it)}
         } }
         item { Text("Updatequellen", style = MaterialTheme.typography.titleMedium) }
         item { GlassPanel {
@@ -54,10 +70,11 @@ fun GlassSettingsScreen(onBack: () -> Unit, onAppearance: () -> Unit) {
             SettingSwitch("Aptoide", "Anbieterkatalog, jede APK wird separat bewertet", { prefs.useAptoide.get() }, { prefs.useAptoide.put(it) })
             SettingSwitch("Google Play", "Experimentelle vorhandene Integration", { prefs.usePlay.get() }, { prefs.usePlay.put(it) })
         } }
-        item { GlassPanel {
-            Text("Erscheinungsbild", style = MaterialTheme.typography.titleMedium)
-            SecondaryText("Design, freie Farben, Schrift und Glaseffekte")
-            OutlinedButton(onClick = onAppearance) { Text("Erscheinungsbild öffnen") }
+        item { GlassPanel(Modifier.clickable(onClick=onAppearance)) {
+            Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Erscheinungsbild",style=MaterialTheme.typography.titleMedium);SecondaryText("Farben, Schrift und empfohlenes Glasdesign") }
+                Icon(Icons.AutoMirrored.Filled.ArrowForward,"Erscheinungsbild öffnen")
+            }
         } }
         item { GlassPanel {
             Text("APK-Prüfung", style = MaterialTheme.typography.titleMedium)

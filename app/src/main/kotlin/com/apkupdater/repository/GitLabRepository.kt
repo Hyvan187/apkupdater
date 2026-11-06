@@ -48,7 +48,7 @@ class GitLabRepository(
         currentVersion: String,
         extra: Regex?
     ) = flow {
-        val releases = service.getReleases(user, repo)
+        val releases = service.getReleases(user, repo).filter { com.apkupdater.glass.ReleasePolicy.allowed(it.tag_name,prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get()) }
             .filter { Version(filterVersionTag(it.tag_name)) > Version(currentVersion) }
 
         if (releases.isNotEmpty()) {

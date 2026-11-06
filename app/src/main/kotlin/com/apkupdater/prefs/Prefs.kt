@@ -11,7 +11,10 @@ class Prefs(
 	prefs: KryptoPrefs,
 	isAndroidTv: Boolean
 ): KryptoContext(prefs) {
-	val categorySchema = int("liquid.categorySchema", 0, true)
+	val keepDownloadedApks = boolean("liquid.keepDownloadedApks",false,true)
+    val downloadTree = string("liquid.downloadTree","",true)
+    val downloadArchive = json("liquid.downloadArchive",emptyMap<String,String>(),true)
+    val categorySchema = int("liquid.categorySchema", 0, true)
     val accentColor = long("liquid.accent", 0xffc8b9ff, true)
     val backgroundColor = long("liquid.background", 0xff080b13, true)
     val customAccent = boolean("liquid.customAccent", false, true)

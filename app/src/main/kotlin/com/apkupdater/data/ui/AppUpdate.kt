@@ -21,6 +21,7 @@ data class AppUpdate(
     val verdict: com.apkupdater.glass.Verdict = com.apkupdater.glass.Verdict(com.apkupdater.glass.Compatibility.UNKNOWN, emptyList()),
     val sha256: String? = null,
     val additionalSources: List<String> = emptyList(),
+    val prerelease: Boolean = false,
     val system: Boolean = false,
     val minSdk: Int? = null,
     val targetSdk: Int? = null,

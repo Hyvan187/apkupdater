@@ -18,6 +18,8 @@ import com.apkupdater.viewmodel.SearchViewModel
 fun GlassSearchScreen(viewModel: SearchViewModel, onBack: () -> Unit) {
     var query by remember { mutableStateOf("") }
     val state = viewModel.state().collectAsStateWithLifecycle().value
+    val filters by org.koin.compose.koinInject<ReleaseFilterStore>().state.collectAsStateWithLifecycle()
+    val visible = state.updates().filter { ReleasePolicy.allowed(it.version,filters.alpha,filters.beta,filters.preview,it.prerelease) }
     val handler = LocalUriHandler.current
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
         ScreenHeader("Apps entdecken", "QUELLEN DURCHSUCHEN", onBack = onBack)
@@ -26,8 +28,8 @@ fun GlassSearchScreen(viewModel: SearchViewModel, onBack: () -> Unit) {
         item { Button(onClick = { if(query.isNotBlank()) viewModel.search(query.trim()) }, modifier = Modifier.fillMaxWidth(), enabled = query.isNotBlank() && state !is SearchUiState.Loading) { Text("Suchen") } }
         if(state is SearchUiState.Loading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
         if(state is SearchUiState.Error) item { StateMessage("Suche nicht möglich", "Eine Quelle konnte nicht abgefragt werden. Prüfe Verbindung und Quellen.") }
-        if(state.updates().isEmpty() && state !is SearchUiState.Loading) item { StateMessage("Suche nach einer App", "Katalogfunde sind keine geprüften Updates. Jede Installation durchläuft dieselbe APK-Prüfung.") }
-        items(state.updates(), key = { it.id }) { app ->
+        if(visible.isEmpty() && state !is SearchUiState.Loading) item { StateMessage("Suche nach einer App", "Katalogfunde sind keine geprüften Updates. Jede Installation durchläuft dieselbe APK-Prüfung.") }
+        items(visible, key = { it.id }) { app ->
             GlassPanel {
                 Text(app.name, style = MaterialTheme.typography.titleMedium)
                 SecondaryText("${app.packageName}\n${app.version} · ${app.source.name}")

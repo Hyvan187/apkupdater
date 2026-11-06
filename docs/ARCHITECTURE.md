@@ -46,3 +46,10 @@ No analytics or advertising SDK is added. Enabled sources receive package identi
 `AppSelection` owns category migration and a shared StateFlow. `CategoryPolicy` uses both Android system flags. `UpdateGroup` groups by package strictly for presentation; candidates retain provider, version, ABI and verdict. No compatibility evidence is copied from a different provider. The source/variant sheet confirms manual download selection. `AppearanceStore` persists the full style state, while `LocalAppearance` feeds theme and glass rendering. The legacy preference namespace is stable despite the new app label.
 
 `AutoCheckPolicy` selects at most six unresolved direct APKs, one per package, excluding known incompatible files, web-only providers, oversized files and already-ready groups. Both view model and WorkManager honor the same enabled/unmetered/per-file limit. The foreground cache retains checked bytes until view-model cleanup; worker files are removed after inspection. Background notification counts unique verified packages. No worker installs apps.
+
+
+## 0.4 additions
+
+ReleasePolicy combines recognizable version tokens with provider prerelease flags. ReleaseFilterStore propagates settings to search UI; update settings refresh discovery. Install preflight repeats the version-channel check. Google system classification is organizational, based on namespace plus Android system flags.
+
+DownloadArchive uses MediaStore.Downloads on API 29+ and persisted document-tree permissions below 29. Writes finish before IS_PENDING is cleared. A global lock protects hash-keyed archive records. SessionInstaller never substitutes public bytes for its verified private input. Cleanup runs only after commit returns success and checks the current keep preference. Automatic inspection files are not published.

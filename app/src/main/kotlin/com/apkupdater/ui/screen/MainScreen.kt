@@ -61,14 +61,14 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
                 Box(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize().captureGlass(contentBackdrop)) {
                         NavHost(navController = nav, startDestination = "overview", modifier = Modifier.fillMaxSize(),
-                            enterTransition = { if(appearance.reduceMotion) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.fadeIn() },
-                            exitTransition = { if(appearance.reduceMotion) androidx.compose.animation.ExitTransition.None else androidx.compose.animation.fadeOut() }) {
+                            enterTransition = { androidx.compose.animation.EnterTransition.None },
+                            exitTransition = { androidx.compose.animation.ExitTransition.None }) {
                             composable("overview") { OverviewScreen(updates, onUpdates = { go("updates") }, onSettings = { go("settings") }) }
                             composable("updates") { GlassUpdatesScreen(updates, onSettings = { go("settings") }) }
                             composable("apps") { SystemAppsScreen(onSettings = { go("settings") }) }
                             composable("search") { GlassSearchScreen(search, onBack = { go("overview") }) }
-                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { go("appearance") }) }
-                            composable("appearance") { AppearanceScreen(onBack = { go("settings") }) }
+                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh() }) }
+                            composable("appearance") { AppearanceScreen(onBack = { nav.popBackStack() }) }
                         }
                     }
                     if(route !in listOf("settings", "search", "appearance")) FloatingGlassNavigation(route, contentBackdrop, Modifier.align(Alignment.BottomCenter), ::go)

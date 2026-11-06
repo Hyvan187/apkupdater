@@ -28,7 +28,7 @@ class UpdatesRepository(
         appsRepository.getApps().collect { result ->
             result.onSuccess { apps ->
                 val filtered = apps.filter { !it.ignored }.filter {
-                    com.apkupdater.glass.CategoryPolicy.matches(com.apkupdater.glass.AppScope.entries.getOrElse(prefs.scanScope.get()) { com.apkupdater.glass.AppScope.ALL }, it.system)
+                    com.apkupdater.glass.CategoryPolicy.matches(com.apkupdater.glass.AppScope.entries.getOrElse(prefs.scanScope.get()) { com.apkupdater.glass.AppScope.ALL }, it.system, it.packageName)
                 }
                 com.apkupdater.glass.SourceHealth.reset()
                 val sources = mutableListOf<Pair<String, Flow<List<AppUpdate>>>>()
@@ -55,7 +55,7 @@ class UpdatesRepository(
                             }
                             // No hash means identity is unproven. Keep regional/ABI variants separate.
                             prefs.lastCheck.put(System.currentTimeMillis())
-                            emit(assessed.filter { it.id !in prefs.ignoredVersions.get() && com.apkupdater.glass.releaseKey(it) !in prefs.ignoredReleases.get() }.distinctBy { it.artifactKey })
+                            emit(assessed.filter { com.apkupdater.glass.ReleasePolicy.allowed(it, prefs) }.filter { it.id !in prefs.ignoredVersions.get() && com.apkupdater.glass.releaseKey(it) !in prefs.ignoredReleases.get() }.distinctBy { it.artifactKey })
                         }
                         .collect()
                 } else {

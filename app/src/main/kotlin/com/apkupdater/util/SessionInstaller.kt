@@ -47,10 +47,13 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
                 }
             }
             val report = inspect(file, packageName)
+            require(com.apkupdater.glass.ReleasePolicy.allowed(report.candidate.versionName,prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get())) { "Vorabversion durch deine Filter ausgeblendet." }
             require(report.verdict.installAllowed) {
                 report.verdict.evidence.filter { it.status != Compatibility.COMPATIBLE }.joinToString("; ") { "${it.property}: ${it.detail}" }
             }
+            com.apkupdater.glass.DownloadArchive(context,prefs).publish(file,packageName,report.candidate.versionName)
             commit(id, packageName, file)
+            com.apkupdater.glass.DownloadArchive(context,prefs).installed(file)
         } finally {
             streams.forEach { runCatching { it.close() } }
             dir.deleteRecursively()

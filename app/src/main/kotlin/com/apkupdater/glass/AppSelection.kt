@@ -4,10 +4,16 @@ import com.apkupdater.prefs.Prefs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-enum class AppScope(val label: String) { ALL("Alle"), GENERAL("Allgemeine Apps"), SYSTEM("System-Apps") }
+enum class AppScope(val label: String) { ALL("Alle"), GENERAL("Allgemeine Apps"), SYSTEM("System-Apps"), GOOGLE_SYSTEM("Google-System-Apps") }
 object CategoryPolicy {
     fun system(flags: Int) = flags and (1 or 128) != 0 // FLAG_SYSTEM | FLAG_UPDATED_SYSTEM_APP
-    fun matches(scope: AppScope, system: Boolean) = scope == AppScope.ALL || (scope == AppScope.SYSTEM) == system
+    fun googleSystem(pkg: String, system: Boolean) = system && (pkg.startsWith("com.google.") || pkg == "com.android.vending" || pkg == "com.android.chrome")
+    fun matches(scope: AppScope, system: Boolean, pkg: String = "") = when(scope) {
+        AppScope.ALL -> true
+        AppScope.GENERAL -> !system
+        AppScope.SYSTEM -> system
+        AppScope.GOOGLE_SYSTEM -> googleSystem(pkg,system)
+    }
 }
 class AppSelection(private val prefs: Prefs) {
     init {

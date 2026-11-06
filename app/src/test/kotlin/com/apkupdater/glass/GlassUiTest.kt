@@ -87,8 +87,8 @@ class GlassUiTest {
     @Test
     fun lightThemeRendersReadableDashboard() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Erscheinungsbild öffnen"))
-        compose.onNodeWithText("Erscheinungsbild öffnen").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasContentDescription("Erscheinungsbild öffnen"))
+        compose.onNodeWithContentDescription("Erscheinungsbild öffnen").performClick()
         compose.onNodeWithText("Hell").assertIsDisplayed()
         compose.onNodeWithText("Hell").performClick()
         screenshot("08-appearance-light")
@@ -155,6 +155,28 @@ class GlassUiTest {
         compose.onNodeWithText("Apps").performClick()
         compose.onNodeWithText("Allgemeine").assertIsSelected()
         screenshot("10-custom-colors-categories")
+    }
+
+    @Test fun singleAppearanceEntryAndRecommendedResetWork() {
+        compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Erscheinungsbild"))
+        compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
+        compose.onNodeWithContentDescription("Erscheinungsbild öffnen").performClick()
+        compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
+        val store=GlobalContext.get().get<AppearanceStore>()
+        compose.runOnIdle { store.update{it.copy(quality=0,opacity=.9f,blur=false,accent=0xff123456,customAccent=true)} }
+        compose.onNodeWithText("Empfohlene Glaswerte anwenden").performClick()
+        compose.runOnIdle {org.junit.Assert.assertEquals(2,store.state.value.quality);org.junit.Assert.assertTrue(store.state.value.blur);org.junit.Assert.assertEquals(.46f,store.state.value.opacity);org.junit.Assert.assertTrue(store.state.value.customAccent)}
+        screenshot("11-recommended-appearance")
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Alle Darstellungswerte auf Standard zurücksetzen"))
+        compose.onNodeWithText("Alle Darstellungswerte auf Standard zurücksetzen").performClick()
+        compose.runOnIdle {org.junit.Assert.assertEquals(Appearance(),store.state.value)}
+    }
+    @Test @Config(qualifiers="w320dp-h720dp-xhdpi") fun googleScopeFitsCompactScreen() {
+        compose.onNodeWithText("Apps").performClick()
+        compose.onNodeWithText("Google-System-Apps").assertIsDisplayed().performClick()
+        compose.runOnIdle {org.junit.Assert.assertEquals(AppScope.GOOGLE_SYSTEM,GlobalContext.get().get<AppSelection>().scope.value)}
+        screenshot("12-google-system-compact")
     }
 
 }

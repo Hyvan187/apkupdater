@@ -23,7 +23,12 @@ fun AppearanceScreen(onBack: () -> Unit) {
     var picking by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
         ScreenHeader("Erscheinungsbild", "DEIN LIQUID-DESIGN", onBack = onBack)
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(Modifier.weight(1f).navigationBarsPadding(), contentPadding = PaddingValues(bottom = 28.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            item { GlassPanel {
+                Text("Empfohlenes Liquid Glass",style=MaterialTheme.typography.titleMedium)
+                SecondaryText("Ausgewogen: Standard, 46 % Deckkraft, Unschärfe und Lichtbrechung an, stärkere Navigationsunschärfe aus.")
+                OutlinedButton(onClick={store.recommendedGlass()},modifier=Modifier.fillMaxWidth()) { Text("Empfohlene Glaswerte anwenden") }
+            } }
             item { GlassPanel {
                 Text("Design", style = MaterialTheme.typography.titleMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -57,7 +62,7 @@ fun AppearanceScreen(onBack: () -> Unit) {
                 Slider(a.textScale, { v -> store.update { it.copy(textScale = v) } }, valueRange = .85f..1.3f)
                 SecondaryText("Wird mit deiner Android-Schriftgröße kombiniert. Es werden frei verfügbare Systemschriften verwendet.")
             } }
-            item { OutlinedButton(onClick = { store.reset() }, modifier = Modifier.fillMaxWidth()) { Text("Erscheinungsbild zurücksetzen") } }
+            item { OutlinedButton(onClick = { store.reset() }, modifier = Modifier.fillMaxWidth()) { Text("Alle Darstellungswerte auf Standard zurücksetzen") } }
         }
     }
     picking?.let { target -> ColorPickerDialog(if(target == "accent") "Buttonfarbe" else "Hintergrundfarbe", if(target == "accent") a.accent else a.background,

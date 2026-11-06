@@ -1,8 +1,17 @@
-# Liquid-APK-Updater 0.3
+# Liquid-APK-Updater 0.4
 
 Native Android update manager based on [APKUpdater](https://github.com/rumboalla/apkupdater), developed in [Hyvan187's fork](https://github.com/Hyvan187/apkupdater). GPLv3; copyright rumboalla and contributors. See [LICENSE](LICENSE) and [upstream README](docs/UPSTREAM-README.md).
 
-Package: `com.hyvan187.apkupdater`, version code 1003, Android API 23–37, compile/target 37.
+Package: `com.hyvan187.apkupdater`, version code 1004, Android API 23–37, compile/target 37.
+
+## Version 0.4
+
+- Single appearance entry and correct nested back navigation; screen transitions no longer overlay each other. Scroll areas respect the bottom system bar.
+- Recommended glass preset (Standard, 46% opacity, blur/refraction enabled), retaining custom colors; separate full default reset.
+- Shared All / General / System / Google System categories. Google packages require a system flag plus a recognized package namespace. This grouping is not cryptographic identity verification; System includes all system apps.
+- Central Alpha/Beta/Preview policy across catalogs, search, cached actions and actual-file installation. Unmarked prereleases cannot be inferred reliably.
+- Public manual-download archive: **Download/Liquid-APK-Updater** on Android 10+. Older versions use a user-selected SAF folder. Automatic temporary checks remain private.
+- A keep-downloads preference controls public-copy deletion only after confirmed successful installation. Failure/cancellation retain copies. Private checked bytes remain the installation input. Existing public copies are reused by SHA-256; browser downloads are outside this policy.
 
 ## What's new
 

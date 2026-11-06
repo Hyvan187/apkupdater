@@ -52,7 +52,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
         }
     }
     val filtered = apps.filter { app ->
-        (app.name.contains(query, true) || app.pkg.contains(query, true)) && CategoryPolicy.matches(category, app.system || app.updated) && when(mode) {
+        (app.name.contains(query, true) || app.pkg.contains(query, true)) && CategoryPolicy.matches(category, app.system || app.updated, app.pkg) && when(mode) {
             1 -> !app.enabled
             2 -> app.pkg in ignored
             else -> true

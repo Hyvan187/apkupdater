@@ -78,7 +78,8 @@ class UpdatesWorker(
                 var file: java.io.File? = null
                 try {
                     file = downloader.download((candidate.link as Link.Url).link, limit)
-                    if(installer.inspect(file, candidate.packageName).verdict.installAllowed) ready.add(candidate.packageName)
+                    val report=installer.inspect(file,candidate.packageName)
+                    if(report.verdict.installAllowed && ReleasePolicy.allowed(candidate.copy(version=report.candidate.versionName),prefs)) ready.add(candidate.packageName)
                 } catch(e: CancellationException) { throw e }
                 catch(e: Exception) { if(e !is AutomaticSizeLimit) SourceHealth.failed(candidate.source.name, e) }
                 finally { file?.delete() }

@@ -52,7 +52,7 @@ class UpdatesViewModel(
             state.value = UpdatesUiState.Loading
             try {
                 updatesRepository.updates().collect { found ->
-                    val withEvidence = found.map { u -> verified[identity(u)]?.takeIf { it.file.exists() }?.report?.let { report -> u.copy(verdict = report.verdict, sha256 = report.sha256, version = report.candidate.versionName, versionCode = report.candidate.versionCode ?: u.versionCode, minSdk = report.candidate.minSdk, targetSdk = report.targetSdk, abis = report.candidate.abis, verifiedAt = System.currentTimeMillis()) } ?: u }
+                    val withEvidence = found.filter { ReleasePolicy.allowed(it,prefs) }.map { u -> verified[identity(u)]?.takeIf { it.file.exists() }?.report?.let { report -> u.copy(verdict = report.verdict, sha256 = report.sha256, version = report.candidate.versionName, versionCode = report.candidate.versionCode ?: u.versionCode, minSdk = report.candidate.minSdk, targetSdk = report.targetSdk, abis = report.candidate.abis, verifiedAt = System.currentTimeMillis()) } ?: u }
                     setSuccess(withEvidence)
                 }
                 if(state.value is UpdatesUiState.Loading) state.value = UpdatesUiState.Success(emptyList())
@@ -85,6 +85,8 @@ class UpdatesViewModel(
             file = downloader.download(url, if(automatic) prefs.autoVerifyLimitMiB.get() * 1024L * 1024 else 512L * 1024 * 1024)
             currentCoroutineContext().ensureActive()
             val report = installer.inspect(file, update.packageName)
+            require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)) { "Vorabversion durch deine Filter ausgeblendet." }
+            if(!automatic) runCatching { DownloadArchive(context,prefs).publish(file,update.packageName,report.candidate.versionName) }.onFailure { snackBar.snackBar(viewModelScope,TextSnack("Öffentliche Kopie nicht gespeichert: ${it.message}")) }
             verified.put(identity(update), Checked(file, report))?.file?.delete()
             file = null
             state.update { s -> UpdatesUiState.Success(s.updates().map { if(it.id == update.id) it.copy(verdict = report.verdict, sha256 = report.sha256, version = report.candidate.versionName, versionCode = report.candidate.versionCode ?: it.versionCode, minSdk = report.candidate.minSdk, targetSdk = report.targetSdk, abis = report.candidate.abis, verifiedAt = System.currentTimeMillis(), verificationError = null, isInstalling = false) else it }) }
@@ -118,6 +120,7 @@ class UpdatesViewModel(
         mark(update.id, true)
         try {
             val report = installer.inspect(checked.file, update.packageName)
+            require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)) { "Vorabversion durch deine Filter ausgeblendet." }
             require(report.sha256 == checked.report.sha256) { "Die geprüfte Datei wurde verändert." }
             require(report.verdict.installAllowed) { report.verdict.summary }
             installer.install(update.id, update.packageName, checked.file.inputStream())
@@ -128,7 +131,7 @@ class UpdatesViewModel(
         if(log.snack) state.value.updates().find { it.id == log.id }?.let { app -> snackBar.snackBar(viewModelScope, TextSnack(stringer.get(if(log.success) R.string.install_success else R.string.install_failure, app.name))) }
     }
     private fun setSuccess(updates: List<AppUpdate>) {
-        val filtered = updates.filter { it.id !in prefs.ignoredVersions.get() && releaseKey(it) !in prefs.ignoredReleases.get() }
+        val filtered = updates.filter { ReleasePolicy.allowed(it,prefs) }.filter { it.id !in prefs.ignoredVersions.get() && releaseKey(it) !in prefs.ignoredReleases.get() }
             .distinctBy { it.artifactKey }
         state.value = UpdatesUiState.Success(filtered)
         badger.changeUpdatesBadge(filtered.appGroups().count { it.status == Compatibility.COMPATIBLE }.takeIf { it > 0 }?.toString().orEmpty())

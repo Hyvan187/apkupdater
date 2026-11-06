@@ -76,7 +76,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
     val state = viewModel.state().collectAsStateWithLifecycle().value
     val selection = koinInject<AppSelection>()
     val scopeFilter by selection.scope.collectAsStateWithLifecycle()
-    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system) }
+    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system, it.packageName) }
     val health = SourceHealth.flow.collectAsStateWithLifecycle().value
     val working = state is UpdatesUiState.Loading || health.any { it.running }
     val ready = all.appGroups().count { it.status == Compatibility.COMPATIBLE }
@@ -151,7 +151,7 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
     val state = viewModel.state().collectAsStateWithLifecycle().value
     val selection = koinInject<AppSelection>()
     val scopeFilter by selection.scope.collectAsStateWithLifecycle()
-    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system) }
+    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system, it.packageName) }
     val health = SourceHealth.flow.collectAsStateWithLifecycle().value
     val working = state is UpdatesUiState.Loading || health.any { it.running }
     var selected by remember { mutableIntStateOf(0) }
@@ -180,8 +180,9 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
     }
 }
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun ScopeChoices(selected: AppScope, choose: (AppScope) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         AppScope.entries.forEach { value -> FilterChip(selected == value, { choose(value) }, label = { Text(if(value == AppScope.GENERAL) "Allgemeine" else value.label, style = MaterialTheme.typography.labelSmall) }) }
     }
 }

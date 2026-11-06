@@ -124,6 +124,7 @@ class GitHubRepository(
                 name = repo,
                 packageName = packageName,
                 version = releases[0].tag_name,
+                prerelease = releases[0].prerelease,
                 oldVersion = app?.version ?: "?",
                 versionCode = 0L,
                 oldVersionCode = app?.versionCode ?: 0L,
@@ -150,7 +151,7 @@ class GitHubRepository(
     }.getOrDefault(Pair(name, 0L))
 
     private fun filterPreRelease(release: GitHubRelease) = when {
-        prefs.ignorePreRelease.get() && release.prerelease -> false
+        !com.apkupdater.glass.ReleasePolicy.allowed(release.tag_name + " " + release.name, prefs.ignoreAlpha.get(), prefs.ignoreBeta.get(), prefs.ignorePreRelease.get(), release.prerelease) -> false
         else -> true
     }
 

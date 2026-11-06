@@ -32,5 +32,6 @@ class AppearanceStore(private val prefs: Prefs) {
         prefs.glassOpacity.put((v.opacity * 100).toInt()); prefs.fontChoice.put(v.font); prefs.textScale.put((v.textScale * 100).toInt())
         mutable.value = v
     }
+    fun recommendedGlass() = update { it.copy(quality=2,opacity=.46f,blur=true,refraction=true,progressiveBlur=false) }
     fun reset() = update { Appearance() }
 }

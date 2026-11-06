@@ -1,3 +1,10 @@
+# 0.4.0-liquid
+
+- Repair appearance navigation, duplicate entry text and system-bar-safe scrolling.
+- Add recommended glass values and full default reset.
+- Unify prerelease filtering and add Google-system scope with wrapping controls.
+- Add public direct-APK downloads, SHA-256 reuse and success-only deletion controlled by a keep preference.
+
 # 0.3.0-liquid
 
 - Rename to Liquid-APK-Updater; new dark glass launcher icon.
