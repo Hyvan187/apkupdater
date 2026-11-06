@@ -27,7 +27,7 @@ fun AppearanceScreen(onBack: () -> Unit) {
             item { GlassPanel {
                 Text("Empfohlenes Liquid Glass",style=MaterialTheme.typography.titleMedium)
                 SecondaryText("Ausgewogen: Standard, 46 % Deckkraft, Unschärfe und Lichtbrechung an, stärkere Navigationsunschärfe aus.")
-                OutlinedButton(onClick={store.recommendedGlass()},modifier=Modifier.fillMaxWidth()) { Text("Empfohlene Glaswerte anwenden") }
+                OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.recommendedGlass()},modifier=Modifier.fillMaxWidth()) { Text("Empfohlene Glaswerte anwenden") }
             } }
             item { GlassPanel {
                 Text("Design", style = MaterialTheme.typography.titleMedium)
@@ -56,13 +56,13 @@ fun AppearanceScreen(onBack: () -> Unit) {
             item { GlassPanel {
                 Text("Schrift", style = MaterialTheme.typography.titleMedium)
                 var fontMenu by remember { mutableStateOf(false) }
-                OutlinedButton(onClick = { fontMenu = true }) { Text(listOf("Systemschrift", "Sans Serif", "Serif", "Monospace")[a.font.coerceIn(0,3)]) }
+                OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { fontMenu = true }) { Text(listOf("Systemschrift", "Sans Serif", "Serif", "Monospace")[a.font.coerceIn(0,3)]) }
                 DropdownMenu(fontMenu, { fontMenu = false }) { listOf("Systemschrift", "Sans Serif", "Serif", "Monospace").forEachIndexed { i, text -> DropdownMenuItem(text = { Text(text) }, onClick = { store.update { it.copy(font = i) }; fontMenu = false }) } }
                 Text("Zusätzliche Textgröße: ${(a.textScale * 100).toInt()} %")
                 Slider(a.textScale, { v -> store.update { it.copy(textScale = v) } }, valueRange = .85f..1.3f)
                 SecondaryText("Wird mit deiner Android-Schriftgröße kombiniert. Es werden frei verfügbare Systemschriften verwendet.")
             } }
-            item { OutlinedButton(onClick = { store.reset() }, modifier = Modifier.fillMaxWidth()) { Text("Alle Darstellungswerte auf Standard zurücksetzen") } }
+            item { OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { store.reset() }, modifier = Modifier.fillMaxWidth()) { Text("Alle Darstellungswerte auf Standard zurücksetzen") } }
         }
     }
     picking?.let { target -> ColorPickerDialog(if(target == "accent") "Buttonfarbe" else "Hintergrundfarbe", if(target == "accent") a.accent else a.background,
@@ -78,7 +78,7 @@ fun AppearanceToggle(title: String, description: String, checked: Boolean, onCha
 @Composable
 private fun ColorSetting(label: String, color: Color, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(30.dp).background(color, CircleShape)); Spacer(Modifier.width(12.dp)); Text(label, Modifier.weight(1f)); Text("Ändern", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
+        Box(Modifier.size(30.dp).background(color, CircleShape)); Spacer(Modifier.width(12.dp)); Text(label, Modifier.weight(1f)); Text("Ändern", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.labelMedium)
     }
 }
 @Composable
@@ -97,5 +97,5 @@ fun ColorPickerDialog(title: String, initial: Long, onDismiss: () -> Unit, onSav
             Text("Sättigung", style = MaterialTheme.typography.labelMedium); Slider(saturation, { saturation = it; slidersChanged() }, valueRange = 0f..1f)
             Text("Helligkeit", style = MaterialTheme.typography.labelMedium); Slider(brightness, { brightness = it; slidersChanged() }, valueRange = 0f..1f)
         }
-    }, confirmButton = { TextButton(onClick = { parsed?.let(onSave) }, enabled = parsed != null) { Text("Übernehmen") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Abbrechen") } })
+    }, confirmButton = { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { parsed?.let(onSave) }, enabled = parsed != null) { Text("Übernehmen") } }, dismissButton = { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = onDismiss) { Text("Abbrechen") } })
 }

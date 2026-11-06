@@ -76,7 +76,8 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
     val state = viewModel.state().collectAsStateWithLifecycle().value
     val selection = koinInject<AppSelection>()
     val scopeFilter by selection.scope.collectAsStateWithLifecycle()
-    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system, it.packageName) }
+    val releaseFilters by koinInject<ReleaseFilterStore>().state.collectAsStateWithLifecycle()
+    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system, it.packageName) && ReleasePolicy.allowed(it.version,releaseFilters.alpha,releaseFilters.beta,releaseFilters.preview,it.prerelease) }
     val health = SourceHealth.flow.collectAsStateWithLifecycle().value
     val working = state is UpdatesUiState.Loading || health.any { it.running }
     val ready = all.appGroups().count { it.status == Compatibility.COMPATIBLE }
@@ -140,7 +141,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
             if(expanded) { Spacer(Modifier.height(12.dp)); SecondaryText(rom?.detail.orEmpty()); SecondaryText("${Build.SUPPORTED_ABIS.joinToString()} · API ${Build.VERSION.SDK_INT}\nDie erkannte Geräte-ROM bestätigt keine Herkunft einer fremden APK.") }
         } }
     }
-    report?.let { body -> AlertDialog(onDismissRequest = { report = null }, title = { Text("APK-Analyse") }, text = { androidx.compose.foundation.rememberScrollState().let { scroll -> androidx.compose.foundation.layout.Box(Modifier.heightIn(max = 440.dp).verticalScroll(scroll)) { Text(body, style = MaterialTheme.typography.bodySmall) } } }, confirmButton = { TextButton(onClick = { report = null }) { Text("Schließen") } }) }
+    report?.let { body -> AlertDialog(onDismissRequest = { report = null }, title = { Text("APK-Analyse") }, text = { androidx.compose.foundation.rememberScrollState().let { scroll -> androidx.compose.foundation.layout.Box(Modifier.heightIn(max = 440.dp).verticalScroll(scroll)) { Text(body, style = MaterialTheme.typography.bodySmall) } } }, confirmButton = { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { report = null }) { Text("Schließen") } }) }
 }
 @Composable
 private fun Metric(label: String, count: Int, color: Color, modifier: Modifier, click: () -> Unit) {
@@ -151,7 +152,8 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
     val state = viewModel.state().collectAsStateWithLifecycle().value
     val selection = koinInject<AppSelection>()
     val scopeFilter by selection.scope.collectAsStateWithLifecycle()
-    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system, it.packageName) }
+    val releaseFilters by koinInject<ReleaseFilterStore>().state.collectAsStateWithLifecycle()
+    val all = state.updates().filter { CategoryPolicy.matches(scopeFilter, it.system, it.packageName) && ReleasePolicy.allowed(it.version,releaseFilters.alpha,releaseFilters.beta,releaseFilters.preview,it.prerelease) }
     val health = SourceHealth.flow.collectAsStateWithLifecycle().value
     val working = state is UpdatesUiState.Loading || health.any { it.running }
     var selected by remember { mutableIntStateOf(0) }
@@ -175,7 +177,7 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
         if(health.any { it.problem != null }) item { StateMessage("Quellenfehler", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
         if(state is UpdatesUiState.Error) item { StateMessage("Suche fehlgeschlagen", "Bitte Verbindung und aktivierte Quellen prüfen.") }
         if(visible.isEmpty() && !working) item { StateMessage(when(selected) { 0 -> "Keine freigegebenen Updates"; 1 -> "Nichts zur Prüfung offen"; else -> "Keine blockierten Varianten" }, when(selected) { 0 -> "Nur tatsächlich geprüfte APKs erscheinen hier. Weitere Funde findest du unter Prüfen."; 1 -> "Starte eine neue Suche oder prüfe die Quellen in den Einstellungen."; else -> "Ältere Systemzweige und nachweislich unpassende APKs erscheinen separat in diesem Bereich." }) }
-        if(selected == 1 && visible.isNotEmpty()) item { OutlinedButton(onClick = { viewModel.verifyAll() }, shape = CircleShape, modifier = Modifier.fillMaxWidth()) { Text("Direkt verfügbare APKs prüfen") }; SecondaryText("Prüft bis zu sechs Dateien je Durchlauf. Herstellerpakete bleiben bei ungeklärter Herkunft gesperrt.") }
+        if(selected == 1 && visible.isNotEmpty()) item { OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { viewModel.verifyAll() }, shape = CircleShape, modifier = Modifier.fillMaxWidth()) { Text("Direkt verfügbare APKs prüfen") }; SecondaryText("Prüft bis zu sechs Dateien je Durchlauf. Herstellerpakete bleiben bei ungeklärter Herkunft gesperrt.") }
         items(visible, key = { it.packageName }) { group -> UpdateGroupCard(group, viewModel.preferred(group.packageName), { viewModel.verify(it) }, { viewModel.install(it, handler) }, viewModel::ignoreRelease, viewModel::prefer) }
     }
 }

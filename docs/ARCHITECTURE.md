@@ -53,3 +53,5 @@ No analytics or advertising SDK is added. Enabled sources receive package identi
 ReleasePolicy combines recognizable version tokens with provider prerelease flags. ReleaseFilterStore propagates settings to search UI; update settings refresh discovery. Install preflight repeats the version-channel check. Google system classification is organizational, based on namespace plus Android system flags.
 
 DownloadArchive uses MediaStore.Downloads on API 29+ and persisted document-tree permissions below 29. Writes finish before IS_PENDING is cleared. A global lock protects hash-keyed archive records. SessionInstaller never substitutes public bytes for its verified private input. Cleanup runs only after commit returns success and checks the current keep preference. Automatic inspection files are not published.
+
+Incremental Kotlin compilation is disabled in this build baseline because repeated incremental rebuilds produced duplicate declaration diagnostics; clean full compilation is used for validation. This affects build speed, not app runtime.

@@ -59,15 +59,15 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             FactRow("Quelle", update.source.name)
             FactRow("Signatur", when(update.verdict.evidence.find { it.property == "Signatur" }?.status) { Compatibility.COMPATIBLE -> "Passt zur Installation"; Compatibility.INCOMPATIBLE -> "Passt nicht"; else -> "Noch offen" })
             update.verifiedAt?.let { FactRow("Geprüft", DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it))) }
-            TextButton(onClick = { technical = true }) { Text("Technische Details") }
+            TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { technical = true }) { Text("Technische Details") }
         }
         if(busy) { Spacer(Modifier.height(10.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) }
         else if(!blocked || group.candidates.any { it.verdict.status != Compatibility.INCOMPATIBLE }) {
             Spacer(Modifier.height(10.dp))
             if(update.verdict.installAllowed) Button(onClick = { install(update) }, modifier = Modifier.fillMaxWidth()) { Text("Installieren") }
-            OutlinedButton(onClick = { picker = true }, modifier = Modifier.fillMaxWidth()) { Text(if(update.verdict.installAllowed) "Andere Quelle / erneut prüfen" else "Quelle wählen und prüfen") }
+            OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { picker = true }, modifier = Modifier.fillMaxWidth()) { Text(if(update.verdict.installAllowed) "Andere Quelle / erneut prüfen" else "Quelle wählen und prüfen") }
         }
-        if(expanded) TextButton(onClick = { ignore(update) }) { Text("Diese Version ausblenden") }
+        if(expanded) TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { ignore(update) }) { Text("Diese Version ausblenden") }
     }
     if(picker) {
         var selected by remember { mutableStateOf(update) }
@@ -89,7 +89,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                         }
                         val alternatives = group.candidates.filter { it.source == option.source }
                         if(alternatives.size > 1) {
-                            TextButton(onClick = { variants = if(variants == option.source.name) null else option.source.name }) { Text("${alternatives.size} Varianten") }
+                            TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { variants = if(variants == option.source.name) null else option.source.name }) { Text("${alternatives.size} Varianten") }
                             if(variants == option.source.name) alternatives.forEach { variant ->
                                 Row(Modifier.fillMaxWidth().clickable(enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && variant.link is Link.Url) { selected = variant }, verticalAlignment = Alignment.CenterVertically) {
                                     RadioButton(selected.artifactKey == variant.artifactKey, { selected = variant }, enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && variant.link is Link.Url)
@@ -116,7 +116,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             update.sha256?.let { SecondaryText("SHA-256: $it") }
             SecondaryText("Die Prüfung bestätigt technische Voraussetzungen, keine vollständige Funktionsgarantie.")
         }
-    }, confirmButton = { TextButton(onClick = { technical = false }) { Text("Schließen") } })
+    }, confirmButton = { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { technical = false }) { Text("Schließen") } })
 }
 @Composable
 private fun FactRow(label: String, value: String) = Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {

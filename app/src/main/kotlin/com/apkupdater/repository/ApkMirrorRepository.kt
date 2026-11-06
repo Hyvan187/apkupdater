@@ -144,8 +144,8 @@ class ApkMirrorRepository(
     }.getOrDefault(true)
 
     private fun buildIgnoreList() = mutableListOf<String>().apply {
-        if (prefs.ignoreAlpha.get()) add("alpha")
-        if (prefs.ignoreBeta.get()) add("beta")
+        if (prefs.ignoreAlpha.get() || prefs.ignorePreRelease.get()) add("alpha")
+        if (prefs.ignoreBeta.get() || prefs.ignorePreRelease.get()) add("beta")
     }
 
 }

@@ -84,7 +84,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
                         SecondaryText(app.pkg)
                         Text("Installationsquelle: ${app.source.ifEmpty { "nicht ausgewiesen" }}")
                         Text("System: ${app.system} · System-Update: ${app.updated}")
-                        OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) }) { Text("Android-App-Einstellungen") }
+                        OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) }) { Text("Android-App-Einstellungen") }
                         Row {
                             Switch(checked = app.pkg !in ignored, onCheckedChange = { enabled ->
                                 ignored = if (enabled) ignored - app.pkg else ignored + app.pkg

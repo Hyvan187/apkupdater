@@ -179,4 +179,22 @@ class GlassUiTest {
         screenshot("12-google-system-compact")
     }
 
+    @Test fun cachedBetaDisappearsImmediatelyWhenFilterChanges() {
+        val koin=GlobalContext.get()
+        val filters=koin.get<ReleaseFilterStore>()
+        val vm=koin.get<com.apkupdater.viewmodel.UpdatesViewModel>()
+        val beta=com.apkupdater.data.ui.AppUpdate("Beta Fixture","com.example.beta","2.0-beta1","1.0",2,1,com.apkupdater.data.ui.ApkPureSource)
+        compose.runOnUiThread {
+            filters.change(alpha=false,beta=false,preview=false)
+            val field=vm.javaClass.getDeclaredField("state").apply{isAccessible=true}
+            @Suppress("UNCHECKED_CAST")
+            val state=field.get(vm) as kotlinx.coroutines.flow.MutableStateFlow<com.apkupdater.data.ui.UpdatesUiState>
+            state.value=com.apkupdater.data.ui.UpdatesUiState.Success(listOf(beta))
+            compose.activity.setContent { com.apkupdater.ui.theme.AppTheme(true) { GlassScene { GlassUpdatesScreen(vm) } } }
+        }
+        compose.onNodeWithText("Beta Fixture").assertIsDisplayed()
+        compose.runOnIdle { filters.change(beta=true) }
+        compose.onNodeWithText("Beta Fixture").assertDoesNotExist()
+    }
+
 }

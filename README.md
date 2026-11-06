@@ -33,7 +33,7 @@ Each provider's APK keeps its own verdict. Checked files are retained privately,
 
 Extract `Liquid-APK-Updater-Debug.zip` and install `Liquid-APK-Updater-Debug.apk`.
 
-The 0.3 distribution reuses the retained 0.2 development signing key and package ID. It can update that 0.2 build in place, retaining preferences under the existing preference-store name. A different independently signed build cannot update it. The older 0.1 build used a different key and requires a one-time uninstall. Private keys are never included in the public source or application ZIP.
+The 0.4 distribution reuses the retained 0.2 development signing key and package ID. It can update that 0.2 build in place, retaining preferences under the existing preference-store name. A different independently signed build cannot update it. The older 0.1 build used a different key and requires a one-time uninstall. Private keys are never included in the public source or application ZIP.
 
 ## Use
 

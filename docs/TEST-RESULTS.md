@@ -1,34 +1,35 @@
-# Validation — Liquid-APK-Updater 0.3.0
+# Validation — Liquid-APK-Updater 0.4.0
 
-Local validation on 6 November 2026 uses JDK 21, Gradle 9.4, AGP 9.1.1 and Android SDK 37. Production bytecode targets Java 17. The complete command is:
+Local Gradle build/test/lint validation on 6 November 2026. JDK 21, SDK 37, target 37, min 23; application bytecode Java 17.
 
-```sh
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug -Pkotlin.incremental=false
-```
+Observed suite: 78 tests, 0 failures, 0 errors. Lint: 0 errors, 248 warnings. Final build log and reports accompany the distribution.
 
-The test suite contains **60 tests**, with zero failures/errors in the successful verification run:
+| Suite | Tests |
+|---|---:|
+| ExampleUnitTest | 1 |
+| ArtifactMergeTest | 4 |
+| CompatibilityEngineTest | 15 |
+| DownloadArchiveTest | 6 |
+| GlassUiTest | 9 |
+| LiquidRegressionTest | 16 |
+| RegressionTest | 16 |
+| ReleasePolicyTest | 9 |
+| SourceHealthTest | 2 |
 
-| Suite | Tests | Purpose |
-|---|---:|---|
-| CompatibilityEngineTest | 15 | IN/CN evidence, signatures, SDK/ABI, splits, package/code rules |
-| RegressionTest | 16 | Exact DocumentsUI 17 → 14 regression, target regression, numeric versions, ROM detection/conflicts |
-| ArtifactMergeTest | 4 | Byte identity and distinct unproven variants |
-| SourceHealthTest | 2 | Empty provider isolation; actionable sanitized failure |
-| LiquidRegressionTest | 16 | Provider grouping, per-file evidence, package identity, categories, network/size policies, HEX validation, readable ABI labels, source diagnosis |
-| GlassUiTest | 6 | API-37 navigation, compact screen, light appearance, DocumentsUI block, provider confirmation before manual download, persisted colors and shared category selection |
-| Inherited ExampleUnitTest | 1 | Upstream arithmetic smoke test |
+The nine native API-37 UI tests use Robolectric and actual Compose rendering. They cover navigation, compact layout, light theme, DocumentsUI downgrade rejection, source confirmation, persisted appearance, a single appearance entry, recommended and full resets, Google-system scope, and immediate hiding of a cached beta candidate. These are host tests, not physical-phone tests.
 
-Native UI tests use Robolectric 4.17 on API 37. PixelCopy captures native Compose content, not an HTML replacement or generated mockup. Host rendering is not a physical-device installation. The source chooser test asserts its modal UI and verifies that selecting Aptoide reaches the callback only after confirming download. Main-window screenshots do not capture the separately rendered modal window.
+Six archive tests use a controlled ContentProvider and real file streams to verify relative Download/Liquid-APK-Updater placement, byte preservation, reuse, keep/delete behavior and safe names. Failed-install deletion is checked as a decision rule. Actual PackageInstaller confirmation, MediaStore behavior and file-manager behavior on OnePlus are not tested here.
 
-The build produces an APK with package `com.hyvan187.apkupdater`, version code `1003`, version name `0.3.0-liquid`, minimum API 23 and target API 37. Android apksigner verifies its v1/v2 signatures. The certificate SHA-256 is `6d3055d0260d6afba37c6f8505b2e556e47d56d8363c0399fc43a5f0e11e28d6`, matching the retained 0.2 distribution certificate. The distribution includes exact APK SHA-256, source commit, native screenshots, test XML, lint HTML/XML and final build log.
+Release-policy tests cover Alpha/Beta/RC/Preview tokens, independent controls, provider prerelease flags and Google-system classification. Unlabelled prereleases cannot be reliably inferred. Google package namespaces plus system flags are organizational classification, not signature-based Google authentication.
 
-## Important limits
+The APK must verify with certificate SHA-256 6d3055d0260d6afba37c6f8505b2e556e47d56d8363c0399fc43a5f0e11e28d6, matching the retained 0.2/0.3 development signer. Version 1004 / 0.4.0-liquid, package com.hyvan187.apkupdater.
 
-- No physical OnePlus 15/IN installation or firmware interaction was executed here.
-- API-37 Robolectric exercises launch/navigation/rendering; it does not prove a real PackageInstaller confirmation flow, OTA/OEM behavior, ownership behavior or notification delivery on the user's device.
-- No live end-to-end provider availability, every remote APK, CPU/GPU/energy profiling, frame-rate measurement, tablet/landscape/accessibility matrix or background scheduling timing is claimed.
-- Missing ROM provenance and dependencies remain unknown. Signature matching alone cannot establish regional runtime compatibility.
-- Split/APKM/XAPK installation remains blocked; complete required splits are not guessed.
-- Source authentication/403/CAPTCHA restrictions are not bypassed. APKMirror uses manual download plus local inspection.
-- Automatic inspections are bounded to six unresolved direct APKs per search and the configured per-file limit, default 64 MiB/unmetered. No automatic installation occurs.
-- GitHub Actions and an Android 17 emulator smoke job are configured. Their execution is separate from the confirmed local Gradle result; inspect the repository's Actions page before claiming CI success.
+## Limits
+
+- Physical OnePlus 15/IN, OEM installation/ownership behavior, notifications/background timing and real download-folder permissions are untested.
+- SAF folder selection on API 23–28 is implemented but not device-tested.
+- CPU/GPU/frame rate, power consumption, tablets/landscape and the complete accessibility matrix were not measured.
+- Live availability of every source and every remote APK is not proven by unit tests. CAPTCHA/access controls are not bypassed.
+- Unknown ROM provenance remains unknown; matching signatures do not prove regional functionality. Unsupported split/APKM/XAPK sets remain blocked.
+- Temporary automatic checks stay private; manually downloaded/installed APKs get a public copy. Copies are deleted only after confirmed success with the keep setting off. External browser downloads are not managed.
+- GitHub Actions is configured. No remote CI execution result is implied by this local build report.

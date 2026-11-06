@@ -71,8 +71,8 @@ class AptoideRepository(
 
     private fun buildFilterList(): String {
         val list = mutableListOf<String>()
-        if (prefs.ignoreAlpha.get()) list.add("alpha")
-        if (prefs.ignoreBeta.get()) list.add("beta")
+        if (prefs.ignoreAlpha.get() || prefs.ignorePreRelease.get()) list.add("alpha")
+        if (prefs.ignoreBeta.get() || prefs.ignorePreRelease.get()) list.add("beta")
         return list.joinToString(separator = ",")
     }
 

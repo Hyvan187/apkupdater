@@ -78,12 +78,12 @@ class FdroidRepository(
     }
 
     private fun filterAlpha(update: FdroidUpdate) = when {
-        prefs.ignoreAlpha.get() && update.apk.versionName.contains("alpha", true) -> false
+        (prefs.ignoreAlpha.get() || prefs.ignorePreRelease.get()) && update.apk.versionName.contains("alpha", true) -> false
         else -> true
     }
 
     private fun filterBeta(update: FdroidUpdate) = when {
-        prefs.ignoreBeta.get() && update.apk.versionName.contains("beta", true) -> false
+        (prefs.ignoreBeta.get() || prefs.ignorePreRelease.get()) && update.apk.versionName.contains("beta", true) -> false
         else -> true
     }
 

@@ -33,7 +33,7 @@ fun GlassSearchScreen(viewModel: SearchViewModel, onBack: () -> Unit) {
             GlassPanel {
                 Text(app.name, style = MaterialTheme.typography.titleMedium)
                 SecondaryText("${app.packageName}\n${app.version} · ${app.source.name}")
-                OutlinedButton(onClick = { viewModel.install(app, handler) }, enabled = !app.isInstalling) { Text(if(app.source == com.apkupdater.data.ui.ApkMirrorSource) "Quellseite öffnen" else "Herunterladen und prüfen") }
+                OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { viewModel.install(app, handler) }, enabled = !app.isInstalling) { Text(if(app.source == com.apkupdater.data.ui.ApkMirrorSource) "Quellseite öffnen" else "Herunterladen und prüfen") }
             }
         }
     }

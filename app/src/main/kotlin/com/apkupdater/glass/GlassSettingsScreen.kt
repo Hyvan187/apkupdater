@@ -55,7 +55,7 @@ fun GlassSettingsScreen(onBack: () -> Unit, onAppearance: () -> Unit, onFiltersC
             Text("Downloads",style=MaterialTheme.typography.titleMedium)
             SecondaryText(if(android.os.Build.VERSION.SDK_INT>=29) "Manuell direkt geladene APKs: Download/Liquid-APK-Updater. Automatische Prüfdateien bleiben privat." else "Bitte einen sichtbaren Downloadordner auswählen.")
             SettingSwitch("APKs nach Installation behalten","Aus: öffentliche Kopie erst nach erfolgreicher Installation löschen. Bei Abbruch oder Fehler bleibt sie erhalten.",{prefs.keepDownloadedApks.get()},{prefs.keepDownloadedApks.put(it)})
-            if(android.os.Build.VERSION.SDK_INT<29) OutlinedButton(onClick={folder.launch(null)}){Text("Downloadordner auswählen")}
+            if(android.os.Build.VERSION.SDK_INT<29) OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={folder.launch(null)}){Text("Downloadordner auswählen")}
             folderProblem?.let{SecondaryText(it)}
         } }
         item { Text("Updatequellen", style = MaterialTheme.typography.titleMedium) }
@@ -95,7 +95,7 @@ fun GlassSettingsScreen(onBack: () -> Unit, onAppearance: () -> Unit, onFiltersC
         item { GlassPanel {
             Text("Ausgeblendete Versionen", style = MaterialTheme.typography.titleMedium)
             var restored by remember { mutableStateOf(false) }
-            OutlinedButton(onClick = { prefs.ignoredVersions.put(emptyList()); prefs.ignoredReleases.put(emptyList()); restored = true }) { Text("Versionen wieder einblenden") }
+            OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { prefs.ignoredVersions.put(emptyList()); prefs.ignoredReleases.put(emptyList()); restored = true }) { Text("Versionen wieder einblenden") }
             if(restored) SecondaryText("Bei der nächsten Updateprüfung wieder sichtbar.")
         } }
         item { GlassPanel {
