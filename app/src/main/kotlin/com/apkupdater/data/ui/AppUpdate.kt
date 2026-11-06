@@ -20,7 +20,8 @@ data class AppUpdate(
 	val id: Int = "${source.name}.$packageName.$versionCode.$version.$link".hashCode(),
     val verdict: com.apkupdater.glass.Verdict = com.apkupdater.glass.Verdict(com.apkupdater.glass.Compatibility.UNKNOWN, emptyList()),
     val sha256: String? = null,
-    val additionalSources: List<String> = emptyList()
+    val additionalSources: List<String> = emptyList(),
+    val artifactKey: String = "${source.name}:$packageName:$versionCode:$version:$link"
 )
 
 fun List<AppUpdate>.indexOf(id: Int) = indexOfFirst { it.id == id }

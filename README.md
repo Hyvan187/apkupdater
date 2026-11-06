@@ -1,51 +1,63 @@
-# APKUpdater Glass
+# APKUpdater Glass 0.2
 
-Native Android fork of [APKUpdater](https://github.com/rumboalla/apkupdater), based on commit `69b6fcdf52a7735ae17101efe1a0cd26222fb276` / `0.0.604-ci`.
+Native Android update manager based on [APKUpdater](https://github.com/rumboalla/apkupdater). Package ID: `com.hyvan187.apkupdater`; version code 1002. GPLv3, copyright rumboalla and contributors; see [LICENSE](LICENSE) and [original README](docs/UPSTREAM-README.md).
 
-**Development preview, not the completed master specification.** Package ID: `com.hyvan187.apkupdater`. Copyright of upstream code remains with rumboalla and contributors. All derivative code is GPLv3; see [LICENSE](LICENSE) and [upstream README](docs/UPSTREAM-README.md).
+## What changed after the device feedback
 
-## Available functions
+The 0.1 implementation showed unreadable text, an almost unchanged navigation, a non-functional manual ROM selector and an Android 14 DocumentsUI candidate for an installed Android 17 component. These issues are explicitly addressed in this revision:
 
-- Android 17 / API 37 build target, Java 17, AGP 9.1.1; existing Compose, Material 3, Koin, Coroutines and WorkManager architecture retained.
-- Dashboard, searchable system-app inventory, updates, source search and settings.
-- Persistent AUTO/EU/GLO/IN/CN/OTHER device-region choice. AUTO deliberately reports UNKNOWN until documented manufacturer-specific evidence is available. Neither language, SIM, country, model number nor matching certificate is a regional proof.
-- Pure compatibility engine with separate evidence for package, numeric version code, SDK, ABI, signature, splits, dependencies and relevant ROM region.
-- Unknown, incompatible and compatible candidates can be inspected separately. The default recommendations show compatible candidates only.
-- Explicit download-and-verify operation for ordinary direct APK links. Cryptographic verification with Google's `apksig`, current signer comparison, SHA-256, binary manifest inspection, native ABI inspection and update-owner display.
-- Verified identical byte hashes can merge source cards. Without a hash, source/variant identity remains separate.
-- One guarded PackageInstaller path, mandatory Android confirmation, bounded downloads, HTTPS, cleanup, cancellation and a session timeout. Root installation is disabled.
-- Dark violet/blue glass scene, actual in-app backdrop sampling with RenderEffect blur (API 31+), AGSL distortion (API 33+ high setting), pressure response, local light highlights and Material fallback. Text stays sharp. The sampled backdrop is the app's decorative scene, not arbitrary other scrolling UI or wallpaper from outside the app.
-- Existing providers retained; no CAPTCHA circumvention or access-protection bypass added. APKMirror opens its source page and external downloads are outside Glass's installation guard.
-- WorkManager checks on unmetered networks by default; verified candidates only generate update notifications.
-
-## Important limits
-
-- OEM and system APKs have **no bundled verified region provenance or proprietary-service compatibility database**. They remain UNKNOWN and are blocked by the guarded installer, even after manual device-region selection. This preview avoids false regional approvals; it does not yet provide a verified regional OEM update catalog.
-- APKS/APKM/XAPK and multi-file split installations are blocked. Required splits detected in a standalone APK are rejected. No claim of complete bundle selection is made.
-- Signature rotation is conservative: a different signer with a lineage is UNKNOWN, pending proof of update capability; matching history alone never grants an update.
-- No real OnePlus 15 hardware validation or CPU/GPU/battery/FPS benchmark has been performed.
-- Source reachability alone is not an end-to-end provider test. Authentication, metadata completeness, variant enumeration and downloadable results still need service-specific integration tests.
-- Source priorities, full update history, per-app preferred source, automatic regional detection, fully adaptive tablet navigation, a redacted diagnostic-file exporter and complete split support remain outstanding.
-- The upstream semantic-version searches are discovery hints; they are never sufficient to authorize installation.
-- Debug keys differ between local and CI builds. Use a backed-up private release key for long-term updates. No private key or password is checked in.
+- **Branch-aware system update policy.** `DocumentsUI 17 / 374200020 → 14 / 990090000` is rejected before downloading. A larger code does not override an older recognizable system branch. Actual downloaded APKs repeat this check; lower target platforms for installed system packages are rejected too. This is a conservative system-component policy, not a claim that ordinary version names or target SDKs always identify an Android release.
+- **Automatic ROM detection.** Reads a bounded output from unprivileged `/system/bin/getprop`, retains only a firmware-property allowlist, and maps explicit vendor region signals. No manual region chooser, locale/SIM/GPS inference, model-only guess or fixed IN default. Missing or conflicting signals remain unknown. Device region never proves an external APK's region.
+- **New application structure.** Three floating main tabs (Start, Updates, Apps), separate search capsule, contextual settings, compact app rows and a unified settings surface.
+- **Content-aware glass navigation.** A separate captured layer contains actual scrolling content. The floating navigation samples that layer with GPU blur/refraction; panels sample a separate background layer to avoid recursive rendering. Foreground colors are explicitly scoped, including high-contrast light/dark status colors.
+- **Three result groups.** Ready, Needs checking and Blocked. A blocked candidate has no download or installation action. Discovery is never labeled verified.
+- **Verify once, install the same file.** APKs are retained in private temporary storage, hashed, cryptographically checked and re-inspected immediately before installation. The installed bytes must match the inspected hash. Files are deleted when the view model is cleared. No second unverified network download is substituted.
+- **Independent source results.** Empty providers cannot withhold other results. Source failures and timeouts are visible; cancellation is propagated.
+- **Explicit batch verification.** A user-triggered action can inspect direct APK candidates sequentially. It downloads files and does not silently install anything.
 
 ## Install
 
-Download `APKUpdater-Glass-Debug.apk` from a successful Actions run or the supplied deliverable. Android will ask for permission to install unknown apps. The app installs beside the original APKUpdater. Choose the actual ROM region in Settings, if known. To inspect unresolved candidates, change the Updates filter to include them. Download verification is separate from installation.
+Unzip `APKUpdater-Glass-Debug.zip` and install `APKUpdater-Glass-Debug.apk`.
 
-## Build
+**Migrating from the earlier 0.1 build:** its ephemeral debug private key was not retained by that environment. This revision has a different signer, so Android requires uninstalling 0.1 once before installing 0.2. This clears the old app's settings. The new development key is backed up separately and is never included in the public source or normal distribution ZIP. Later local builds can reuse it via `GLASS_DEBUG_KEYSTORE`.
 
-Install a full JDK 17 and Android command-line tools, then:
+The package still coexists with official APKUpdater. Android's unknown-app permission and installation confirmation remain required.
+
+## Use
+
+1. Search for updates on Start.
+2. Open Updates. Ready contains verified candidates; Check contains unverified discovery results; Blocked explains rejected variants.
+3. Download and inspect an unresolved APK, or run the explicit batch inspection. Only a successful preflight enables installation.
+4. Use Apps to find packages, open Android's app settings, or exclude a package from checks.
+5. Use the local analyzer to inspect an APK without starting installation.
+
+## Build and verification
+
+The application targets Java bytecode 17 and Android API 37, minimum API 23. **The Android 17 Robolectric test runtime requires JDK 21.** With a full JDK 21 and Android command-line tools:
 
 ```sh
 sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
 ```
 
-`compileSdk = 37` resolves the major Android 17 SDK. In the current SDK repository, its package name is `platforms;android-37.0`, not `platforms;android-37`.
+The Android 17 package is named `platforms;android-37.0` in the SDK catalog. Gradle 9.4 / AGP 9.1.1 are retained as a compatible baseline. CI builds/test reports and native UI render outputs are configured in `.github/workflows/build.yml`.
 
-The APK is `app/build/outputs/apk/debug/app-debug.apk`. CI renames it, verifies its signature, records SHA-256 and the commit, and uploads test/lint reports. A separate CI job attempts an Android 17 emulator launch and retains logs and a screenshot.
+Optional local development signing:
 
-Release signing is opt-in via environment variables `GLASS_KEYSTORE`, `GLASS_STORE_PASSWORD`, `GLASS_KEY_ALIAS`, `GLASS_KEY_PASSWORD`. An absent release key does not fall back to an official-looking debug-signed release.
+```sh
+export GLASS_DEBUG_KEYSTORE=/absolute/private/path/APKUpdater-Glass-Development.keystore
+./gradlew :app:assembleDebug
+```
 
-See [architecture and security](docs/ARCHITECTURE.md), [Android 17 review](docs/ANDROID17.md), [test results](docs/TEST-RESULTS.md), and [change log](CHANGELOG.md).
+That variable selects the standard debug alias/password; it is **not** release signing. Release keys remain opt-in through `GLASS_KEYSTORE`, `GLASS_STORE_PASSWORD`, `GLASS_KEY_ALIAS` and `GLASS_KEY_PASSWORD`. No key is committed. A CI build without the private development key has its own debug signer.
+
+## Technical limits
+
+- No external OEM-region provenance catalog is fabricated. Manufacturer APKs with unproved regional dependencies remain unverified and cannot pass the guarded installer.
+- Split archives (APKS/APKM/XAPK) still require a complete selector/validator and are blocked in this build.
+- New-signing-key rotations without demonstrated update capabilities remain unknown.
+- Provider availability and formats can change. Source failures are visible; complete end-to-end coverage of all provider variants is not claimed.
+- Native UI tests render Android 17 on the JVM; they are not a physical OnePlus 15 test, a PackageInstaller system-dialog test or a GPU/FPS/battery benchmark.
+- The glow/refraction is a native Android implementation, not Apple's proprietary renderer.
+
+See [audit and fixes](docs/AUDIT-FIXES.md), [architecture](docs/ARCHITECTURE.md), [Android 17 notes](docs/ANDROID17.md), [validation](docs/TEST-RESULTS.md) and [change log](CHANGELOG.md).

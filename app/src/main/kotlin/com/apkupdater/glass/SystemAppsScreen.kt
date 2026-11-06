@@ -25,7 +25,7 @@ import org.koin.compose.koinInject
 private data class PackageRow(val name: String, val pkg: String, val version: String, val code: Long, val system: Boolean, val updated: Boolean, val enabled: Boolean, val source: String)
 
 @Composable
-fun SystemAppsScreen() {
+fun SystemAppsScreen(onSettings: () -> Unit = {}) {
     val context = LocalContext.current
     val prefs = koinInject<Prefs>()
     var apps by remember { mutableStateOf<List<PackageRow>>(emptyList()) }
@@ -58,8 +58,8 @@ fun SystemAppsScreen() {
             else -> true
         }
     }
-    Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-        Text("System-Apps", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(top = 16.dp))
+    Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
+        ScreenHeader("Deine Apps", "INSTALLIERTE PAKETE", onSettings)
         OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("App oder Paket suchen") }, modifier = Modifier.fillMaxWidth())
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf("System", "OPlus", "Google-System", "Aktualisiert", "Deaktiviert", "Ignoriert", "Alle Apps").forEachIndexed { i, label ->
@@ -67,14 +67,20 @@ fun SystemAppsScreen() {
             }
         }
         error?.let { Text("Paketabfrage fehlgeschlagen: $it") }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(vertical = 12.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)) {
             items(filtered, key = { it.pkg }) { app ->
                 var expanded by remember { mutableStateOf(false) }
                 GlassPanel(effectLevel = prefs.effectLevel.get(), modifier = Modifier.clickable { expanded = !expanded }) {
-                    Text(app.name, style = MaterialTheme.typography.titleMedium)
-                    Text(app.pkg, style = MaterialTheme.typography.bodySmall)
-                    Text("${app.version} (${app.code}) · ${if (app.enabled) "aktiv" else "deaktiviert"}")
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        com.apkupdater.ui.component.LoadingImageApp(app.pkg, Modifier.size(48.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(app.name, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            SecondaryText("${app.version} · ${if(app.system || app.updated) "System" else "App"}${if(!app.enabled) " · deaktiviert" else ""}")
+                        }
+                    }
                     if (expanded) {
+                        SecondaryText(app.pkg)
                         Text("Installationsquelle: ${app.source.ifEmpty { "nicht ausgewiesen" }}")
                         Text("System: ${app.system} · System-Update: ${app.updated}")
                         OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) }) { Text("Android-App-Einstellungen") }

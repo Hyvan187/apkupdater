@@ -41,10 +41,12 @@ class GitHubRepository(
             }
         }
 
-        checks.combine { all ->
+        if(checks.isEmpty()) emit(emptyList()) else checks.combine { all ->
             emit(all.flatMap { it })
         }.collect()
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(emptyList())
         Log.e("GitHubRepository", "Error fetching releases.", it)
     }
@@ -67,6 +69,8 @@ class GitHubRepository(
             }.collect()
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(Result.failure(it))
         Log.e("GitHubRepository", "Error searching.", it)
     }
@@ -92,6 +96,8 @@ class GitHubRepository(
             emit(listOf())
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(emptyList())
         Log.e("GitHubRepository", "Error checking self-update.", it)
     }
@@ -130,6 +136,8 @@ class GitHubRepository(
             emit(emptyList())
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(emptyList())
         Log.e("GitHubRepository", "Error fetching releases for $packageName.", it)
     }

@@ -11,9 +11,10 @@ class Prefs(
 	prefs: KryptoPrefs,
 	isAndroidTv: Boolean
 ): KryptoContext(prefs) {
-	val romRegion = string("glass.romRegion", defValue = "AUTO", backed = true)
+	val dynamicColors = boolean("glass.dynamicColors", defValue = false, backed = true)
     val compatibilityFilter = int("glass.filter", 0, true)
     val effectLevel = int("glass.effect", 2, true)
+    val scanScope = int("glass.scanScope", 0, true)
     val wifiOnly = boolean("glass.wifiOnly", defValue = true, backed = true)
     val lastCheck = long("glass.lastCheck", 0L, true)
     val ignoredApps = json("ignoredApps", emptyList<String>(), true)

@@ -1,219 +1,99 @@
 package com.apkupdater.ui.screen
 
-import android.app.Activity.RESULT_CANCELED
 import android.content.Intent
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.ManagedActivityResultLauncher
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.ActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.BottomAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
 import androidx.activity.compose.LocalActivity
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.rememberNavController
-import com.apkupdater.data.ui.Screen
-import com.apkupdater.ui.component.BadgeText
+import androidx.navigation.compose.*
+import com.apkupdater.glass.*
+import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.theme.AppTheme
-import com.apkupdater.util.Badger
-import com.apkupdater.util.InstallLog
 import com.apkupdater.util.SnackBar
 import com.apkupdater.util.Themer
-import com.apkupdater.viewmodel.AppsViewModel
-import com.apkupdater.viewmodel.MainViewModel
-import com.apkupdater.viewmodel.SearchViewModel
-import com.apkupdater.viewmodel.SettingsViewModel
-import com.apkupdater.viewmodel.UpdatesViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import com.apkupdater.viewmodel.*
+import kotlinx.coroutines.flow.collectLatest
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.coroutines.CoroutineContext
 
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
-	// ViewModels
-	val appsViewModel: AppsViewModel = koinViewModel()
-	val updatesViewModel: UpdatesViewModel = koinViewModel()
-	val searchViewModel: SearchViewModel = koinViewModel()
-	val settingsViewModel: SettingsViewModel = koinViewModel()
-
-	// Navigation
-	val navController = rememberNavController()
-
-	// Pull to refresh
-	val isRefreshing = mainViewModel.isRefreshing.collectAsStateWithLifecycle()
-	val pullToRefreshState = rememberPullToRefreshState()
-	LaunchedEffect(Unit) {
-		mainViewModel.refresh(appsViewModel, updatesViewModel)
-	}
-
-	// Used to launch the install intent and get dismissal result
-	val installLog = koinInject<InstallLog>()
-	val launcher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-		if (it.resultCode == RESULT_CANCELED) {
-			installLog.cancelCurrentInstall()
-		}
-	}
-
-	// Check intent when cold starting from notification
-	CheckNotificationIntent(mainViewModel, updatesViewModel, navController, launcher)
-
-	// Check notification intent when hot starting
-	IntentListener(mainViewModel, updatesViewModel, navController, launcher)
-
-	// Theme
-	val theme = koinInject<Themer>().flow().collectAsStateWithLifecycle().value
-
-	// SnackBar
-	val snackBarHostState = handleSnackBar()
-
-	AppTheme(theme) {
-        com.apkupdater.glass.GlassScene {
-		Scaffold(
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-			snackbarHost = { SnackbarHost(snackBarHostState) },
-			bottomBar = { BottomBar(mainViewModel, navController) }
-		) { padding ->
-			PullToRefreshBox(
-				isRefreshing = isRefreshing.value,
-				onRefresh = { mainViewModel.refresh(appsViewModel, updatesViewModel) },
-				state = pullToRefreshState
-			) {
-				NavHost(navController, padding, mainViewModel, appsViewModel, updatesViewModel, searchViewModel, settingsViewModel)
-			}
-		}
-	}
+    val updates: UpdatesViewModel = koinViewModel()
+    val apps: AppsViewModel = koinViewModel()
+    val search: SearchViewModel = koinViewModel()
+    val prefs = koinInject<Prefs>()
+    val nav = rememberNavController()
+    val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "overview"
+    val dark = koinInject<Themer>().flow().collectAsStateWithLifecycle().value
+    val dynamic = remember { mutableStateOf(prefs.dynamicColors.get()) }
+    val effects = remember { mutableIntStateOf(prefs.effectLevel.get().coerceIn(0, 3)) }
+    val snack = remember { SnackbarHostState() }
+    val snacks = koinInject<SnackBar>()
+    LaunchedEffect(Unit) { snacks.flow().collectLatest { snack.showSnackbar(it) } }
+    LaunchedEffect(Unit) { mainViewModel.refresh(apps, updates) }
+    fun go(page: String) { nav.navigate(page) { popUpTo("overview") { saveState = true }; launchSingleTop = true; restoreState = true } }
+    val activity = LocalActivity.current as? ComponentActivity
+    DisposableEffect(activity) {
+        val listener = Consumer<Intent> { if(it.action == com.apkupdater.util.UpdatesNotification.UpdateAction) go("updates") }
+        activity?.addOnNewIntentListener(listener)
+        onDispose { activity?.removeOnNewIntentListener(listener) }
+    }
+    AppTheme(if(prefs.theme.get() == 0) androidx.compose.foundation.isSystemInDarkTheme() else dark, dynamic.value) {
+        CompositionLocalProvider(LocalEffectLevel provides effects.intValue) {
+            GlassScene {
+                val contentBackdrop = rememberGlassBackdrop()
+                Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize().captureGlass(contentBackdrop)) {
+                        NavHost(navController = nav, startDestination = "overview", modifier = Modifier.fillMaxSize()) {
+                            composable("overview") { OverviewScreen(updates, onUpdates = { go("updates") }, onSettings = { go("settings") }) }
+                            composable("updates") { GlassUpdatesScreen(updates, onSettings = { go("settings") }) }
+                            composable("apps") { SystemAppsScreen(onSettings = { go("settings") }) }
+                            composable("search") { GlassSearchScreen(search, onBack = { go("overview") }) }
+                            composable("settings") { GlassSettingsScreen(dynamic, effects, onBack = { go("overview") }) }
+                        }
+                    }
+                    if(route !in listOf("settings", "search")) FloatingGlassNavigation(route, contentBackdrop, Modifier.align(Alignment.BottomCenter), ::go)
+                    SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 100.dp, start = 16.dp, end = 16.dp))
+                }
+            }
+        }
+    }
 }
-
+@Composable
+private fun FloatingGlassNavigation(route: String, backdrop: GlassBackdrop, modifier: Modifier, navigate: (String) -> Unit) {
+    Row(modifier.navigationBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp).widthIn(max = 540.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        GlassPanel(Modifier.weight(1f), backdrop = backdrop, compact = true, pill = true) {
+            Row(Modifier.fillMaxWidth()) {
+                NavPillItem("Start", Icons.Default.Home, route == "overview", Modifier.weight(1f)) { navigate("overview") }
+                NavPillItem("Updates", Icons.Default.Refresh, route == "updates", Modifier.weight(1f)) { navigate("updates") }
+                NavPillItem("Apps", Icons.AutoMirrored.Filled.List, route == "apps", Modifier.weight(1f)) { navigate("apps") }
+            }
+        }
+        GlassPanel(Modifier.width(66.dp), backdrop = backdrop, compact = true, pill = true) {
+            IconButton(onClick = { navigate("search") }, modifier = Modifier.size(50.dp)) { Icon(Icons.Default.Search, "Apps suchen", Modifier.size(27.dp)) }
+        }
+    }
 }
-
 @Composable
-fun handleSnackBar(): SnackbarHostState {
-	val snackBarHostState = remember { SnackbarHostState() }
-	koinInject<SnackBar>().flow().CollectAsEffect(Dispatchers.IO) {
-		snackBarHostState.showSnackbar(it)
-	}
-	return snackBarHostState
-}
-
-@Composable
-fun <T> Flow<T>.CollectAsEffect(
-	context: CoroutineContext = Dispatchers.IO,
-	block: suspend (T) -> Unit
-) = LaunchedEffect(Unit) {
-	onEach(block).flowOn(context).launchIn(this)
-}
-
-@Composable
-fun IntentListener(
-	mainViewModel: MainViewModel,
-	updatesViewModel: UpdatesViewModel,
-	navController: NavController,
-	launcher: ManagedActivityResultLauncher<Intent, ActivityResult>
-) {
-	val activity = LocalActivity.current as? ComponentActivity ?: return
-	DisposableEffect(Unit) {
-		val listener = Consumer<Intent> {
-			mainViewModel.processIntent(it, launcher, updatesViewModel, navController)
-		}
-		activity.addOnNewIntentListener(listener)
-		onDispose { activity.removeOnNewIntentListener(listener) }
-	}
-}
-
-@Composable
-fun CheckNotificationIntent(
-	mainViewModel: MainViewModel,
-	updatesViewModel: UpdatesViewModel,
-	navController: NavController,
-	launcher: ManagedActivityResultLauncher<Intent, ActivityResult>
-) {
-	val activity = LocalActivity.current as? ComponentActivity ?: return
-	mainViewModel.processIntent(activity.intent, launcher, updatesViewModel, navController)
-}
-
-@Composable
-fun BottomBar(mainViewModel: MainViewModel, navController: NavController) = BottomAppBar {
-	val badges = koinInject<Badger>().flow().collectAsStateWithLifecycle().value
-	mainViewModel.screens.forEach { screen ->
-		val state = navController.currentBackStackEntryAsState().value
-		val selected = state?.destination?.route  == screen.route
-		BottomBarItem(mainViewModel, navController, screen, selected, badges[screen.route].orEmpty())
-	}
-}
-
-@Composable
-fun RowScope.BottomBarItem(
-	mainViewModel: MainViewModel,
-    navController: NavController,
-    screen: Screen,
-    selected: Boolean,
-    badge: String
-) = NavigationBarItem(
-	icon = {
-		BadgedBox({ BadgeText(badge) }) {
-			Icon(if (selected) screen.iconSelected else screen.icon, contentDescription = null)
-		}
-   	},
-	label = {
-		Text(
-			stringResource(screen.resourceId),
-			maxLines = 1,
-			overflow = TextOverflow.Ellipsis
-		)
-	},
-	selected = selected,
-	onClick = { mainViewModel.navigateTo(navController, screen.route) }
-)
-
-@Composable
-fun NavHost(
-	navController: NavHostController,
-	padding: PaddingValues,
-	mainViewModel: MainViewModel,
-	appsViewModel: AppsViewModel,
-	updatesViewModel: UpdatesViewModel,
-	searchViewModel: SearchViewModel,
-	settingsViewModel: SettingsViewModel
-) = NavHost(
-	navController = navController,
-	startDestination = mainViewModel.getLastRoute(),
-	modifier = Modifier.padding(padding)
-) {
-	composable(Screen.Apps.route) { com.apkupdater.glass.SystemAppsScreen() }
-	composable(Screen.Search.route) { SearchScreen(searchViewModel) }
-	composable(Screen.Updates.route) { com.apkupdater.glass.GlassUpdatesScreen(updatesViewModel) }
-    composable("overview") { com.apkupdater.glass.OverviewScreen(updatesViewModel) }
-	composable(Screen.Settings.route) { SettingsScreen(settingsViewModel) }
+private fun NavPillItem(label: String, icon: ImageVector, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    Column(modifier.clip(CircleShape).background(if(selected) MaterialTheme.colorScheme.onSurface.copy(.13f) else Color.Transparent).clickable(onClick = onClick).padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(icon, label, Modifier.size(23.dp), tint = if(selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal, color = if(selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

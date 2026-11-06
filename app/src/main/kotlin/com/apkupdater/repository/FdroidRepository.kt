@@ -41,6 +41,8 @@ class FdroidRepository(
             .parseUpdates(apps)
         emit(updates)
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed(source.name, it)
         emit(emptyList())
         Log.e("FdroidRepository", "Error looking for updates.", it)
     }
@@ -55,6 +57,8 @@ class FdroidRepository(
             .parseUpdates(null)
         emit(Result.success(updates))
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed(source.name, it)
         emit(Result.failure(it))
         Log.e("FdroidRepository", "Error searching.", it)
     }

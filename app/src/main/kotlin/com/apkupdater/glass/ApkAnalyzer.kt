@@ -47,10 +47,13 @@ class ApkAnalyzer(private val context: Context, private val detection: DeviceDet
         val needsSplits = tags.any { it.name == "uses-split" || it.attrs["isSplitRequired"] == "true" } || manifest.attrs["split"]?.isNotEmpty() == true
         val libraries = tags.filter { it.name in setOf("uses-library", "uses-native-library", "uses-static-library", "uses-sdk-library") && it.attrs["required"] != "false" }
         val sensitive = detection.isRomSensitive(expectedPackage ?: apk.packageName)
+        val shared = pm.systemSharedLibraryNames?.toSet().orEmpty()
+        val missingLibrary = libraries.any { it.attrs["name"] !in shared }
+        val dependencies = when { sensitive -> Compatibility.UNKNOWN; libraries.any { it.name != "uses-library" } -> Compatibility.UNKNOWN; missingLibrary -> Compatibility.INCOMPATIBLE; else -> Compatibility.COMPATIBLE }
         val candidate = Candidate(apk.packageName, code(apk), (if (Build.VERSION.SDK_INT >= 24) apk.applicationInfo?.minSdkVersion else tags.firstOrNull { it.name == "uses-sdk" }?.attrs?.get("minSdkVersion")?.toIntOrNull()), abis, signature,
             splits = if (needsSplits) Compatibility.INCOMPATIBLE else Compatibility.COMPATIBLE,
-            dependencies = if (sensitive || libraries.isNotEmpty()) Compatibility.UNKNOWN else Compatibility.COMPATIBLE)
-        val base = InstalledPackage(expectedPackage ?: apk.packageName, installed?.let { code(it) } ?: -1, sensitive)
+            dependencies = dependencies, versionName = apk.versionName.orEmpty(), targetSdk = apk.applicationInfo?.targetSdkVersion)
+        val base = InstalledPackage(expectedPackage ?: apk.packageName, installed?.let { code(it) } ?: -1, sensitive, installed?.versionName.orEmpty(), installed?.applicationInfo?.targetSdkVersion, detection.isSystem(expectedPackage ?: apk.packageName))
         val owner = if (Build.VERSION.SDK_INT >= 34 && installed != null) runCatching { pm.getInstallSourceInfo(installed.packageName).updateOwnerPackageName }.getOrNull() else null
         return Report(candidate, CompatibilityEngine.evaluate(detection.profile(), base, candidate), file.inputStream().use { stream ->
             val digest = MessageDigest.getInstance("SHA-256"); val buf = ByteArray(65536)

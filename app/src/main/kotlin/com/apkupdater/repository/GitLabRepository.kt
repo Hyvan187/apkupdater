@@ -70,6 +70,8 @@ class GitLabRepository(
             emit(emptyList())
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitLab", it)
         emit(emptyList())
         Log.e("GitLabRepository", "Error fetching releases for $packageName.", it)
     }
@@ -92,6 +94,8 @@ class GitLabRepository(
             }.collect()
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitLab", it)
         emit(Result.failure(it))
         Log.e("GitLabRepository", "Error searching.", it)
     }

@@ -27,27 +27,34 @@ class UpdatesRepository(
     fun updates() = flow<List<AppUpdate>> {
         appsRepository.getApps().collect { result ->
             result.onSuccess { apps ->
-                val filtered = apps.filter { !it.ignored }
-                val sources = mutableListOf<Flow<List<AppUpdate>>>()
-                if (prefs.useApkMirror.get()) sources.add(apkMirrorRepository.updates(filtered))
-                if (prefs.useGitHub.get()) sources.add(gitHubRepository.updates(filtered))
-                if (prefs.useFdroid.get()) sources.add(fdroidRepository.updates(filtered))
-                if (prefs.useIzzy.get()) sources.add(izzyRepository.updates(filtered))
-                if (prefs.useAptoide.get()) sources.add(aptoideRepository.updates(filtered))
-                if (prefs.useApkPure.get()) sources.add(apkPureRepository.updates(filtered))
-                if (prefs.useGitLab.get()) sources.add(gitLabRepository.updates(filtered))
-                if (prefs.usePlay.get()) sources.add(playRepository.updates(filtered))
+                val filtered = apps.filter { !it.ignored }.filter {
+                    when(prefs.scanScope.get()) {
+                        1 -> it.system
+                        2 -> listOf("com.oplus.", "com.oneplus.", "com.oppo.", "com.coloros.", "com.heytap.", "com.realme.").any { prefix -> it.packageName.startsWith(prefix) }
+                        else -> true
+                    }
+                }
+                com.apkupdater.glass.SourceHealth.reset()
+                val sources = mutableListOf<Pair<String, Flow<List<AppUpdate>>>>()
+                if (prefs.useApkMirror.get()) sources.add("ApkMirror" to apkMirrorRepository.updates(filtered))
+                if (prefs.useGitHub.get()) sources.add("GitHub" to gitHubRepository.updates(filtered))
+                if (prefs.useFdroid.get()) sources.add("F-Droid (Main)" to fdroidRepository.updates(filtered))
+                if (prefs.useIzzy.get()) sources.add("F-Droid (Izzy)" to izzyRepository.updates(filtered))
+                if (prefs.useAptoide.get()) sources.add("Aptoide" to aptoideRepository.updates(filtered))
+                if (prefs.useApkPure.get()) sources.add("ApkPure" to apkPureRepository.updates(filtered))
+                if (prefs.useGitLab.get()) sources.add("GitLab" to gitLabRepository.updates(filtered))
+                if (prefs.usePlay.get()) sources.add("Play" to playRepository.updates(filtered))
 
                 if (sources.isNotEmpty()) {
-                    sources
+                    sources.map { (name, source) -> com.apkupdater.glass.SourceHealth.observe(name, emptyList<AppUpdate>(), source) }
                         .combine { updates ->
                             val detection = com.apkupdater.glass.DeviceDetection(context, prefs)
                             val assessed = updates.flatMap { it }.map { u ->
                                 val installed = apps.firstOrNull { it.packageName == u.packageName }
                                 u.copy(verdict = com.apkupdater.glass.CompatibilityEngine.evaluate(
                                     detection.profile(),
-                                    com.apkupdater.glass.InstalledPackage(u.packageName, installed?.versionCode ?: u.oldVersionCode, detection.isRomSensitive(u.packageName)),
-                                    com.apkupdater.glass.Candidate(u.packageName, u.versionCode.takeIf { it > 0 })
+                                    com.apkupdater.glass.InstalledPackage(u.packageName, installed?.versionCode ?: u.oldVersionCode, detection.isRomSensitive(u.packageName), installed?.version ?: u.oldVersion, installed?.targetSdk, installed?.system ?: detection.isSystem(u.packageName)),
+                                    com.apkupdater.glass.Candidate(u.packageName, u.versionCode.takeIf { it > 0 }, versionName = u.version)
                                 ))
                             }
                             // No hash means identity is unproven. Keep regional/ABI variants separate.
@@ -59,11 +66,11 @@ class UpdatesRepository(
                     emit(emptyList())
                 }
             }.onFailure {
-                Log.e("UpdatesRepository", "Error getting apps", it)
+                throw it
             }
         }
     }.catch {
-        Log.e("UpdatesRepository", "Error getting updates", it)
+        throw it
     }
 
 }

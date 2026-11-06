@@ -49,6 +49,8 @@ class AptoideRepository(
             .filter { Version(it.file.vername) > Version(apps.getVersion(it.packageName)) }
         emit(r.map { it.toAppUpdate(apps.getApp(it.packageName)) })
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("Aptoide", it)
         emit(emptyList())
         Log.e("AptoideRepository", "Error looking for updates.", it)
     }
@@ -59,6 +61,8 @@ class AptoideRepository(
         val updates = response.datalist.list.map{ it.toAppUpdate(null) }
         emit(Result.success(updates))
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("Aptoide", it)
         emit(Result.failure(it))
         Log.e("AptoideRepository", "Error searching.", it)
     }

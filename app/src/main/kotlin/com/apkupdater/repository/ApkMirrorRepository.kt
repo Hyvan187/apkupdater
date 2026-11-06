@@ -76,6 +76,8 @@ class ApkMirrorRepository(
         }
         emit(Result.success(result))
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkMirror", it)
         emit(Result.failure(it))
         Log.e("ApkMirrorRepository", "Error searching.", it)
     }
@@ -83,6 +85,8 @@ class ApkMirrorRepository(
     private fun appExists(apps: List<String>) = flow {
         emit(service.appExists(AppExistsRequest(apps, buildIgnoreList())).data)
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkMirror", it)
         emit(emptyList())
         Log.e("ApkMirrorRepository", "Error getting updates.", it)
     }

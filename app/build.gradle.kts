@@ -23,13 +23,16 @@ android {
         applicationId = "com.hyvan187.apkupdater"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1001
-        versionName = "0.1.0-glass-dev"
+        versionCode = 1002
+        versionName = "0.2.0-glass"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
     signingConfigs {
+        getByName("debug") {
+            System.getenv("GLASS_DEBUG_KEYSTORE")?.let { storeFile = file(it) }
+        }
         create("release") {
             val path = System.getenv("GLASS_KEYSTORE")
             if (path != null) {
@@ -65,6 +68,17 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { task ->
+            task.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED")
+            task.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
+            listOf("http.proxyHost", "http.proxyPort", "https.proxyHost", "https.proxyPort", "javax.net.ssl.trustStore").forEach { key ->
+                System.getProperty(key)?.let { task.systemProperty(key, it) }
+            }
         }
     }
 
@@ -105,6 +119,11 @@ dependencies {
     implementation("org.jsoup:jsoup:1.22.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test:core-ktx:1.7.0")
+    testImplementation("androidx.test.ext:junit:1.3.0")
 
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

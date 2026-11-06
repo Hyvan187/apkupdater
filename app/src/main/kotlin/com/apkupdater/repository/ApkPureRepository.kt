@@ -34,6 +34,8 @@ class ApkPureRepository(
             .map { it.toAppUpdate(apps.getApp(it.package_name)) }
         emit(updates)
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkPure", it)
         Log.e("ApkPureRepository", it.message, it)
         emit(emptyList())
     }
@@ -52,6 +54,8 @@ class ApkPureRepository(
             .map { it.toAppUpdate(null) }
         emit(Result.success(updates))
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkPure", it)
         Log.e("ApkPureRepository", it.message, it)
         emit(Result.failure(it))
     }

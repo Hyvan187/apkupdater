@@ -1,49 +1,41 @@
-# Architecture and security
+# Architecture and security — 0.2
 
-## Existing architecture
+The original Kotlin/Compose/Material 3, Koin, Coroutines/StateFlow, repository and WorkManager architecture is retained. Active screens are replaced by a unified native shell; old upstream screen components remain source-compatible but are not used as the primary UI.
 
-Upstream already uses Kotlin, Compose/Material 3, repository classes for eight sources, Koin injection, StateFlow view models, KryptoPrefs for persisted settings and WorkManager for background checks. These are retained. A wholesale rewrite or decompilation is unnecessary because the source is available.
+`AppsRepository → provider repositories → UpdatesRepository → CompatibilityEngine → UpdatesViewModel → native screens`
 
-`AppsRepository → provider repositories → UpdatesRepository → UpdatesViewModel → GlassUpdatesScreen` remains the update discovery path. Provider metadata produces provisional evidence, never installation approval. `UpdatesViewModel.verify` downloads an APK and evaluates actual bytes through `ApkAnalyzer`. The final installer independently repeats preflight, even if UI state was previously green.
+## Decision model
 
-## Components
+`InstalledPackage` contains numeric code, version name, target SDK, system status and ROM sensitivity. `Candidate` contains independent evidence for signature, min/target SDK, ABI, splits, dependencies and external region provenance. `VersionPolicy` applies known system branch conventions and conservative OEM numeric-version regression guards. It never equates an ordinary app's marketing version or target SDK with the phone's Android OS version.
 
-| Component | Responsibility |
-|---|---|
-| CompatibilityEngine | Pure numeric/evidence-based decision; a known failure overrides unknowns |
-| DeviceDetection | Public Build and package information; persistent manual device region; conservative namespace rules |
-| compatibility-rules.json | Versioned package families, heuristic confidence and provenance; never grants regional compatibility |
-| ApkAnalyzer | PackageManager archive parsing, apksig verification, current certificate set, SHA-256, ABI, binary manifest and owner information |
-| ManifestReader | Size-bounded binary-XML reading; malformed/unsupported input fails closed |
-| ArtifactMerge | Identical package/code/hash grouping; labels alone cannot prove byte identity |
-| SessionInstaller | One preflight path, user-required PackageInstaller session, timeout and cleanup |
-| GlassScene/GlassPanel | Shared recorded scene, backdrop blur and optional GPU refraction; separate sharp content |
+A known failure wins over missing evidence. Missing facts stay unknown. Source ranking, a larger code, matching package name and device-region recognition cannot by themselves grant compatibility.
 
-## Decision rules
+The reported DocumentsUI case is rejected before download. If a provider mislabels a file, ApkAnalyzer evaluates its actual package/version/SDK/signature and the installer repeats those checks.
 
-- RED: wrong package, non-increasing numeric code, invalid or conflicting signer without recognized lineage, unsupported minSdk/ABI, or missing required split.
-- YELLOW: missing metadata, unresolved signature rotation, missing ROM provenance or unverified required dependencies.
-- GREEN: all evaluated requirements pass. This is a technical preflight result, not a guarantee of runtime behavior.
-- An UNKNOWN system/OEM result cannot be installed through Glass. Manually choosing IN proves only the user-selected device region.
-- No provider ranking grants compatibility; no provider certificate string substitutes for verification of downloaded bytes.
-- The target SDK is displayed; Android enforces additional target-version and ownership policies at commit. The current implementation does not predict every platform installation restriction.
+## Automatic ROM detection
 
-## Signature handling
+RomDetector is pure/testable. DeviceDetection invokes `/system/bin/getprop` without root, with a 1.5-second limit, a bounded response, and a region-property allowlist. It does not reflect into hidden SystemProperties APIs. The snapshot is held in memory, not uploaded. Explicit IN/CN/EUEX/GLOBAL/US-type signals are normalized; missing or contradictory signals return unknown. Samsung CSC mappings are deliberately limited. Model number, language, location and SIM are never sole evidence.
 
-`ApkVerifier` validates APK bytes for the running platform. For an update with unchanged signers, the complete signer certificate set must equal the installed current signer set. Different signers with a lineage remain unknown until their platform update capabilities can be demonstrated. This deliberately rejects some legitimate rotations rather than falsely accepting them. Android always performs its own final signing and ownership checks.
+Property references include:
+- https://github.com/oxygen-updater/build-props/blob/master/op11r/india/CPH2487_11_A.07.prop (`ro.oplus.pipeline_key=IN`)
+- https://github.com/oxygen-updater/build-props/blob/master/op10pro/intl/NE2215_11_C.01.prop (`ro.oplus.pipeline_key=US`)
 
-## Installation lifecycle
+These are provenance for conventions, not proof that every current ROM exposes these values. OEM APK region provenance is a separate, unresolved data problem.
 
-Network downloads are HTTPS-only, redirects cannot downgrade TLS, calls have a timeout, and APK staging is bounded at 512 MiB. Staged files are inspected locally and removed in finally blocks. PackageInstaller requires user action, uses downloaded-file source classification and is serialized. Failure, cancellation and the three-minute confirmation timeout abandon the session. There is no silent-install permission, no root installation and no security bypass.
+## APK and installation guard
 
-The local APK analyzer never starts installation. External APKMirror browsing is clearly labeled; Glass cannot enforce checks on an installation started in another app.
+ApkAnalyzer uses PackageManager, apksig, binary manifest parsing, native-library inspection, required public shared-library names, SHA-256 and update-owner information where available. Different signers with an unproven rotation remain unknown. Manufacturer-service dependencies cannot be inferred from a signature and remain unknown.
 
-## Privacy
+UpdatesViewModel keeps inspected files in private staging, keys them by immutable candidate identity plus installed code, and updates state atomically. Installation re-inspects the staged bytes, compares the hash with the inspected hash and passes the same file through the single serialized PackageInstaller path. USER_ACTION_REQUIRED, timeout, session abandonment and cleanup remain in place. No silent-install permission or root path is enabled.
 
-No advertising or analytics SDK is added. No account is required. Enabled providers receive package identifiers as necessary for update discovery; switching providers changes who receives them. Background checks start disabled. HTTP body logging is not attached. The preview does not yet provide the requested scrubbed diagnostic exporter. Do not share upstream raw logs as though they were automatically redacted.
+## Source health
 
-## Upstream observations
+SourceHealth provides initial emissions, running status and sanitized failure messages. Empty flows cannot stall other sources. Provider catches propagate cancellation. Failure messages shown to users do not expose raw host names, tokens or request URLs. Partial source failures do not delete independent results.
 
-Fork and upstream default branch matched at analysis time. Release 0.0.604-ci was the first item in the releases API. APKMirror previously reduced each package to the highest matching code before central review; Glass preserves returned candidates. Upstream XAPK installed every embedded `.apk`; Glass blocks this path. The self-update check referenced original APKUpdater releases even after changing the fork identity; this check is disabled. Empty change-log text previously called `last()` and could crash; this is fixed.
+## Graphics
 
-Relevant open upstream reports include #654 (dependency info block), #648 (Play dispenser default), #649 (update ordering), and #652 (workflow pinning). Dependency metadata is excluded from APKs and Play is opt-in. These observations are not proof that every upstream issue has been fixed.
+GlassScene records the decorative scene separately from the full-screen content capture. MainScreen records actual scrolling content into a second layer; floating navigation samples that layer. This avoids capturing a component into its own input. GPU blur and optional AGSL refraction affect only the sampled backdrop; text remains sharp. Native foreground colors are scoped explicitly. API guards retain a Material fallback below API 31/33. No background animation loop is added.
+
+## Privacy and signing
+
+No analytics or advertising SDK is added. Enabled sources receive package identifiers for discovery. APK analysis is local. Public source/distribution archives contain no signing key. The development signing key has a separate private backup; CI debug builds have another signer unless explicitly configured with the backed-up key. No release signing is simulated with a debug fallback.

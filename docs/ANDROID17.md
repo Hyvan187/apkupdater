@@ -24,3 +24,7 @@ AGP 9.1.1 documents support for API 37.0, JDK 17 and Gradle >=9.3.1. The existin
 | Old Android | Minimum API 23 retained; RenderEffect guarded at 31, AGSL at 33, package flags at 33, owner at 34 |
 
 Compilation against API 37 does not prove complete Android 17 behavior compliance. Actual emulator/physical-device evidence is recorded separately in TEST-RESULTS.md.
+
+## Revision 0.2 validation
+
+The active UI now has an Android 17 native-graphics Robolectric test suite. This JVM Android runtime requires JDK 21; application bytecode remains Java 17. Espresso 3.7 is explicitly selected for the unit-test configuration to avoid the old InputManager hidden-method lookup in earlier transitive versions. Module export flags are test-only. Full physical-device installation and performance validation are still separate work.

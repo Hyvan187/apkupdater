@@ -19,7 +19,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: android-actions/setup-android@v3
       - name: Install Android 17 SDK
         run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
       - uses: android-actions/setup-android@v3
       - uses: actions/download-artifact@v4
         with:

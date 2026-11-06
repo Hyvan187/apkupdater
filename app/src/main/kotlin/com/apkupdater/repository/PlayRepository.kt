@@ -94,6 +94,8 @@ class PlayRepository(
             emit(Result.success(listOf(update)))
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("Play", it)
         emit(Result.failure(it))
         Log.e("PlayRepository", "Error searching for $text.", it)
     }
@@ -114,6 +116,8 @@ class PlayRepository(
             }
         emit(updates)
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("Play", it)
         emit(emptyList())
         Log.e("PlayRepository", "Error looking for updates.", it)
     }
