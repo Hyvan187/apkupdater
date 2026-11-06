@@ -8,6 +8,13 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.repository.UpdatesRepository
+import com.apkupdater.glass.*
+import com.apkupdater.data.ui.*
+import com.apkupdater.util.Downloader
+import com.apkupdater.util.SessionInstaller
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.currentCoroutineContext
 import com.apkupdater.util.UpdatesNotification
 import com.apkupdater.util.millisUntilHour
 import org.koin.core.component.KoinComponent
@@ -55,14 +62,29 @@ class UpdatesWorker(
     private val updatesRepository: UpdatesRepository by inject()
     private val notification: UpdatesNotification by inject()
 
+    private val selection: AppSelection by inject()
+    private val downloader: Downloader by inject()
+    private val installer: SessionInstaller by inject()
+
     override suspend fun doWork(): Result {
-        updatesRepository.updates().collect {
-            val verified = it.count { u -> u.verdict.installAllowed }
-            if (verified > 0) {
-                notification.showUpdateNotification(verified)
+        selection.scope.value // Apply legacy category migration before querying.
+        var candidates = emptyList<AppUpdate>()
+        updatesRepository.updates().collect { candidates = it }
+        val ready = candidates.filter { it.verdict.installAllowed }.map { it.packageName }.toMutableSet()
+        if(AutomaticChecks.allowed(applicationContext, prefs.autoVerify.get(), prefs.autoVerifyWifiOnly.get())) {
+            val limit = prefs.autoVerifyLimitMiB.get() * 1024L * 1024
+            for(candidate in AutoCheckPolicy.plan(candidates, prefs.preferredSources.get(), limit)) {
+                currentCoroutineContext().ensureActive()
+                var file: java.io.File? = null
+                try {
+                    file = downloader.download((candidate.link as Link.Url).link, limit)
+                    if(installer.inspect(file, candidate.packageName).verdict.installAllowed) ready.add(candidate.packageName)
+                } catch(e: CancellationException) { throw e }
+                catch(e: Exception) { if(e !is AutomaticSizeLimit) SourceHealth.failed(candidate.source.name, e) }
+                finally { file?.delete() }
             }
         }
+        if(ready.isNotEmpty()) notification.showUpdateNotification(ready.size)
         return Result.success()
     }
-
 }

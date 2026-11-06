@@ -28,7 +28,7 @@ class GlassTestApp : App() {
         val p = GlobalContext.get().get<Prefs>()
         p.useGitHub.put(false); p.useGitLab.put(false); p.useFdroid.put(false); p.useIzzy.put(false)
         p.useApkMirror.put(false); p.useApkPure.put(false); p.useAptoide.put(false); p.usePlay.put(false)
-        p.enableAlarm.put(false); p.theme.put(1)
+        p.autoVerify.put(false); p.enableAlarm.put(false); p.theme.put(1)
     }
 }
 @RunWith(RobolectricTestRunner::class)
@@ -87,8 +87,12 @@ class GlassUiTest {
     @Test
     fun lightThemeRendersReadableDashboard() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Hell"))
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Erscheinungsbild öffnen"))
+        compose.onNodeWithText("Erscheinungsbild öffnen").performClick()
+        compose.onNodeWithText("Hell").assertIsDisplayed()
         compose.onNodeWithText("Hell").performClick()
+        screenshot("08-appearance-light")
+        compose.onNodeWithContentDescription("Zurück").performClick()
         compose.onNodeWithContentDescription("Zurück").performClick()
         compose.onNodeWithText("Alles im Blick.").assertIsDisplayed()
         screenshot("06-light-dashboard")
@@ -115,6 +119,42 @@ class GlassUiTest {
         compose.onNodeWithText("APK prüfen").assertDoesNotExist()
         compose.onNodeWithText("Geprüfte APK installieren").assertDoesNotExist()
         screenshot("07-documentsui-blocked")
+    }
+
+    @Test fun groupedCardSelectsProviderBeforeManualDownload() {
+        var checked: com.apkupdater.data.ui.AppUpdate? = null
+        val first = com.apkupdater.data.ui.AppUpdate("Adobe Scan", "com.adobe.scan", "26.10.29", "26.08.01", 261029, 260801, com.apkupdater.data.ui.ApkPureSource,
+            link = com.apkupdater.data.ui.Link.Url("https://example.org/scan.apk"))
+        val second = first.copy(source = com.apkupdater.data.ui.AptoideSource, artifactKey = "aptoide-scan")
+        compose.runOnUiThread { compose.activity.setContent {
+            com.apkupdater.ui.theme.AppTheme(true) { GlassScene { Column(Modifier.fillMaxSize().padding(20.dp)) {
+                UpdateGroupCard(UpdateGroup(first.packageName, listOf(first,second)), null, { checked = it }, {}, {}, {})
+            } } }
+        } }
+        compose.onAllNodesWithText("Adobe Scan").assertCountEquals(1)
+        compose.onNodeWithText("Quelle wählen und prüfen").performClick()
+        org.junit.Assert.assertNull(checked)
+        compose.onNodeWithText("Aptoide").performClick()
+        screenshot("09-source-picker")
+        compose.onNodeWithText("Auswahl herunterladen und prüfen").performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(com.apkupdater.data.ui.AptoideSource, checked?.source) }
+    }
+    @Test fun appearanceColorPersistsAndCategorySelectionIsShared() {
+        val koin = GlobalContext.get()
+        val store = koin.get<AppearanceStore>()
+        compose.runOnIdle { store.update { it.copy(accent = 0xff55bbff, background = 0xff121020, customAccent = true, customBackground = true) } }
+        compose.runOnIdle {
+            val loaded = AppearanceStore(koin.get<Prefs>()).state.value
+            org.junit.Assert.assertEquals(0xff55bbff, loaded.accent)
+            org.junit.Assert.assertEquals(0xff121020, loaded.background)
+        }
+        compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNodeWithText("Allgemeine").performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(AppScope.GENERAL, koin.get<AppSelection>().scope.value) }
+        compose.onNodeWithContentDescription("Zurück").performClick()
+        compose.onNodeWithText("Apps").performClick()
+        compose.onNodeWithText("Allgemeine").assertIsSelected()
+        screenshot("10-custom-colors-categories")
     }
 
 }

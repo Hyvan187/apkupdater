@@ -1,3 +1,14 @@
+# 0.3.0-liquid
+
+- Rename to Liquid-APK-Updater; new dark glass launcher icon.
+- Add live persisted appearance controls, independent HEX/HSV colors, typography, motion and glass settings.
+- Group updates by package and offer provider/variant selection without transferring evidence between files.
+- Use shared General/System categories, including updated-system flags; migrate obsolete OPlus scope.
+- Add bounded automatic APK preflight in foreground/background with unmetered default and size controls.
+- Simplify update facts; move verbose evidence to an optional dialog.
+- Explain provider errors; preserve provider identity during discovery and support release-wide ignore/reset.
+- Retain 0.2 signing identity and preference storage for in-place updates.
+
 # Change log
 
 ## 0.2.0-glass — 2026-11-06

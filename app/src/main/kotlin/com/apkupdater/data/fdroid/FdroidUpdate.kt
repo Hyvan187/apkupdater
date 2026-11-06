@@ -25,4 +25,4 @@ fun FdroidUpdate.toAppUpdate(current: AppInstalled?, source: Source, url: String
         "${url}icons-640/${app.icon}".toUri(),
     Link.Url("$url${apk.apkName}"),
     if (current != null) app.localized["en-US"]?.whatsNew.orEmpty() else app.localized["en-US"]?.summary.orEmpty()
-)
+).copy(minSdk = apk.minSdkVersion.takeIf { it > 0 }, abis = apk.nativecode.toSet())

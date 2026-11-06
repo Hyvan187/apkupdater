@@ -162,7 +162,9 @@ val mainModule = module {
 
 	single { SearchRepository(get(), get(named("main")), get(named("izzy")), get(), get(), get(), get(), get(), get()) }
 
-	single { KryptoBuilder.nocrypt(get(), androidContext().getString(R.string.app_name)) }
+	single { KryptoBuilder.nocrypt(get(), "APKUpdater Glass") }
+    single { com.apkupdater.glass.AppearanceStore(get()) }
+    single { com.apkupdater.glass.AppSelection(get()) }
 
 	single { Prefs(get(), androidContext().isAndroidTv()) }
 
@@ -188,7 +190,7 @@ val mainModule = module {
 
 	viewModel { AppsViewModel(get(), get(), get()) }
 
-	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), androidContext()) }
 
 	viewModel { SettingsViewModel(get(), get(), WorkManager.getInstance(get()), get(), get(), get(), get()) }
 

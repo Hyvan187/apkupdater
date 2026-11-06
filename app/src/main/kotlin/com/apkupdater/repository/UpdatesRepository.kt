@@ -28,11 +28,7 @@ class UpdatesRepository(
         appsRepository.getApps().collect { result ->
             result.onSuccess { apps ->
                 val filtered = apps.filter { !it.ignored }.filter {
-                    when(prefs.scanScope.get()) {
-                        1 -> it.system
-                        2 -> listOf("com.oplus.", "com.oneplus.", "com.oppo.", "com.coloros.", "com.heytap.", "com.realme.").any { prefix -> it.packageName.startsWith(prefix) }
-                        else -> true
-                    }
+                    com.apkupdater.glass.CategoryPolicy.matches(com.apkupdater.glass.AppScope.entries.getOrElse(prefs.scanScope.get()) { com.apkupdater.glass.AppScope.ALL }, it.system)
                 }
                 com.apkupdater.glass.SourceHealth.reset()
                 val sources = mutableListOf<Pair<String, Flow<List<AppUpdate>>>>()
@@ -51,15 +47,15 @@ class UpdatesRepository(
                             val detection = com.apkupdater.glass.DeviceDetection(context, prefs)
                             val assessed = updates.flatMap { it }.map { u ->
                                 val installed = apps.firstOrNull { it.packageName == u.packageName }
-                                u.copy(verdict = com.apkupdater.glass.CompatibilityEngine.evaluate(
+                                u.copy(system = installed?.system ?: detection.isSystem(u.packageName), verdict = com.apkupdater.glass.CompatibilityEngine.evaluate(
                                     detection.profile(),
                                     com.apkupdater.glass.InstalledPackage(u.packageName, installed?.versionCode ?: u.oldVersionCode, detection.isRomSensitive(u.packageName), installed?.version ?: u.oldVersion, installed?.targetSdk, installed?.system ?: detection.isSystem(u.packageName)),
-                                    com.apkupdater.glass.Candidate(u.packageName, u.versionCode.takeIf { it > 0 }, versionName = u.version)
+                                    com.apkupdater.glass.Candidate(u.packageName, u.versionCode.takeIf { it > 0 }, minSdk = u.minSdk, abis = u.abis, versionName = u.version, targetSdk = u.targetSdk)
                                 ))
                             }
                             // No hash means identity is unproven. Keep regional/ABI variants separate.
                             prefs.lastCheck.put(System.currentTimeMillis())
-                            emit(assessed.distinctBy { Triple(it.packageName, it.versionCode, it.link) })
+                            emit(assessed.filter { it.id !in prefs.ignoredVersions.get() && com.apkupdater.glass.releaseKey(it) !in prefs.ignoredReleases.get() }.distinctBy { it.artifactKey })
                         }
                         .collect()
                 } else {

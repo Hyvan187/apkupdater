@@ -69,7 +69,7 @@ object CompatibilityEngine {
         check("Paket", apk.packageName == installed.packageName, apk.packageName)
         check("Versionscode", apk.versionCode?.let { it > installed.versionCode }, "Versionscode ${installed.versionCode} → ${apk.versionCode ?: "unbekannt"}")
         check("Android", apk.minSdk?.let { it <= device.sdk }, "Android-Anforderung: API ${apk.minSdk ?: "unbekannt"}; Gerät: API ${device.sdk}.")
-        check("Architektur", apk.abis?.let { it.isEmpty() || it.intersect(device.abis).isNotEmpty() }, apk.abis?.joinToString()?.ifEmpty { "Keine nativen Bibliotheken" } ?: "Architektur noch nicht aus der APK geprüft.")
+        check("Architektur", apk.abis?.let { it.isEmpty() || it.any { a -> a in setOf("universal", "noarch") } || it.intersect(device.abis).isNotEmpty() }, apk.abis?.joinToString()?.ifEmpty { "Keine nativen Bibliotheken" } ?: "Architektur noch nicht aus der APK geprüft.")
         e += Evidence("Signatur", when(apk.signature) { Compatibility.COMPATIBLE -> "Signatur kryptografisch geprüft und mit der Installation verglichen."; Compatibility.INCOMPATIBLE -> "Ungültige Signatur oder abweichender Signierer."; else -> "Die tatsächliche APK-Signatur wurde noch nicht bestätigt." }, apk.signature)
         e += Evidence("Split-Pakete", when(apk.splits) { Compatibility.COMPATIBLE -> "Erforderliche Paketbestandteile geprüft."; Compatibility.INCOMPATIBLE -> "Notwendige Split-Pakete fehlen oder sind unpassend."; else -> "Paketbestandteile noch nicht geprüft." }, apk.splits)
         e += Evidence("Abhängigkeiten", if(apk.dependencies == Compatibility.COMPATIBLE) "Prüfbare Anforderungen erfüllt." else "Erforderliche Bibliotheken oder Herstellerdienste nicht vollständig bestätigt.", apk.dependencies)

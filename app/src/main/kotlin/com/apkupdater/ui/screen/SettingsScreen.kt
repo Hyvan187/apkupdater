@@ -199,7 +199,7 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 		)
 	}
 
-	
+
 
 	item {
 		LargeTitle(stringResource(R.string.settings_sources), Modifier.padding(start = 16.dp, top = 16.dp))

@@ -21,8 +21,6 @@ class AppsRepository(
 		val apps = (if (Build.VERSION.SDK_INT >= 33) context.packageManager.getInstalledPackages(PackageManager.PackageInfoFlags.of((PackageManager.MATCH_DISABLED_COMPONENTS or getSignatureFlag()).toLong()))
             else context.packageManager.getInstalledPackages(PackageManager.MATCH_DISABLED_COMPONENTS or getSignatureFlag()))
 			.asSequence()
-			.filter { !excludeSystem() || (it.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM == 0 }
-			.filter { !excludeSystem() || (it.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP == 0 }
 			.filter { !excludeDisabled() || it.applicationInfo?.enabled != false }
 			.filter { !excludeStore() || !isAppStore(getInstallerPackageName(it.packageName)) }
 			.map { it.toAppInstalled(context, ignoredApps()) }

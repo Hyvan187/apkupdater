@@ -21,6 +21,12 @@ data class AppUpdate(
     val verdict: com.apkupdater.glass.Verdict = com.apkupdater.glass.Verdict(com.apkupdater.glass.Compatibility.UNKNOWN, emptyList()),
     val sha256: String? = null,
     val additionalSources: List<String> = emptyList(),
+    val system: Boolean = false,
+    val minSdk: Int? = null,
+    val targetSdk: Int? = null,
+    val abis: Set<String>? = null,
+    val verifiedAt: Long? = null,
+    val verificationError: String? = null,
     val artifactKey: String = "${source.name}:$packageName:$versionCode:$version:$link"
 )
 

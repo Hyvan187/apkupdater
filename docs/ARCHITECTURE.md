@@ -39,3 +39,10 @@ GlassScene records the decorative scene separately from the full-screen content 
 ## Privacy and signing
 
 No analytics or advertising SDK is added. Enabled sources receive package identifiers for discovery. APK analysis is local. Public source/distribution archives contain no signing key. The development signing key has a separate private backup; CI debug builds have another signer unless explicitly configured with the backed-up key. No release signing is simulated with a debug fallback.
+
+
+## 0.3 presentation and settings
+
+`AppSelection` owns category migration and a shared StateFlow. `CategoryPolicy` uses both Android system flags. `UpdateGroup` groups by package strictly for presentation; candidates retain provider, version, ABI and verdict. No compatibility evidence is copied from a different provider. The source/variant sheet confirms manual download selection. `AppearanceStore` persists the full style state, while `LocalAppearance` feeds theme and glass rendering. The legacy preference namespace is stable despite the new app label.
+
+`AutoCheckPolicy` selects at most six unresolved direct APKs, one per package, excluding known incompatible files, web-only providers, oversized files and already-ready groups. Both view model and WorkManager honor the same enabled/unmetered/per-file limit. The foreground cache retains checked bytes until view-model cleanup; worker files are removed after inspection. Background notification counts unique verified packages. No worker installs apps.

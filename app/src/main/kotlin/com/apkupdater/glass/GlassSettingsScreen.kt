@@ -12,27 +12,24 @@ import androidx.compose.ui.unit.dp
 import androidx.work.WorkManager
 import com.apkupdater.BuildConfig
 import com.apkupdater.prefs.Prefs
-import com.apkupdater.util.Themer
 import com.apkupdater.worker.UpdatesWorker
 import org.koin.compose.koinInject
 
 @Composable
-fun GlassSettingsScreen(dynamic: MutableState<Boolean>, effects: MutableIntState, onBack: () -> Unit) {
+fun GlassSettingsScreen(onBack: () -> Unit, onAppearance: () -> Unit) {
     val prefs = koinInject<Prefs>()
-    val themer = koinInject<Themer>()
+    val selection = koinInject<AppSelection>()
+    val scope by selection.scope.collectAsState()
+    val health by SourceHealth.flow.collectAsState()
     val context = LocalContext.current
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    var theme by remember { mutableIntStateOf(prefs.theme.get()) }
-    var scope by remember { mutableIntStateOf(prefs.scanScope.get()) }
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
         ScreenHeader("Einstellungen", "DEINE UPDATE-ZENTRALE", onBack = onBack)
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { Text("Updateprüfung", style = MaterialTheme.typography.titleMedium) }
         item { GlassPanel {
             SecondaryText("Welche Apps sollen die Quellen prüfen?")
-            listOf("Alle installierten Apps", "Nur System-Apps", "Nur OPlus-Apps").forEachIndexed { i, label ->
-                Row { RadioButton(scope == i, { scope = i; prefs.scanScope.put(i) }); Text(label, Modifier.padding(top = 12.dp), style = MaterialTheme.typography.bodyMedium) }
-            }
+            ScopeChoices(scope, selection::select)
             SettingSwitch("Beta-Versionen ausblenden", "Vorabversionen werden nicht empfohlen.", { prefs.ignoreBeta.get() }, { prefs.ignoreBeta.put(it) })
             SettingSwitch("Alpha-Versionen ausblenden", "Experimentelle Versionen überspringen.", { prefs.ignoreAlpha.get() }, { prefs.ignoreAlpha.put(it) })
         } }
@@ -57,22 +54,37 @@ fun GlassSettingsScreen(dynamic: MutableState<Boolean>, effects: MutableIntState
             SettingSwitch("Aptoide", "Anbieterkatalog, jede APK wird separat bewertet", { prefs.useAptoide.get() }, { prefs.useAptoide.put(it) })
             SettingSwitch("Google Play", "Experimentelle vorhandene Integration", { prefs.usePlay.get() }, { prefs.usePlay.put(it) })
         } }
-        item { Text("Darstellung", style = MaterialTheme.typography.titleMedium) }
         item { GlassPanel {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("System", "Dunkel", "Hell").forEachIndexed { i, label ->
-                    FilterChip(theme == i, { theme = i; prefs.theme.put(i); themer.setTheme(com.apkupdater.ui.theme.isDarkTheme(i)) }, label = { Text(label) })
-                }
+            Text("Erscheinungsbild", style = MaterialTheme.typography.titleMedium)
+            SecondaryText("Design, freie Farben, Schrift und Glaseffekte")
+            OutlinedButton(onClick = onAppearance) { Text("Erscheinungsbild öffnen") }
+        } }
+        item { GlassPanel {
+            Text("APK-Prüfung", style = MaterialTheme.typography.titleMedium)
+            SettingSwitch("APKs automatisch prüfen", "Lädt bis zu sechs direkt verfügbare APKs je Suche zur technischen Prüfung herunter. Keine Installation.", { prefs.autoVerify.get() }, { prefs.autoVerify.put(it) })
+            SettingSwitch("Automatische APK-Prüfung nur ungetaktet", "Manuelle Prüfungen sind jederzeit möglich.", { prefs.autoVerifyWifiOnly.get() }, { prefs.autoVerifyWifiOnly.put(it) })
+            var limit by remember { mutableIntStateOf(prefs.autoVerifyLimitMiB.get()) }
+            Text("Automatisches Downloadlimit je APK", style = MaterialTheme.typography.bodyMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(32,64,128).forEach { size -> FilterChip(limit == size, { limit = size; prefs.autoVerifyLimitMiB.put(size) }, label = { Text("$size MiB") }) }
             }
-            SettingSwitch("Systemfarben", "Material You für Akzente und Bedienelemente", { dynamic.value }, { dynamic.value = it; prefs.dynamicColors.put(it) })
-            Spacer(Modifier.height(8.dp)); Text("Glasqualität: ${listOf("Aus", "Reduziert", "Standard", "Hoch")[effects.intValue]}", style = MaterialTheme.typography.bodyMedium)
-            Slider(effects.intValue.toFloat(), { effects.intValue = it.toInt(); prefs.effectLevel.put(it.toInt()) }, valueRange = 0f..3f, steps = 2)
-            SecondaryText("Die schwebende Navigation nimmt die Farben des darunterliegenden Inhalts auf. Reduzierte Systemanimationen werden berücksichtigt.")
+            SecondaryText("APKMirror und nicht vollständig unterstützte Archive bleiben manuell. Eine technische Prüfung garantiert keine fehlerfreie App-Funktion.")
+        } }
+        if(health.any { it.problem != null }) item { GlassPanel {
+            Text("Quellendiagnose", style = MaterialTheme.typography.titleMedium)
+            health.filter { it.problem != null }.forEach { Text(it.name, style = MaterialTheme.typography.labelLarge); SecondaryText(it.problem.orEmpty()) }
+            SecondaryText("Eine neue Updateprüfung fragt die aktivierten Quellen erneut ab.")
+        } }
+        item { GlassPanel {
+            Text("Ausgeblendete Versionen", style = MaterialTheme.typography.titleMedium)
+            var restored by remember { mutableStateOf(false) }
+            OutlinedButton(onClick = { prefs.ignoredVersions.put(emptyList()); prefs.ignoredReleases.put(emptyList()); restored = true }) { Text("Versionen wieder einblenden") }
+            if(restored) SecondaryText("Bei der nächsten Updateprüfung wieder sichtbar.")
         } }
         item { GlassPanel {
             Text("Automatische ROM-Erkennung", style = MaterialTheme.typography.titleSmall)
             SecondaryText("Verwendet lesbare Firmware-Eigenschaften. Es gibt keine manuelle Regionsfreigabe. Fehlende oder widersprüchliche Kennungen bleiben offen.")
-            Spacer(Modifier.height(12.dp)); Text("APKUpdater Glass ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium)
+            Spacer(Modifier.height(12.dp)); Text("Liquid-APK-Updater ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelMedium)
             SecondaryText("GPLv3 · Basierend auf APKUpdater von rumboalla und Mitwirkenden. Keine Werbung, kein hinzugefügtes Tracking.")
         } }
         item { Spacer(Modifier.height(16.dp)) }

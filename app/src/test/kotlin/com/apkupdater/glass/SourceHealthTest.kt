@@ -21,7 +21,7 @@ class SourceHealthTest {
         SourceHealth.reset()
         SourceHealth.observe("example", emptyList<Int>(), flow<List<Int>> { throw UnknownHostException("private-host.example/token=secret") }).toList()
         val state = SourceHealth.flow.value.single()
-        assertEquals("Quelle nicht erreichbar", state.problem)
+        assertEquals("DNS-Fehler · Anbieteradresse nicht auflösbar", state.problem)
         assertFalse(state.problem!!.contains("secret"))
     }
 }

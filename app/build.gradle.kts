@@ -23,8 +23,8 @@ android {
         applicationId = "com.hyvan187.apkupdater"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1002
-        versionName = "0.2.0-glass"
+        versionCode = 1003
+        versionName = "0.3.0-liquid"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }

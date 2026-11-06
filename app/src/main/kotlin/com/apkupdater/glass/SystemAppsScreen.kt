@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.apkupdater.prefs.Prefs
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
@@ -31,13 +32,16 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
     var apps by remember { mutableStateOf<List<PackageRow>>(emptyList()) }
     var error by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
+    val selection = koinInject<AppSelection>()
+    val category by selection.scope.collectAsStateWithLifecycle()
     var mode by remember { mutableIntStateOf(0) }
     var ignored by remember { mutableStateOf(prefs.ignoredApps.get().toSet()) }
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             runCatching {
                 val pm = context.packageManager
-                val packages = if (Build.VERSION.SDK_INT >= 33) pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(PackageManager.MATCH_DISABLED_COMPONENTS.toLong())) else pm.getInstalledPackages(PackageManager.MATCH_DISABLED_COMPONENTS)
+                val flags = if(Build.VERSION.SDK_INT >= 24) PackageManager.MATCH_DISABLED_COMPONENTS else @Suppress("DEPRECATION") PackageManager.GET_DISABLED_COMPONENTS
+                val packages = if (Build.VERSION.SDK_INT >= 33) pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(flags.toLong())) else pm.getInstalledPackages(flags)
                 packages.mapNotNull { info -> info.applicationInfo?.let { app ->
                     PackageRow(pm.getApplicationLabel(app).toString(), info.packageName, info.versionName.orEmpty(),
                         if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong(),
@@ -48,21 +52,18 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
         }
     }
     val filtered = apps.filter { app ->
-        (app.name.contains(query, true) || app.pkg.contains(query, true)) && when(mode) {
-            0 -> app.system || app.updated
-            1 -> listOf("com.oplus.", "com.oneplus.", "com.oppo.", "com.coloros.", "com.heytap.", "com.realme.").any { app.pkg.startsWith(it) }
-            2 -> app.pkg.startsWith("com.google.") && (app.system || app.updated)
-            3 -> app.updated
-            4 -> !app.enabled
-            5 -> app.pkg in ignored
+        (app.name.contains(query, true) || app.pkg.contains(query, true)) && CategoryPolicy.matches(category, app.system || app.updated) && when(mode) {
+            1 -> !app.enabled
+            2 -> app.pkg in ignored
             else -> true
         }
     }
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
         ScreenHeader("Deine Apps", "INSTALLIERTE PAKETE", onSettings)
         OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("App oder Paket suchen") }, modifier = Modifier.fillMaxWidth())
+        ScopeChoices(category, selection::select)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("System", "OPlus", "Google-System", "Aktualisiert", "Deaktiviert", "Ignoriert", "Alle Apps").forEachIndexed { i, label ->
+            listOf("Alle Zustände", "Deaktiviert", "Ignoriert").forEachIndexed { i, label ->
                 FilterChip(selected = mode == i, onClick = { mode = i }, label = { Text(label) })
             }
         }
@@ -70,7 +71,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)) {
             items(filtered, key = { it.pkg }) { app ->
                 var expanded by remember { mutableStateOf(false) }
-                GlassPanel(effectLevel = prefs.effectLevel.get(), modifier = Modifier.clickable { expanded = !expanded }) {
+                GlassPanel( modifier = Modifier.clickable { expanded = !expanded }) {
                     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         com.apkupdater.ui.component.LoadingImageApp(app.pkg, Modifier.size(48.dp))
                         Spacer(Modifier.width(10.dp))

@@ -40,9 +40,8 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     val prefs = koinInject<Prefs>()
     val nav = rememberNavController()
     val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "overview"
-    val dark = koinInject<Themer>().flow().collectAsStateWithLifecycle().value
-    val dynamic = remember { mutableStateOf(prefs.dynamicColors.get()) }
-    val effects = remember { mutableIntStateOf(prefs.effectLevel.get().coerceIn(0, 3)) }
+    val appearance = koinInject<AppearanceStore>().state.collectAsStateWithLifecycle().value
+    val density = androidx.compose.ui.platform.LocalDensity.current
     val snack = remember { SnackbarHostState() }
     val snacks = koinInject<SnackBar>()
     LaunchedEffect(Unit) { snacks.flow().collectLatest { snack.showSnackbar(it) } }
@@ -54,27 +53,33 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
         activity?.addOnNewIntentListener(listener)
         onDispose { activity?.removeOnNewIntentListener(listener) }
     }
-    AppTheme(if(prefs.theme.get() == 0) androidx.compose.foundation.isSystemInDarkTheme() else dark, dynamic.value) {
-        CompositionLocalProvider(LocalEffectLevel provides effects.intValue) {
+    CompositionLocalProvider(LocalAppearance provides appearance, androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * appearance.textScale)) {
+    AppTheme(if(appearance.theme == 0) androidx.compose.foundation.isSystemInDarkTheme() else appearance.theme == 1, appearance.dynamic) {
+        CompositionLocalProvider(LocalEffectLevel provides appearance.quality) {
             GlassScene {
                 val contentBackdrop = rememberGlassBackdrop()
                 Box(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize().captureGlass(contentBackdrop)) {
-                        NavHost(navController = nav, startDestination = "overview", modifier = Modifier.fillMaxSize()) {
+                        NavHost(navController = nav, startDestination = "overview", modifier = Modifier.fillMaxSize(),
+                            enterTransition = { if(appearance.reduceMotion) androidx.compose.animation.EnterTransition.None else androidx.compose.animation.fadeIn() },
+                            exitTransition = { if(appearance.reduceMotion) androidx.compose.animation.ExitTransition.None else androidx.compose.animation.fadeOut() }) {
                             composable("overview") { OverviewScreen(updates, onUpdates = { go("updates") }, onSettings = { go("settings") }) }
                             composable("updates") { GlassUpdatesScreen(updates, onSettings = { go("settings") }) }
                             composable("apps") { SystemAppsScreen(onSettings = { go("settings") }) }
                             composable("search") { GlassSearchScreen(search, onBack = { go("overview") }) }
-                            composable("settings") { GlassSettingsScreen(dynamic, effects, onBack = { go("overview") }) }
+                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { go("appearance") }) }
+                            composable("appearance") { AppearanceScreen(onBack = { go("settings") }) }
                         }
                     }
-                    if(route !in listOf("settings", "search")) FloatingGlassNavigation(route, contentBackdrop, Modifier.align(Alignment.BottomCenter), ::go)
+                    if(route !in listOf("settings", "search", "appearance")) FloatingGlassNavigation(route, contentBackdrop, Modifier.align(Alignment.BottomCenter), ::go)
                     SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 100.dp, start = 16.dp, end = 16.dp))
                 }
             }
         }
     }
 }
+}
+
 @Composable
 private fun FloatingGlassNavigation(route: String, backdrop: GlassBackdrop, modifier: Modifier, navigate: (String) -> Unit) {
     Row(modifier.navigationBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp).widthIn(max = 540.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
