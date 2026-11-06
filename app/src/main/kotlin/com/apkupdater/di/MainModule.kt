@@ -66,7 +66,7 @@ val mainModule = module {
 	}
 
 	single {
-		OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(90)).followSslRedirects(false)
+		OkHttpClient.Builder().callTimeout(90, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false)
 			.cache(get())
 			.addUserAgentInterceptor("APKUpdater-v" + BuildConfig.VERSION_NAME)
 			//.addInterceptor(get<HttpLoggingInterceptor>())
@@ -110,7 +110,7 @@ val mainModule = module {
 	}
 
 	single {
-		val client = OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(90)).followSslRedirects(false)
+		val client = OkHttpClient.Builder().callTimeout(90, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false)
 			.cache(get())
 			.addUserAgentInterceptor(AptoideRepository.UserAgent)
 			.build()
@@ -133,9 +133,9 @@ val mainModule = module {
 	}
 
 	single {
-		val client = OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(90)).followSslRedirects(false).followRedirects(true).cache(get()).build()
-		val auroraClient = OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(90)).followSslRedirects(false).followRedirects(true).cache(get()).addUserAgentInterceptor("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36").build()
-		val apkPureClient = OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(90)).followSslRedirects(false).followRedirects(true).cache(get()).addUserAgentInterceptor("APKPure/3.19.39 (Aegon)").build()
+		val client = OkHttpClient.Builder().callTimeout(90, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false).followRedirects(true).cache(get()).build()
+		val auroraClient = OkHttpClient.Builder().callTimeout(90, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false).followRedirects(true).cache(get()).addUserAgentInterceptor("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36").build()
+		val apkPureClient = OkHttpClient.Builder().callTimeout(90, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false).followRedirects(true).cache(get()).addUserAgentInterceptor("APKPure/3.19.39 (Aegon)").build()
 		val dir = File(androidContext().cacheDir, "downloads").apply { mkdirs() }
 		Downloader(client, apkPureClient, auroraClient, dir)
 	}
