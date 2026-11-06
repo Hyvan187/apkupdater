@@ -99,7 +99,9 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
 	val snackBarHostState = handleSnackBar()
 
 	AppTheme(theme) {
+        com.apkupdater.glass.GlassScene {
 		Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
 			snackbarHost = { SnackbarHost(snackBarHostState) },
 			bottomBar = { BottomBar(mainViewModel, navController) }
 		) { padding ->
@@ -112,6 +114,8 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
 			}
 		}
 	}
+}
+
 }
 
 @Composable
@@ -207,8 +211,9 @@ fun NavHost(
 	startDestination = mainViewModel.getLastRoute(),
 	modifier = Modifier.padding(padding)
 ) {
-	composable(Screen.Apps.route) { AppsScreen(appsViewModel) }
+	composable(Screen.Apps.route) { com.apkupdater.glass.SystemAppsScreen() }
 	composable(Screen.Search.route) { SearchScreen(searchViewModel) }
-	composable(Screen.Updates.route) { UpdatesScreen(updatesViewModel) }
+	composable(Screen.Updates.route) { com.apkupdater.glass.GlassUpdatesScreen(updatesViewModel) }
+    composable("overview") { com.apkupdater.glass.OverviewScreen(updatesViewModel) }
 	composable(Screen.Settings.route) { SettingsScreen(settingsViewModel) }
 }

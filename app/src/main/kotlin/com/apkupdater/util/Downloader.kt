@@ -16,12 +16,19 @@ class Downloader(
 
     fun download(url: String): File {
         val file = File(dir, randomUUID())
-        client.newCall(downloadRequest(url)).execute().use {
-            if (it.isSuccessful) {
-                it.body.byteStream().copyTo(file.outputStream())
+        try {
+            requireNotNull(downloadStream(url)) { "Quelle nicht erreichbar oder HTTP-Fehler" }.use { input ->
+                file.outputStream().use { out ->
+                    val buffer = ByteArray(65536); var total = 0L
+                    while (true) {
+                        val n = input.read(buffer); if (n < 0) break
+                        total += n; require(total <= 512L * 1024 * 1024) { "Download größer als 512 MiB" }
+                        out.write(buffer, 0, n)
+                    }
+                }
             }
-        }
-        return file
+            return file
+        } catch (e: Exception) { file.delete(); throw e }
     }
 
     fun downloadStream(url: String): InputStream? = runCatching {
@@ -31,7 +38,7 @@ class Downloader(
             else -> client
         }
         val response = c.newCall(downloadRequest(url)).execute()
-        if (response.isSuccessful) {
+        if (response.isSuccessful && response.request.url.isHttps) {
             return response.body.byteStream()
         } else {
             response.close()
@@ -43,6 +50,9 @@ class Downloader(
         null
     }
 
-    private fun downloadRequest(url: String) = Request.Builder().url(url).build()
+    private fun downloadRequest(url: String): Request {
+        require(url.startsWith("https://", true)) { "Downloads erfordern HTTPS" }
+        return Request.Builder().url(url).build()
+    }
 
 }

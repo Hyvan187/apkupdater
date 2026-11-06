@@ -20,6 +20,7 @@ class UpdatesRepository(
     private val apkPureRepository: ApkPureRepository,
     private val gitLabRepository: GitLabRepository,
     private val playRepository: PlayRepository,
+    private val context: android.content.Context,
     private val prefs: Prefs
 ) {
 
@@ -39,7 +40,20 @@ class UpdatesRepository(
 
                 if (sources.isNotEmpty()) {
                     sources
-                        .combine { updates -> emit(updates.flatMap { it }) }
+                        .combine { updates ->
+                            val detection = com.apkupdater.glass.DeviceDetection(context, prefs)
+                            val assessed = updates.flatMap { it }.map { u ->
+                                val installed = apps.firstOrNull { it.packageName == u.packageName }
+                                u.copy(verdict = com.apkupdater.glass.CompatibilityEngine.evaluate(
+                                    detection.profile(),
+                                    com.apkupdater.glass.InstalledPackage(u.packageName, installed?.versionCode ?: u.oldVersionCode, detection.isRomSensitive(u.packageName)),
+                                    com.apkupdater.glass.Candidate(u.packageName, u.versionCode.takeIf { it > 0 })
+                                ))
+                            }
+                            // No hash means identity is unproven. Keep regional/ABI variants separate.
+                            prefs.lastCheck.put(System.currentTimeMillis())
+                            emit(assessed.distinctBy { Triple(it.packageName, it.versionCode, it.link) })
+                        }
                         .collect()
                 } else {
                     emit(emptyList())

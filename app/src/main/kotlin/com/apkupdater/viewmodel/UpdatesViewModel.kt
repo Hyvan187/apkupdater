@@ -31,7 +31,7 @@ class UpdatesViewModel(
 	private val installer: SessionInstaller,
 	private val prefs: Prefs,
 	private val badger: Badger,
-	downloader: Downloader,
+	private val downloader: Downloader,
 	private val snackBar: SnackBar,
 	private val stringer: Stringer,
 	installLog: InstallLog
@@ -57,9 +57,29 @@ class UpdatesViewModel(
 		}
 	}
 
+    fun verify(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+        val url = (update.link as? com.apkupdater.data.ui.Link.Url)?.link
+        if (url == null) {
+            snackBar.snackBar(viewModelScope, TextSnack("Dieses Format kann noch nicht vollständig geprüft werden."))
+            return@launch
+        }
+        state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+        try {
+            val file = downloader.download(url)
+            val report = try { installer.inspect(file, update.packageName) } finally { file.delete() }
+            val result = state.value.mutableUpdates().map {
+                if (it.id == update.id) it.copy(verdict = report.verdict, sha256 = report.sha256, isInstalling = false) else it
+            }
+            setSuccess(result)
+        } catch (e: Exception) {
+            state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, false))
+            snackBar.snackBar(viewModelScope, TextSnack(e.message ?: "APK-Prüfung fehlgeschlagen"))
+        }
+    }
+
 	fun installAll() = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
 		if(installer.checkPermission()) {
-			state.value.updates().forEach { update ->
+			state.value.updates().filter { it.verdict.installAllowed }.forEach { update ->
 				if (state.value.updates().any { it.id == update.id && it.isInstalling }) return@forEach
 				state.value = UpdatesUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
 				viewModelScope.launch(Dispatchers.IO) {
@@ -110,7 +130,9 @@ class UpdatesViewModel(
 	private fun List<AppUpdate>.filterIgnoredVersions(ignoredVersions: List<Int>) = this
 		.filter { !ignoredVersions.contains(it.id) }
 
-	private fun setSuccess(updates: List<AppUpdate>) = updates
+	private fun setSuccess(updates: List<AppUpdate>) = updates.groupBy {
+        if (it.sha256 != null) "${it.packageName}:${it.versionCode}:${it.sha256}" else "unknown:${it.id}"
+    }.values.map { group -> group.first().copy(additionalSources = group.flatMap { listOf(it.source.name) + it.additionalSources }.distinct()) }
 		.filterIgnoredVersions(prefs.ignoredVersions.get())
 		.let {
 			state.value = UpdatesUiState.Success(it)

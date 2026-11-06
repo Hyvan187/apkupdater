@@ -90,17 +90,10 @@ class ApkMirrorRepository(
     private fun parseUpdates(updates: List<AppExistsResponseData>, apps: List<AppInstalled>)
     = updates
         .filter { it.exists == true }
-        .mapNotNull { data ->
+        .flatMap { data ->
             data.apks
-                .asSequence()
-                .filter { filterSignature(it, apps.getSignature(data.pname))}
-                .filter { filterArch(it) }
                 .filter { it.versionCode > apps.getVersionCode(data.pname) }
-                .filter { filterMinApi(it) }
-                .filter { filterAndroidTv(it) }
-                .filter { filterWearOS(it) }
-                .maxByOrNull { it.versionCode }
-                ?.toAppUpdate(apps.getApp(data.pname)!!, data.release)
+                .mapNotNull { apk -> apps.getApp(data.pname)?.let { apk.toAppUpdate(it, data.release) } }
         }
 
     private fun filterSignature(apk: AppExistsResponseApk, signature: String?) = when {

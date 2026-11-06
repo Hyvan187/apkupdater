@@ -1,67 +1,51 @@
-# APKUpdater [![](https://github.com/rumboalla/apkupdater/workflows/Android%20Build/badge.svg)](https://github.com/rumboalla/apkupdater/actions?query=workflow%3A%22Android+Build%22)
-**APKUpdater** is an open source tool that simplifies the process of **finding updates** for your installed apps.  
-It provides similar functionality to an app store, but instead of depending on a single source, it aggregates the results from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab** and **GitHub**.
+# APKUpdater Glass
 
-The 3.x branch is a full rewrite using modern technologies like **Jetpack Compose**, **Flow** and **WorkManager**.
+Native Android fork of [APKUpdater](https://github.com/rumboalla/apkupdater), based on commit `69b6fcdf52a7735ae17101efe1a0cd26222fb276` / `0.0.604-ci`.
 
-# Features
-* **Update Sources**: Find updates from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
-* **Search Sources**: Find new apps to install from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
-* Schedule **background update checks** and receive a **notification** when updates are found.
-* Supports **Android 5** (**21**) to **Android 14** (**34**).
-* Supports **Android TV**.
-* **Material Design 3** with **Dark**, **Light** and **System** theme support.
-* Supports **Material You** on Android 12+.
-* **Direct install** of updates for sources that support it.
-* Supports **installs without user interaction** on Android 12+.
-* **Root install** of updates.
-* No ads. No tracking.
-* **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
+**Development preview, not the completed master specification.** Package ID: `com.hyvan187.apkupdater`. Copyright of upstream code remains with rumboalla and contributors. All derivative code is GPLv3; see [LICENSE](LICENSE) and [upstream README](docs/UPSTREAM-README.md).
 
-# Download
-* [Stable Release (3.0.3)](https://github.com/rumboalla/apkupdater/releases/download/3.0.3/com.apkupdater-release.apk)
-* [CI Pre-release Builds](https://github.com/rumboalla/apkupdater/releases?q=CI&expanded=true)
-* [Older releases](https://github.com/rumboalla/apkupdater/releases)
+## Available functions
 
-# Translations
-If you want to help with translations, open a [Pull Request](https://github.com/rumboalla/apkupdater/pulls) or an [Issue](https://github.com/rumboalla/apkupdater/issues) with the translated [strings.xml](https://github.com/rumboalla/apkupdater/blob/3.x/app/src/main/res/values/strings.xml).
+- Android 17 / API 37 build target, Java 17, AGP 9.1.1; existing Compose, Material 3, Koin, Coroutines and WorkManager architecture retained.
+- Dashboard, searchable system-app inventory, updates, source search and settings.
+- Persistent AUTO/EU/GLO/IN/CN/OTHER device-region choice. AUTO deliberately reports UNKNOWN until documented manufacturer-specific evidence is available. Neither language, SIM, country, model number nor matching certificate is a regional proof.
+- Pure compatibility engine with separate evidence for package, numeric version code, SDK, ABI, signature, splits, dependencies and relevant ROM region.
+- Unknown, incompatible and compatible candidates can be inspected separately. The default recommendations show compatible candidates only.
+- Explicit download-and-verify operation for ordinary direct APK links. Cryptographic verification with Google's `apksig`, current signer comparison, SHA-256, binary manifest inspection, native ABI inspection and update-owner display.
+- Verified identical byte hashes can merge source cards. Without a hash, source/variant identity remains separate.
+- One guarded PackageInstaller path, mandatory Android confirmation, bounded downloads, HTTPS, cleanup, cancellation and a session timeout. Root installation is disabled.
+- Dark violet/blue glass scene, actual in-app backdrop sampling with RenderEffect blur (API 31+), AGSL distortion (API 33+ high setting), pressure response, local light highlights and Material fallback. Text stays sharp. The sampled backdrop is the app's decorative scene, not arbitrary other scrolling UI or wallpaper from outside the app.
+- Existing providers retained; no CAPTCHA circumvention or access-protection bypass added. APKMirror opens its source page and external downloads are outside Glass's installation guard.
+- WorkManager checks on unmetered networks by default; verified candidates only generate update notifications.
 
-* Albanian by [Jvr2022](https://github.com/Jvr2022)
-* Arabic by [Muhammadbahaa2001](https://github.com/Muhammadbahaa2001)
-* Burmese by [kyawlinnthant](https://github.com/kyawlinnthant)
-* Dutch by [AnonymousWP](https://github.com/AnonymousWP)
-* German by [peat80](https://github.com/peat80)
-* Hebrew by [electriquo](https://github.com/electriquo)
-* Hungarian by [gidano](https://github.com/gidano)
-* Indonesian by [HazakuraID](https://github.com/HazakuraID)
-* Italian by [NicKoehler](https://github.com/NicKoehler)
-* Korean by [Apious](https://github.com/Apious)
-* Malay by [HazakuraID](https://github.com/HazakuraID)
-* Portuguese by [zekabra](https://github.com/zekabra)
-* Romanian by [StormProductionsMusic](https://github.com/StormProductionsMusic)
-* Russian by [Xenorant](https://github.com/Xenorant)
-* Simplified Chinese by [Nriver](https://github.com/Nriver)
-* Traditional Chinese by [abc0922001](https://github.com/abc0922001)
-* Turkish by [kyoyacchi](https://github.com/kyoyacchi)
-* Japanese by [anonym499](https://github.com/anonym499)
+## Important limits
 
-# Feedback
-- To give feedback and request new features go to [Discussions](https://github.com/rumboalla/apkupdater/discussions).
-- To report bugs, crashes, typos and translations go to [Issues](https://github.com/rumboalla/apkupdater/issues).
+- OEM and system APKs have **no bundled verified region provenance or proprietary-service compatibility database**. They remain UNKNOWN and are blocked by the guarded installer, even after manual device-region selection. This preview avoids false regional approvals; it does not yet provide a verified regional OEM update catalog.
+- APKS/APKM/XAPK and multi-file split installations are blocked. Required splits detected in a standalone APK are rejected. No claim of complete bundle selection is made.
+- Signature rotation is conservative: a different signer with a lineage is UNKNOWN, pending proof of update capability; matching history alone never grants an update.
+- No real OnePlus 15 hardware validation or CPU/GPU/battery/FPS benchmark has been performed.
+- Source reachability alone is not an end-to-end provider test. Authentication, metadata completeness, variant enumeration and downloadable results still need service-specific integration tests.
+- Source priorities, full update history, per-app preferred source, automatic regional detection, fully adaptive tablet navigation, a redacted diagnostic-file exporter and complete split support remain outstanding.
+- The upstream semantic-version searches are discovery hints; they are never sufficient to authorize installation.
+- Debug keys differ between local and CI builds. Use a backed-up private release key for long-term updates. No private key or password is checked in.
 
-# Screenshots
+## Install
 
-| ![1](https://github.com/rumboalla/apkupdater/assets/21153554/b5b4943b-e12a-43e2-a056-26d6f06f9bc4) | ![2](https://github.com/rumboalla/apkupdater/assets/21153554/c4679c1b-09d4-429d-9160-77d4d33b0a0f) | ![3](https://github.com/rumboalla/apkupdater/assets/21153554/7b89c5a6-672c-44e4-836e-e01f51f33591) | ![4](https://github.com/rumboalla/apkupdater/assets/21153554/7ec15783-e719-4feb-9e07-a14c0f1defcc) |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+Download `APKUpdater-Glass-Debug.apk` from a successful Actions run or the supplied deliverable. Android will ask for permission to install unknown apps. The app installs beside the original APKUpdater. Choose the actual ROM region in Settings, if known. To inspect unresolved candidates, change the Updates filter to include them. Download verification is separate from installation.
 
-| ![5](https://github.com/rumboalla/apkupdater/assets/21153554/bbf1132a-b0b6-4890-aed7-8fe95c0da11b) | ![6](https://github.com/rumboalla/apkupdater/assets/21153554/32236bfb-b53e-4999-8363-e957fa8f77a9) |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+## Build
 
-# Other Projects
-* [CoolRs](https://github.com/rumboalla/coolrs): A collection of Android RenderScript effects. 
-* [KryptoPrefs](https://github.com/rumboalla/KryptoPrefs): Kotlin library for handling encrypted SharedPreferences.
-* [KryptoStore](https://github.com/rumboalla/kryptostore): A thin wrapper around Jetpack Datastore Preferences that provides useful features.
+Install a full JDK 17 and Android command-line tools, then:
 
-# License
-Copyright &copy; 2016-2024 rumboalla.  
-Licensed under the [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html).
+```sh
+sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+```
+
+`compileSdk = 37` resolves the major Android 17 SDK. In the current SDK repository, its package name is `platforms;android-37.0`, not `platforms;android-37`.
+
+The APK is `app/build/outputs/apk/debug/app-debug.apk`. CI renames it, verifies its signature, records SHA-256 and the commit, and uploads test/lint reports. A separate CI job attempts an Android 17 emulator launch and retains logs and a screenshot.
+
+Release signing is opt-in via environment variables `GLASS_KEYSTORE`, `GLASS_STORE_PASSWORD`, `GLASS_KEY_ALIAS`, `GLASS_KEY_PASSWORD`. An absent release key does not fall back to an official-looking debug-signed release.
+
+See [architecture and security](docs/ARCHITECTURE.md), [Android 17 review](docs/ANDROID17.md), [test results](docs/TEST-RESULTS.md), and [change log](CHANGELOG.md).

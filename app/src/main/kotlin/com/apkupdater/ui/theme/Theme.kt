@@ -21,7 +21,7 @@ import com.apkupdater.util.isDark
 @Composable
 fun AppTheme(
 	darkTheme: Boolean,
-	dynamicColor: Boolean = true,
+	dynamicColor: Boolean = false,
 	content: @Composable () -> Unit
 ) {
 	val colorScheme = when {
@@ -29,7 +29,7 @@ fun AppTheme(
 			val context = LocalContext.current
 			if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
 		}
-		darkTheme -> darkColorScheme()
+		darkTheme -> darkColorScheme(primary = androidx.compose.ui.graphics.Color(0xffc5b8ff), surface = androidx.compose.ui.graphics.Color(0xff11172a), background = androidx.compose.ui.graphics.Color(0xff080d1d))
 		else -> lightColorScheme()
 	}
 

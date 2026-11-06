@@ -29,6 +29,9 @@ class UpdatesWorker(
 
         fun launch(workManager: WorkManager) {
             val request = PeriodicWorkRequestBuilder<UpdatesWorker>(getDays(), TimeUnit.DAYS)
+                .setConstraints(androidx.work.Constraints.Builder().setRequiredNetworkType(
+                    if (prefs.wifiOnly.get()) androidx.work.NetworkType.UNMETERED else androidx.work.NetworkType.CONNECTED
+                ).build())
                 .setInitialDelay(
                     millisUntilHour(prefs.alarmHour.get()) + randomDelay(),
                     TimeUnit.MILLISECONDS
@@ -54,8 +57,9 @@ class UpdatesWorker(
 
     override suspend fun doWork(): Result {
         updatesRepository.updates().collect {
-            if (it.isNotEmpty()) {
-                notification.showUpdateNotification(it.size)
+            val verified = it.count { u -> u.verdict.installAllowed }
+            if (verified > 0) {
+                notification.showUpdateNotification(verified)
             }
         }
         return Result.success()

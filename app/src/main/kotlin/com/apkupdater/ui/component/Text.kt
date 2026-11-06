@@ -169,7 +169,7 @@ fun ExpandingAnnotatedText(
 ) {
     var isExpanded by remember { mutableStateOf(false) }
     Text(
-        text =  if (text.text.last() == '\n') text.subSequence(0, text.length - 1) else text,
+        text =  if (text.text.lastOrNull() == '\n') text.subSequence(0, text.length - 1) else text,
         maxLines = if (isExpanded) Int.MAX_VALUE else minLines,
         style = style,
         overflow = TextOverflow.Ellipsis,

@@ -31,7 +31,7 @@ class GitHubRepository(
 ) {
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
-        val checks = mutableListOf(selfCheck())
+        val checks = mutableListOf<Flow<List<AppUpdate>>>()
 
         GitHubApps.forEachIndexed { i, app ->
             if (i != 0) {
