@@ -20,7 +20,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
       - name: Install Android 17 SDK
         run: |
           sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
@@ -57,7 +59,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
       - uses: actions/download-artifact@v4
         with:
           name: Liquid-APK-Store-Debug
