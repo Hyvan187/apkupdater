@@ -92,7 +92,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                 HelpTitle("Quelle auswählen","Wähle Anbieter und Variante. Geprüft wird genau diese Datei; andere Quellen übernehmen ihre Freigabe nicht. APKMirror öffnet die Webseite.")
                 SecondaryText("${update.name} · Anbieter behalten eigene Varianten und Prüfergebnisse.")
                 LazyColumn(Modifier.weight(1f,fill=false).heightIn(max = 390.dp)) {
-                    val options=group.sources(preferred).let{sources->if(sources.none{it.source==ApkMirrorSource})sources+update.copy(source=ApkMirrorSource,version="Websuche",versionCode=0,link=Link.Url(ApkMirrorWeb.search(update.packageName)),verdict=Verdict(Compatibility.UNKNOWN,emptyList())) else sources}
+                    val options=group.sources(preferred).let{sources->if(sources.none{it.source==ApkMirrorSource})sources+ApkMirrorWeb.option(update) else sources}
                     items(options, key = { it.source.name }) { option ->
                         val allowed = option.verdict.status != Compatibility.INCOMPATIBLE && (option.link is Link.Url || option.link is Link.Xapk || option.link is Link.Play)
                         Row(Modifier.fillMaxWidth().clickable(enabled = allowed) { selected = option }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -128,7 +128,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
     if(technical) AlertDialog(onDismissRequest = { technical = false }, title = { Text("Technische Details") }, text = {
         Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
             val profilePrefs=org.koin.compose.koinInject<org.uniapk.upgrader.prefs.Prefs>()
-            if(ProfilePolicy.simulationActive(profilePrefs))SecondaryText("Vergleichsprofil: Modell ${profilePrefs.simulatedModel.get().ifBlank{android.os.Build.MODEL}} · Region ${profilePrefs.manualRegion.get()}. APK-Region nicht durch diese Auswahl belegt. Die Installationsprüfung verwendet das wirkliche Gerät.")
+            if(ProfilePolicy.simulationActive(profilePrefs))SecondaryText("Store-Testprofil: ${TestDeviceProfiles.presets.find{it.model==profilePrefs.simulatedPreset.get()}?.name ?: "Echtes Gerät"} · Länderfassung ${profilePrefs.simulatedRegion.get()} · manuelle Vergleichsregion ${profilePrefs.manualRegion.get()}. APK-Region nicht durch diese Auswahl belegt. Die Installationsprüfung verwendet das wirkliche Gerät.")
             SecondaryText(update.packageName); SecondaryText("Versionscode: ${update.oldVersionCode} → ${update.versionCode}")
             update.verdict.evidence.forEach { Text(it.property, style = MaterialTheme.typography.labelMedium); SecondaryText(it.detail) }
             update.sha256?.let { SecondaryText("SHA-256: $it") }

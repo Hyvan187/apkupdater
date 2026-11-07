@@ -64,4 +64,6 @@ class UniApkQualityTest {
 
     @Test fun automaticReceiptsDoNotDependOnEphemeralPlayClosuresButRespectDestinationAndRegion(){val one=AppUpdate("Fixture","org.example","2","1",2,1,PlaySource,link=Link.Play{emptyList()});val two=one.copy(link=Link.Play{emptyList()});val key=AutomaticDownloads.receiptKey(one,"oneplus15","IN","folder-a");assertEquals(key,AutomaticDownloads.receiptKey(two,"oneplus15","IN","folder-a"));assertNotEquals(key,AutomaticDownloads.receiptKey(two,"oneplus15","EU","folder-a"));assertNotEquals(key,AutomaticDownloads.receiptKey(two,"oneplus15","IN","folder-b"))}
 
+    @Test fun mirrorWebFallbackCannotInheritAnotherSourcesFileApproval(){val original=AppUpdate("Fixture","org.example","2","1",2,1,GitHubSource,verdict=Verdict(Compatibility.COMPATIBLE,emptyList()),sha256="verified-hash",verifiedAt=1,fileReady=true,abis=setOf("arm64-v8a"),minSdk=23);val web=ApkMirrorWeb.option(original);assertEquals(ApkMirrorSource,web.source);assertEquals(Compatibility.UNKNOWN,web.verdict.status);assertNull(web.sha256);assertNull(web.verifiedAt);assertNull(web.abis);assertFalse(web.fileReady);assertNotEquals(original.artifactKey,web.artifactKey)}
+
 }

@@ -58,6 +58,7 @@ for name, expected_abis in variants.items():
     assert "sdkVersion:'23'" in badging and "targetSdkVersion:'37'" in badging
     assert "application-debuggable" not in badging
     assert "application-label:'Universal APK Upgrader'" in badging
+    assert re.search(r"launchable-activity:.*label='UniAPK'",badging), "Wrong launcher abbreviation"
     (reports/f"badging-{name}.txt").write_text(badging)
     alignment = run([tools/"zipalign", "-c", "-P", "16", "-v", "4", target])
     (reports/f"alignment-{name}.txt").write_text(alignment)

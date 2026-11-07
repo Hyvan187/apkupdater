@@ -1,4 +1,5 @@
 <resources>
+    <string name="app_short_name" translatable="false">UniAPK</string>
 
     <string name="app_name" translatable="false">Universal APK Upgrader</string>
     <string name="tab_apps">System-Apps</string>

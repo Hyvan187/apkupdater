@@ -19,7 +19,9 @@ import org.koin.compose.koinInject
     val variant=TestDeviceProfiles.resolve(preset,region)
     fun save(){
         if(preset!="ACTUAL"&&variant==null){message="Diese regionale Kennung ist noch nicht belegt und wird nicht erfunden.";return}
+        if(prefs.simulatedPreset.get()==preset&&prefs.simulatedRegion.get()==region){message="Dieses Store-Profil ist bereits aktiv.";return}
         prefs.simulatedPreset.put(preset);prefs.simulatedRegion.put(region);prefs.simulatedModel.put(variant?.code.orEmpty());prefs.playAuthData.put(com.aurora.gplayapi.data.models.AuthData("",""));prefs.lastPlayCheck.put(0)
+        org.uniapk.upgrader.diagnostics.AppDiagnostics.info("profile.changed",mapOf("preset" to preset,"profileRegion" to region,"simulation" to (preset!="ACTUAL")))
         message=if(preset=="ACTUAL")"Echtes Geräteprofil aktiv." else "Testprofil gespeichert. Die nächste Play-Anmeldung verwendet die belegte Modellkennung."
     }
     GlassPanel {

@@ -112,6 +112,9 @@ object AppDiagnostics {
             put("widthDp",config.screenWidthDp.toString());put("heightDp",config.screenHeightDp.toString())
             put("language",if(Build.VERSION.SDK_INT>=24)config.locales[0].toLanguageTag() else @Suppress("DEPRECATION")config.locale.toLanguageTag())
         }
+        org.koin.core.context.GlobalContext.getOrNull()?.getOrNull<org.uniapk.upgrader.prefs.Prefs>()?.let{prefs->
+            put("selectedProfile",prefs.simulatedPreset.get());put("selectedProfileRegion",prefs.simulatedRegion.get());put("selectedProfileModel",prefs.simulatedModel.get())
+        }
         networkFields().forEach { (key,value)->put(key,value.toString()) }
     }.filterKeys{state.value.verbose || it in DiagnosticPrivacy.generalMetadata}
     fun networkFields(): Map<String,Any?> = runCatching {

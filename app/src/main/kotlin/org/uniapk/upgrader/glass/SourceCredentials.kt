@@ -18,5 +18,10 @@ class SourceCredentials(private val prefs:()->Prefs):Interceptor {
     }
 }
 object ApkMirrorWeb {
+    fun option(update:org.uniapk.upgrader.data.ui.AppUpdate)=org.uniapk.upgrader.data.ui.AppUpdate(
+        name=update.name,packageName=update.packageName,version="Websuche",oldVersion=update.oldVersion,
+        versionCode=0,oldVersionCode=update.oldVersionCode,source=org.uniapk.upgrader.data.ui.ApkMirrorSource,
+        iconUri=update.iconUri,link=org.uniapk.upgrader.data.ui.Link.Url(search(update.packageName)),system=update.system
+    )
     fun search(packageName:String)="https://www.apkmirror.com/?post_type=app_release&searchtype=apk&s="+java.net.URLEncoder.encode(packageName,"UTF-8")
 }

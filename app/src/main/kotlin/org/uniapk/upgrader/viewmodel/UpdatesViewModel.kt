@@ -57,7 +57,7 @@ class UpdatesViewModel(
     }
     fun invalidateVerificationCache() {
         verified.clear()
-        setSuccess(state.value.updates().map { if(it.verifiedAt != null) it.copy(verdict=Verdict(Compatibility.UNKNOWN,listOf(Evidence("Prüfdatei","Cache geleert; APK vor Installation erneut prüfen.",Compatibility.UNKNOWN))),sha256=null,verifiedAt=null,updateOwner=null) else it })
+        setSuccess(state.value.updates().map { if(it.verifiedAt != null) it.copy(verdict=Verdict(Compatibility.UNKNOWN,listOf(Evidence("Prüfdatei","Cache geleert; APK vor Installation erneut prüfen.",Compatibility.UNKNOWN))),sha256=null,verifiedAt=null,updateOwner=null,fileReady=false) else it })
     }
     suspend fun reconcileInstalledUpdates(packageName:String?=null) = withContext(Dispatchers.IO) {
         val current=state.value.updates()
@@ -221,7 +221,8 @@ class UpdatesViewModel(
         val checked = verified[identity(update)]
         if(checked == null || !checked.file.exists()) {
             verified.remove(identity(update))
-            setSuccess(state.value.updates().map { if(it.id==update.id)it.copy(verdict=Verdict(Compatibility.UNKNOWN,listOf(Evidence("Prüfdatei","Prüfdatei fehlt. APK ausdrücklich erneut herunterladen und prüfen.",Compatibility.UNKNOWN))),verifiedAt=null,sha256=null) else it })
+            processState.update{it?.copy(phase=PackagePhase.FAILED,update=update.copy(fileReady=false,verdict=Verdict(Compatibility.UNKNOWN,emptyList())),message="Die temporäre Prüfdatei fehlt. Bitte ausdrücklich erneut laden und vorbereiten.")}
+            setSuccess(state.value.updates().map { if(it.id==update.id)it.copy(verdict=Verdict(Compatibility.UNKNOWN,listOf(Evidence("Prüfdatei","Prüfdatei fehlt. APK ausdrücklich erneut herunterladen und prüfen.",Compatibility.UNKNOWN))),verifiedAt=null,sha256=null,fileReady=false) else it })
             snackBar.snackBar(viewModelScope,TextSnack("Prüfdatei fehlt. Bitte die APK über die Quellenauswahl erneut herunterladen."));return@launch
         }
         if(!installer.checkPermission()) {processState.update{it?.copy(phase=PackagePhase.READY,message="Bitte die Android-Erlaubnis für diese Quelle erteilen, zurückkehren und Jetzt installieren erneut drücken.")};return@launch}
