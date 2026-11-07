@@ -66,4 +66,14 @@ class UniApkQualityTest {
 
     @Test fun mirrorWebFallbackCannotInheritAnotherSourcesFileApproval(){val original=AppUpdate("Fixture","org.example","2","1",2,1,GitHubSource,verdict=Verdict(Compatibility.COMPATIBLE,emptyList()),sha256="verified-hash",verifiedAt=1,fileReady=true,abis=setOf("arm64-v8a"),minSdk=23);val web=ApkMirrorWeb.option(original);assertEquals(ApkMirrorSource,web.source);assertEquals(Compatibility.UNKNOWN,web.verdict.status);assertNull(web.sha256);assertNull(web.verifiedAt);assertNull(web.abis);assertFalse(web.fileReady);assertNotEquals(original.artifactKey,web.artifactKey)}
 
+    @Test fun automaticReadyUsesManifestFactsWithoutLosingSelectedArtifactIdentity(){
+        val offered=AppUpdate("Fixture","org.example","wrong-provider-version","1",999,1,GitHubSource,abis=setOf("x86_64"),verificationError="old error")
+        val candidate=Candidate("org.example",2,26,setOf("arm64-v8a"),Compatibility.COMPATIBLE,versionName="2")
+        val report=ApkAnalyzer.Report(candidate,Verdict(Compatibility.COMPATIBLE,emptyList()),"actual-hash",setOf("signer"),37,"owner")
+        val ready=offered.withInspection(report,123)
+        assertEquals("2",ready.version);assertEquals(2L,ready.versionCode);assertEquals(setOf("arm64-v8a"),ready.abis)
+        assertEquals(26,ready.minSdk);assertEquals(37,ready.targetSdk);assertEquals("actual-hash",ready.sha256)
+        assertEquals("owner",ready.updateOwner);assertEquals(123L,ready.verifiedAt);assertNull(ready.verificationError);assertTrue(ready.fileReady)
+        assertEquals(offered.artifactKey,ready.artifactKey);assertEquals(offered.id,ready.id)
+    }
 }

@@ -103,7 +103,7 @@ class UpdatesViewModel(
                 AutomaticDownloads.run(context,prefs,state.value.updates(),downloader,installer){u,file,report->
                     while(verified.isNotEmpty()&&verified.values.sumOf{it.file.length()}+file.length()>ResourcePolicy.READY_BYTES){val oldest=verified.entries.minByOrNull{it.value.checkedAt} ?: break;verified.remove(oldest.key)?.file?.delete()}
                     verified.put(identity(u),Checked(file,report))?.file?.delete()
-                    setSuccess(state.value.updates().map{if(it.artifactKey==u.artifactKey)it.copy(verdict=report.verdict,verifiedAt=System.currentTimeMillis(),sha256=report.sha256,fileReady=true) else it});true
+                    setSuccess(state.value.updates().map{if(it.artifactKey==u.artifactKey)it.withInspection(report,System.currentTimeMillis()) else it});true
                 }
                 ScanProgress.finish(progressId)
             } catch(e: CancellationException) { ScanProgress.finish(progressId,ScanPhase.CANCELLED); throw e } catch(e: Exception) {
