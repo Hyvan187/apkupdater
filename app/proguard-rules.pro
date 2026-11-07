@@ -19,3 +19,10 @@
 
 # Models
 -keep class com.apkupdater.data.** { *; }
+
+# These types are persisted or decoded with Gson; retain field names across releases.
+-keep class com.apkupdater.glass.RuleSet { *; }
+-keep class com.apkupdater.glass.FamilyRule { *; }
+-keep class com.apkupdater.glass.InstallHistory { *; }
+-keep class com.apkupdater.glass.PendingInstall { *; }
+-keep class com.aurora.gplayapi.data.models.** { *; }

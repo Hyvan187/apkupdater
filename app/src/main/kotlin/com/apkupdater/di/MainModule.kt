@@ -162,7 +162,7 @@ val mainModule = module {
 
 	single { SearchRepository(get(), get(named("main")), get(named("izzy")), get(), get(), get(), get(), get(), get()) }
 
-	single { KryptoBuilder.nocrypt(get(), "APKUpdater Glass") }
+	single { (androidContext() as com.apkupdater.application.App).preferenceStorage() }
     single { com.apkupdater.glass.AppLanguageStore(get()) }
     single { com.apkupdater.glass.HistoryStore(get()) }
     single { com.apkupdater.glass.FavoriteStore(get()) }

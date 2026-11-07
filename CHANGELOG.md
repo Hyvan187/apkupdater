@@ -1,3 +1,14 @@
+# 0.6.0-rc1
+
+- Build an optimized, resource-shrunk, non-debuggable universal release candidate with the retained signing identity for in-place updates.
+- Replace question marks with small round info icons; retain explanations on technical options and remove redundant help from simple settings.
+- Inspect explicit APKM/APKS/XAPK sets, validate all APK signatures/package/version/dependencies, reject missing/ambiguous components, and install the checked set in one Android PackageInstaller session.
+- Migrate preferences to device-bound Android Keystore encryption with durable verification before legacy plaintext removal; exclude preferences from backup and transfer.
+- Dispatch source flows independently; handle empty/changed APKMirror search markup without positional indexing.
+- Remove the old shared APKMirror credential and update jsoup to 1.24.1. Unauthenticated APKMirror API access still returns 401; it is not declared fixed.
+- Preserve reflected Gson models under R8. Add signed-set, migration and selective-help/landscape tests.
+- This remains a release candidate. Physical OnePlus testing, live OEM installation, verified ROM provenance, full translation and performance acceptance remain open.
+
 # 0.5.0-store
 
 - Rename product to Liquid-APK-Store, replace robot/update icon and move credits to separate legal notices.

@@ -15,6 +15,7 @@ import org.koin.core.component.get
 import org.koin.core.context.startKoin
 
 open class App : Application(), SingletonImageLoader.Factory, KoinComponent {
+    open fun preferenceStorage(): com.kryptoprefs.preferences.KryptoPrefs = com.apkupdater.prefs.SecurePreferences.open(this)
 
 	override fun onCreate() {
 		super.onCreate()

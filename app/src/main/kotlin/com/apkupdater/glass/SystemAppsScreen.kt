@@ -83,7 +83,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
                             SecondaryText("${app.version} · ${if(app.system || app.updated) "System" else "App"}${if(!app.enabled) " · deaktiviert" else ""}")
                         }
                     }
-                    Row { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={favoriteStore.toggle(app.pkg)}){Text(if(app.pkg in favorites)"★ Favorit entfernen" else "☆ Als Favorit markieren")};HelpButton("Favoriten","Markiert die App in dieser Anwendung. Unter Favoriten findest du sie schneller. Prüfung und installierte App werden dadurch nicht verändert.") }
+                    Row { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={favoriteStore.toggle(app.pkg)}){Text(if(app.pkg in favorites)"★ Favorit entfernen" else "☆ Als Favorit markieren")} }
                     if (expanded) {
                         SecondaryText(app.pkg)
                         Text("Installationsquelle: ${app.source.ifEmpty { "nicht ausgewiesen" }}")

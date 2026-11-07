@@ -99,7 +99,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
                             while(true) { val n = input.read(buffer); if(n < 0) break; size += n; require(size <= 512L * 1024 * 1024) { "Die Datei ist größer als 512 MiB." }; out.write(buffer, 0, n) }
                         }
                     }
-                    ApkAnalyzer(context, detection).analyze(f).text()
+                    ApkSetInspector(context, detection).inspect(f).text()
                 } catch(e: Exception) { "Prüfung nicht möglich: ${e.message}" } finally { f.delete() }
             }
         }
@@ -132,7 +132,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
         } }
         if(health.any { it.problem != null }) item { StateMessage("Quellen teilweise nicht erreichbar", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
         item { HelpButton("Lokale APK-Prüfung",HelpText.CHECK+" Die Dateiauswahl analysiert nur deine Datei; es findet keine Installation statt.");Text("WERKZEUGE", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-        item { GlassPanel(Modifier.clickable { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream")) }) {
+        item { GlassPanel(Modifier.clickable { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "application/zip", "application/x-zip-compressed")) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text("APK untersuchen", style = MaterialTheme.typography.titleSmall); SecondaryText("Datei prüfen, ohne sie zu installieren") }; Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))

@@ -78,7 +78,7 @@ class UpdatesViewModel(
     }
     private suspend fun verifyCandidate(update: AppUpdate, automatic: Boolean = false) {
         if(update.verdict.status == Compatibility.INCOMPATIBLE || !verifying.add(update.id)) return
-        val url = (update.link as? Link.Url)?.link
+        val url = when(val link=update.link) { is Link.Url -> link.link; is Link.Xapk -> link.link; else -> null }
         if(url == null || update.source == ApkMirrorSource) {
             verifying.remove(update.id)
             snackBar.snackBar(viewModelScope, TextSnack("Für dieses Archiv ist noch keine vollständige Paketprüfung verfügbar."))

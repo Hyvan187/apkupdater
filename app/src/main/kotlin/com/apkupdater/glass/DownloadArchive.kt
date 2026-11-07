@@ -23,13 +23,15 @@ class DownloadArchive(private val context: Context,private val prefs: Prefs) {
  fun publish(file: File,pkg: String,version: String): Uri = synchronized(lock) {
   val key=hash(file);val resolver=context.contentResolver
   prefs.downloadArchive.get()[key]?.let { saved -> val uri=Uri.parse(saved);if(runCatching{resolver.openFileDescriptor(uri,"r")?.use{true}==true}.getOrDefault(false))return@synchronized uri }
-  val name=DownloadNames.name(pkg,version,key)
+  val set = runCatching { java.util.zip.ZipFile(file).use { it.getEntry("AndroidManifest.xml") == null } }.getOrDefault(false)
+  val name=DownloadNames.name(pkg,version,key).let { if(set) it.removeSuffix(".apk")+".apks" else it }
+  val mime=if(set)"application/octet-stream" else "application/vnd.android.package-archive"
   val usesTree=prefs.downloadTree.get().isNotBlank()
   val uri=if(Build.VERSION.SDK_INT>=29 && !usesTree) resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,ContentValues().apply {
-   put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,"application/vnd.android.package-archive");put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/Liquid-APK-Store");put(MediaStore.MediaColumns.IS_PENDING,1)
+   put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,mime);put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/Liquid-APK-Store");put(MediaStore.MediaColumns.IS_PENDING,1)
   }) else {
    val tree=prefs.downloadTree.get().takeIf{it.isNotBlank()} ?: error("Bitte zuerst einen Downloadordner in den Einstellungen auswählen.")
-   val root=Uri.parse(tree);DocumentsContract.createDocument(resolver,DocumentsContract.buildDocumentUriUsingTree(root,DocumentsContract.getTreeDocumentId(root)),"application/vnd.android.package-archive",name)
+   val root=Uri.parse(tree);DocumentsContract.createDocument(resolver,DocumentsContract.buildDocumentUriUsingTree(root,DocumentsContract.getTreeDocumentId(root)),mime,name)
   }
   requireNotNull(uri){"Downloadordner nicht verfügbar."}
   try {

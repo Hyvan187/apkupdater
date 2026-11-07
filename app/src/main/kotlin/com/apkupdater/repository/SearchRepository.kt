@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 
 class SearchRepository(
     private val apkMirrorRepository: ApkMirrorRepository,
@@ -33,7 +35,7 @@ class SearchRepository(
         if (prefs.usePlay.get()) sources.add(playRepository.search(text))
 
         if (sources.isNotEmpty()) {
-            sources.combine { updates ->
+            sources.map { it.flowOn(Dispatchers.IO) }.combine { updates ->
                 val result = updates.filter { it.isSuccess }.mapNotNull { it.getOrNull() }
                 emit(Result.success(result.flatten().filter { com.apkupdater.glass.ReleasePolicy.allowed(it, prefs) }.sortedBy { it.name }))
             }.collect()

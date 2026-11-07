@@ -23,6 +23,8 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 class GlassTestApp : App() {
+    // JVM UI tests have no Android Keystore. Device security is tested separately.
+    override fun preferenceStorage() = com.kryptoprefs.preferences.KryptoBuilder.nocrypt(this, "ui-test-preferences")
     override fun onCreate() {
         super.onCreate()
         val p = GlobalContext.get().get<Prefs>()
@@ -202,6 +204,21 @@ class GlassUiTest {
         compose.onNodeWithContentDescription("Hilfe: Prüfstatus").performClick()
         compose.onNodeWithText(HelpText.BLOCKED+"\n\n"+HelpText.CHECK).assertIsDisplayed()
         compose.onNodeWithText("Verstanden").performClick()
+    }
+    @Test fun settingsKeepHelpForTechnicalOptionsOnly() {
+        compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNodeWithContentDescription("Hilfe: Erscheinungsbild").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Hilfe: Sprache").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Hilfe: App-Auswahl").performClick()
+        compose.onNodeWithText("Verstanden").assertIsDisplayed().performClick()
+        screenshot("14-selective-info-buttons")
+    }
+    @Test @Config(qualifiers = "de-w915dp-h412dp-xhdpi") fun landscapeKeepsNavigationAndSettingsUsable() {
+        compose.onNodeWithText("Start").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Region und Testprofil"))
+        compose.onNodeWithText("Region und Testprofil").assertIsDisplayed()
+        screenshot("15-landscape-settings")
     }
     @Test fun appearanceOffersAllAnimationModesAndOled() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()

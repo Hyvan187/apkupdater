@@ -9,18 +9,20 @@ import java.io.File
 import java.security.MessageDigest
 import java.util.zip.ZipFile
 
-class ApkAnalyzer(private val context: Context, private val detection: DeviceDetection) {
+class ApkAnalyzer(private val context: Context, private val detection: DeviceDetection,
+    private val archiveMetadata: ((File, Int) -> PackageInfo?)? = null) {
     data class Report(val candidate: Candidate, val verdict: Verdict, val sha256: String, val signers: Set<String>, val targetSdk: Int, val owner: String?) {
         fun text() = "${candidate.packageName}\nVersionscode: ${candidate.versionCode}\nZiel-SDK: $targetSdk\nStatus: ${verdict.status}\n" +
             verdict.evidence.joinToString("\n") { "${it.property}: ${it.status} · ${it.detail}" } +
             "\nUpdate-Owner: ${owner ?: "keiner oder nicht auslesbar"}\nSHA-256: $sha256\nZertifikate:\n${signers.joinToString("\n")}\nAndroid entscheidet abschließend. Keine Funktionsgarantie."
     }
-    fun analyze(file: File, expectedPackage: String? = null): Report = try { analyzeInternal(file,expectedPackage) }
+    fun analyze(file: File, expectedPackage: String? = null): Report = analyzePart(file, expectedPackage, false)
+    internal fun analyzePart(file: File, expectedPackage: String?, setValidated: Boolean): Report = try { analyzeInternal(file,expectedPackage,setValidated) }
         catch(e: java.util.zip.ZipException){throw InspectionException("Die Datei ist keine lesbare APK.")}
         catch(e: IndexOutOfBoundsException){throw InspectionException("Das APK-Manifest ist beschädigt oder nicht unterstützt.")}
         catch(e: IllegalArgumentException){throw InspectionException((e.message ?: "APK-Struktur nicht unterstützt").replace(file.absolutePath,"APK-Datei").take(180))}
     @Suppress("DEPRECATION")
-    private fun analyzeInternal(file: File, expectedPackage: String? = null): Report {
+    private fun analyzeInternal(file: File, expectedPackage: String? = null, setValidated: Boolean = false): Report {
         require(file.length() in 1..(512L*1024*1024)){"APK überschreitet das Dateiprüflimit."}
         val (abis, tags) = ZipFile(file).use { zip ->
             val entries=zip.entries().asSequence().take(100001).toList()
@@ -33,7 +35,7 @@ class ApkAnalyzer(private val context: Context, private val detection: DeviceDet
         }
         val pm = context.packageManager
         val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-        val apk = if (Build.VERSION.SDK_INT >= 33) pm.getPackageArchiveInfo(file.path, PackageManager.PackageInfoFlags.of(flags.toLong())) else pm.getPackageArchiveInfo(file.path, flags)
+        val apk = if (archiveMetadata != null) archiveMetadata.invoke(file, flags) else if (Build.VERSION.SDK_INT >= 33) pm.getPackageArchiveInfo(file.path, PackageManager.PackageInfoFlags.of(flags.toLong())) else pm.getPackageArchiveInfo(file.path, flags)
         requireNotNull(apk) { "APK-Metadaten nicht lesbar" }
         val installed = try {
             if (Build.VERSION.SDK_INT >= 33) pm.getPackageInfo(expectedPackage ?: apk.packageName, PackageManager.PackageInfoFlags.of(flags.toLong())) else pm.getPackageInfo(expectedPackage ?: apk.packageName, flags)
@@ -58,7 +60,7 @@ class ApkAnalyzer(private val context: Context, private val detection: DeviceDet
         val missingLibrary = libraries.any { it.attrs["name"] !in shared }
         val dependencies = when { sensitive -> Compatibility.UNKNOWN; libraries.any { it.name != "uses-library" } -> Compatibility.UNKNOWN; missingLibrary -> Compatibility.INCOMPATIBLE; else -> Compatibility.COMPATIBLE }
         val candidate = Candidate(apk.packageName, code(apk), (if (Build.VERSION.SDK_INT >= 24) apk.applicationInfo?.minSdkVersion else tags.firstOrNull { it.name == "uses-sdk" }?.attrs?.get("minSdkVersion")?.toIntOrNull()), abis, signature,
-            splits = if (needsSplits) Compatibility.INCOMPATIBLE else Compatibility.COMPATIBLE,
+            splits = if (needsSplits && !setValidated) Compatibility.INCOMPATIBLE else Compatibility.COMPATIBLE,
             dependencies = dependencies, versionName = apk.versionName.orEmpty(), targetSdk = apk.applicationInfo?.targetSdkVersion)
         val base = InstalledPackage(expectedPackage ?: apk.packageName, installed?.let { code(it) } ?: -1, sensitive, installed?.versionName.orEmpty(), installed?.applicationInfo?.targetSdkVersion, detection.isSystem(expectedPackage ?: apk.packageName))
         val owner = if (Build.VERSION.SDK_INT >= 34 && installed != null) runCatching { pm.getInstallSourceInfo(installed.packageName).updateOwnerPackageName }.getOrNull() else null

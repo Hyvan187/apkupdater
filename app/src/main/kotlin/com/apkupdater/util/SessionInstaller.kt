@@ -27,22 +27,35 @@ import kotlin.coroutines.resumeWithException
 class SessionInstaller(private val context: Context, private val installLog: InstallLog, private val prefs: Prefs, private val history: com.apkupdater.glass.HistoryStore) {
     companion object { const val INSTALL_ACTION = "com.hyvan187.apkupdater.INSTALL" }
     private val mutex = Mutex()
-    fun inspect(file: File, packageName: String) = ApkAnalyzer(context, DeviceDetection(context, prefs)).analyze(file, packageName)
+    fun inspect(file: File, packageName: String) = com.apkupdater.glass.ApkSetInspector(context, DeviceDetection(context, prefs)).inspect(file, packageName)
     suspend fun install(id: Int, packageName: String, stream: InputStream, source: String="Direktdownload") = install(id, packageName, listOf(stream),source)
     suspend fun install(id: Int, packageName: String, streams: List<InputStream>, source: String="Direktdownload") = mutex.withLock {
         val dir = File(context.cacheDir, "preflight-${randomUUID()}").apply { mkdirs() }
         try {
-            require(streams.size == 1) { "Split-Sets sind bis zur vollständigen Abhängigkeitsprüfung gesperrt." }
-            val file = File(dir, "base.apk")
-            streams.single().use { input ->
-                file.outputStream().use { output ->
-                    val buffer = ByteArray(65536); var total = 0L
-                    while (true) {
-                        val n = input.read(buffer); if (n < 0) break
-                        total += n
-                        require(total <= 512L * 1024 * 1024) { "APK überschreitet das Prüflimit von 512 MiB." }
-                        output.write(buffer, 0, n)
-                        installLog.emitProgress(AppInstallProgress(id, total))
+            require(streams.size in 1..128) { "Ein Paket benötigt zwischen 1 und 128 APK-Bestandteile." }
+            var total = 0L
+            val staged = streams.mapIndexed { index, input ->
+                File(dir, "input-$index.apk").also { file ->
+                    input.use { source -> file.outputStream().use { output ->
+                        val buffer = ByteArray(65536)
+                        while (true) {
+                            val n = source.read(buffer); if (n < 0) break
+                            total += n
+                            require(total <= 512L * 1024 * 1024) { "APK-Set überschreitet das Prüflimit von 512 MiB." }
+                            require(dir.usableSpace > 64L * 1024 * 1024) { "Zu wenig freier Speicher für die Installation." }
+                            output.write(buffer, 0, n)
+                            installLog.emitProgress(AppInstallProgress(id, total))
+                        }
+                    } }
+                }
+            }
+            val inspector = com.apkupdater.glass.ApkSetInspector(context, DeviceDetection(context, prefs))
+            inspector.prepareFiles(staged, packageName).use { prepared ->
+            val file = if (staged.size == 1) staged.single() else File(dir, "package.apks").also { archive ->
+                java.util.zip.ZipOutputStream(archive.outputStream()).use { zip ->
+                    prepared.files.forEachIndexed { index, apk ->
+                        zip.putNextEntry(java.util.zip.ZipEntry(if(index == 0) "base.apk" else "split-$index.apk"))
+                        apk.inputStream().use { it.copyTo(zip) }; zip.closeEntry()
                     }
                 }
             }
@@ -50,7 +63,7 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
             val beforeCode=before?.let{if(Build.VERSION.SDK_INT>=28)it.longVersionCode else @Suppress("DEPRECATION")it.versionCode.toLong()} ?: -1L
             val beforeName=before?.versionName.orEmpty()
             val appName=before?.applicationInfo?.let{runCatching{context.packageManager.getApplicationLabel(it).toString()}.getOrNull()} ?: packageName
-            val report = inspect(file, packageName)
+            val report = prepared.report
             require(com.apkupdater.glass.ReleasePolicy.allowed(report.candidate.versionName,prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get())) { "Vorabversion durch deine Filter ausgeblendet." }
             require(report.verdict.installAllowed) {
                 report.verdict.evidence.filter { it.status != Compatibility.COMPATIBLE }.joinToString("; ") { "${it.property}: ${it.detail}" }
@@ -58,23 +71,25 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
             com.apkupdater.glass.DownloadArchive(context,prefs).publish(file,packageName,report.candidate.versionName)
             val chosen=prefs.installerPackage.get()
             if(chosen!="SYSTEM") {
-                val staged=com.apkupdater.glass.InstallerChoices.handoff(context,file,packageName,chosen)
+                require(prepared.files.size == 1 && prepared.files.single() == file) { "APK-Archive und APK-Sets benötigen den Android PackageInstaller. Bitte diesen in den Einstellungen auswählen." }
+                val staged=com.apkupdater.glass.InstallerChoices.handoff(context,prepared.files.single(),packageName,chosen)
                 history.pending(com.apkupdater.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),staged.absolutePath))
             } else {
-                commit(id, packageName, file)
+                commit(id, packageName, prepared.files)
                 history.record(com.apkupdater.glass.InstallHistory(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,"Android PackageInstaller",System.currentTimeMillis(),true))
                 com.apkupdater.glass.DownloadArchive(context,prefs).installed(file)
+            }
             }
         } finally {
             streams.forEach { runCatching { it.close() } }
             dir.deleteRecursively()
         }
     }
-    private suspend fun commit(id: Int, packageName: String, file: File) {
+    private suspend fun commit(id: Int, packageName: String, files: List<File>) {
         val installer = context.packageManager.packageInstaller
         val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
             setAppPackageName(packageName)
-            setSize(file.length())
+            setSize(files.sumOf { it.length() })
             if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
             if (Build.VERSION.SDK_INT >= 33) setPackageSource(PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE)
         }
@@ -104,9 +119,11 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
                     else @Suppress("UnspecifiedRegisterReceiverFlag") context.registerReceiver(receiver, IntentFilter(action))
                     try {
                         installer.openSession(sessionId).use { session ->
-                            session.openWrite("base.apk", 0, file.length()).use { out ->
-                                file.inputStream().use { it.copyTo(out) }
-                                session.fsync(out)
+                            files.forEachIndexed { index, file ->
+                                session.openWrite(if(index == 0) "base.apk" else "split-$index.apk", 0, file.length()).use { out ->
+                                    file.inputStream().use { it.copyTo(out) }
+                                    session.fsync(out)
+                                }
                             }
                             val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
                             val pending = PendingIntent.getBroadcast(context, sessionId, Intent(action).setPackage(context.packageName), flags)
@@ -140,7 +157,6 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
         return true
     }
     suspend fun installXapk(id: Int, packageName: String, stream: InputStream) {
-        stream.close()
-        error("APKM, APKS und XAPK bleiben bis zur vollständigen Split-Prüfung gesperrt.")
+        install(id, packageName, stream, "APK-Set")
     }
 }

@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.Dispatchers
 
 
 class UpdatesRepository(
@@ -42,7 +44,7 @@ class UpdatesRepository(
                 if (prefs.usePlay.get()) sources.add("Play" to playRepository.updates(filtered))
 
                 if (sources.isNotEmpty()) {
-                    sources.map { (name, source) -> com.apkupdater.glass.SourceHealth.observe(name, emptyList<AppUpdate>(), source) }
+                    sources.map { (name, source) -> com.apkupdater.glass.SourceHealth.observe(name, emptyList<AppUpdate>(), source.flowOn(Dispatchers.IO)) }
                         .combine { updates ->
                             val detection = com.apkupdater.glass.DeviceDetection(context, prefs)
                             val assessed = updates.flatMap { it }.map { u ->

@@ -23,8 +23,8 @@ android {
         applicationId = "com.hyvan187.apkupdater"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1005
-        versionName = "0.5.0-store"
+        versionCode = 1006
+        versionName = "0.6.0-rc1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -50,6 +50,8 @@ android {
         getByName("release") {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
+            isDebuggable = false
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -74,6 +76,9 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all { task ->
+            task.maxParallelForks = 1
+            task.maxHeapSize = "1024m"
+            task.forkEvery = 1
             task.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED")
             task.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
             listOf("http.proxyHost", "http.proxyPort", "https.proxyHost", "https.proxyPort", "javax.net.ssl.trustStore").forEach { key ->
@@ -116,7 +121,7 @@ dependencies {
     implementation("io.github.g00fy2:versioncompare:1.5.0")
     implementation("io.insert-koin:koin-android:4.1.1")
     implementation("io.insert-koin:koin-androidx-compose:4.1.1")
-    implementation("org.jsoup:jsoup:1.22.1")
+    implementation("org.jsoup:jsoup:1.24.1")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.17")

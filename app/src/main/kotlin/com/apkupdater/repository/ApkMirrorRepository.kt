@@ -56,25 +56,20 @@ class ApkMirrorRepository(
 
     suspend fun search(text: String) = flow {
         val baseUrl = "https://www.apkmirror.com"
-        val searchQuery = "/?post_type=app_release&searchtype=app&s="
-        val doc = Jsoup.connect("$baseUrl$searchQuery$text").get()
-        val row = doc.select("div.appRow")
-        val a = row.select("a.byDeveloper")
-        val h5 = row.select("h5.appRowTitle").take(a.size)
-        val img = row.select("img")
-        a.removeAt(0)
-        img.removeAt(0)
-        val result = (0 until a.size).map {
+        val query = java.net.URLEncoder.encode(text.trim().take(200), "UTF-8")
+        val doc = Jsoup.connect("$baseUrl/?post_type=app_release&searchtype=app&s=$query")
+            .timeout(15_000).maxBodySize(2 * 1024 * 1024).get()
+        val result = doc.select("div.appRow").mapNotNull { row ->
+            val link = row.selectFirst("h5.appRowTitle a[href]") ?: return@mapNotNull null
+            val href = link.absUrl("href")
+            if (!href.startsWith("https://www.apkmirror.com/")) return@mapNotNull null
+            val title = link.attr("title").ifBlank { link.text() }
+            if (title.isBlank()) return@mapNotNull null
             AppUpdate(
-                name = h5[it].attr("title"),
-                link = Link.Url("$baseUrl${h5[it].selectFirst("a")?.attr("href")}"),
-                iconUri = "$baseUrl${img[it].attr("src")}".replace("=32", "=128").toUri(),
-                version = "?",
-                oldVersion = "?",
-                versionCode = 0L,
-                oldVersionCode = 0L,
-                source = ApkMirrorSource,
-                packageName = a[it].text() // Developer name in this case
+                name = title, link = Link.Url(href),
+                iconUri = row.selectFirst("img")?.absUrl("src")?.takeIf { it.startsWith("https://") }?.toUri() ?: android.net.Uri.EMPTY,
+                version = "?", oldVersion = "?", versionCode = 0L, oldVersionCode = 0L,
+                source = ApkMirrorSource, packageName = row.selectFirst("a.byDeveloper")?.text().orEmpty()
             )
         }
         emit(Result.success(result))

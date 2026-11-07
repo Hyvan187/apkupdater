@@ -1,6 +1,6 @@
-# Liquid-APK-Store 0.5
+# Liquid-APK-Store 0.6.0-rc1
 
-A native Android APK discovery, inspection and update application with configurable liquid-glass visuals. Package `com.hyvan187.apkupdater`, version code 1005, minimum API 23, compile/target API 37.
+A native Android APK discovery, inspection and update application with configurable liquid-glass visuals. Package `com.hyvan187.apkupdater`, version code 1006, minimum API 23, compile/target API 37.
 
 ## Updates and safety
 
@@ -12,6 +12,15 @@ A native Android APK discovery, inspection and update application with configura
 - Automatic default: 12 apps, 128 MiB per APK, 768 MiB total reserved budget, unmetered networks. Limits are configurable. Unknown file sizes reserve the entire per-file limit. Private inspection cache and free-storage headroom are bounded.
 - Risk is separate from technical status. Prereleases, system dependencies and another update owner raise warnings even when technical conditions pass.
 
+## Release candidate changes
+
+- Source flows run independently on IO dispatchers.
+- A single explicit APK set is checked as a unit and committed in one Android installation session; verification is repeated before installation.
+- Shared preferences migrate to Android-Keystore-backed AES-GCM storage. Legacy plaintext is removed only after durable, verified migration; preferences are excluded from backup/transfer because their key is device-bound.
+- jsoup is updated to 1.24.1; R8 retains persisted/reflected data models.
+- The previous shared APKMirror Basic credential is removed. A direct unauthenticated API probe returned HTTP 401 on 7 November 2026. This source is not claimed repaired; browser fallback remains available.
+- Host tests and release lint/build results are recorded in `docs/TEST-RESULTS.md`. Physical OnePlus/ROM/installer checks, full language coverage and measured graphics/energy performance remain acceptance gaps.
+
 ## Sources and diagnostics
 
 APKMirror, GitHub, GitLab, F-Droid, IzzyOnDroid, APKPure, Aptoide and the existing experimental Play integration are enabled on the first 0.5 migration. Preferences persist afterward. Google Play uses the existing Aurora authentication service and shares device-profile fields needed by that integration; service availability is not guaranteed.
@@ -21,7 +30,7 @@ The missing ACCESS_NETWORK_STATE declaration has been added. DNS uses the curren
 ## Interface
 
 - Shared All / User / System / Google System filters, persistent favorite stars and filters.
-- Contextual question-mark help for settings and major actions; restoring hidden releases only clears exclusion records, never downgrades installed apps.
+- Small round info icons for technical settings and major checks; simple settings have no redundant help button; restoring hidden releases only clears exclusion records, never downgrades installed apps.
 - Per-slider default reset; hue/saturation wheel, HEX input and independent color opacity.
 - Recommended glass preset plus full appearance reset, font controls, OLED black base.
 - Optional circles, rings, network, space, shapes, snow, grid, particles, lava lamp, none/random; speed, density, gravity parallax and local seasonal winter/New Year modes. Motion pauses outside RESUMED state, under reduced-motion preferences or power saving. No measured FPS/battery claim.
@@ -44,18 +53,18 @@ Automatic ROM detection remains independent from system language/location/SIM. M
 
 ## Install and build
 
-Extract `Liquid-APK-Store-Debug.zip` and install `Liquid-APK-Store-Debug.apk`. The retained 0.2/0.3/0.4 signer and package ID allow an in-place update. Independently signed CI builds may use another key. Private signing material is excluded from the distribution and source.
+Extract the universal release-candidate ZIP and install its `Liquid-APK-Store-0.6.0-rc1-Universal-Release.apk`. This is the optimized release build with `android:debuggable=false`; its version remains a release candidate because physical-device acceptance is incomplete. The retained 0.2/0.3/0.4 signer and package ID allow an in-place update. Independently signed CI builds may use another key. Private signing material is excluded from the distribution and source.
 
 Use JDK 21 for API-37 Robolectric tests; app bytecode targets Java 17:
 
 ```sh
 sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
-./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
 ```
 
 Incremental Kotlin compilation is disabled for this pinned build baseline because its incremental cache produced duplicate declarations. For the retained development signer set `GLASS_DEBUG_KEYSTORE`; production release signing uses the existing `GLASS_KEYSTORE`/password/alias environment variables. No permanent release key is supplied.
 
-See [task audit](docs/TASKS-0.5.md), [validation](docs/TEST-RESULTS.md), [architecture](docs/ARCHITECTURE.md) and [changelog](CHANGELOG.md). Physical OnePlus 15, real OEM file-manager/installer behavior, all live sources and performance/energy have not been tested here. Split/APKM/XAPK installation remains blocked when complete dependency proof is unavailable.
+See [task audit](docs/TASKS-0.5.md), [validation](docs/TEST-RESULTS.md), [architecture](docs/ARCHITECTURE.md) and [changelog](CHANGELOG.md). Physical OnePlus 15, real OEM file-manager/installer behavior, all live sources and performance/energy have not been tested here. Explicit APKM/APKS/XAPK sets can be inspected and installed through Android PackageInstaller when exactly one base, consistent package/version/signers and declared split dependencies are verified. Multiple base variants, incomplete/ambiguous requirements and OBB expansion files remain rejected. External APK handlers support individual APKs only.
 
 ## License and credits
 
