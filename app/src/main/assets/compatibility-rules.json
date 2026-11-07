@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "families": [
+    {"id":"oplus","prefixes":["com.oplus.","com.oneplus.","com.oppo.","com.coloros.","com.heytap.","com.realme."],"origin":"Conservative package namespace classification; not a ROM compatibility assertion","confidence":"heuristic"},
+    {"id":"samsung","prefixes":["com.samsung.","com.sec."],"origin":"Conservative package namespace classification","confidence":"heuristic"},
+    {"id":"xiaomi","prefixes":["com.miui.","com.xiaomi."],"origin":"Conservative package namespace classification","confidence":"heuristic"},
+    {"id":"pixel","prefixes":["com.google.android."],"origin":"Conservative package namespace classification; ordinary Google apps may also require manual review","confidence":"heuristic"}
+  ]
+}

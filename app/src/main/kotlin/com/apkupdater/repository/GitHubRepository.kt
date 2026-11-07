@@ -31,7 +31,7 @@ class GitHubRepository(
 ) {
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
-        val checks = mutableListOf(selfCheck())
+        val checks = mutableListOf<Flow<List<AppUpdate>>>()
 
         GitHubApps.forEachIndexed { i, app ->
             if (i != 0) {
@@ -41,10 +41,12 @@ class GitHubRepository(
             }
         }
 
-        checks.combine { all ->
+        if(checks.isEmpty()) emit(emptyList()) else checks.combine { all ->
             emit(all.flatMap { it })
         }.collect()
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(emptyList())
         Log.e("GitHubRepository", "Error fetching releases.", it)
     }
@@ -67,6 +69,8 @@ class GitHubRepository(
             }.collect()
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(Result.failure(it))
         Log.e("GitHubRepository", "Error searching.", it)
     }
@@ -92,6 +96,8 @@ class GitHubRepository(
             emit(listOf())
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(emptyList())
         Log.e("GitHubRepository", "Error checking self-update.", it)
     }
@@ -118,6 +124,7 @@ class GitHubRepository(
                 name = repo,
                 packageName = packageName,
                 version = releases[0].tag_name,
+                prerelease = releases[0].prerelease,
                 oldVersion = app?.version ?: "?",
                 versionCode = 0L,
                 oldVersionCode = app?.versionCode ?: 0L,
@@ -130,6 +137,8 @@ class GitHubRepository(
             emit(emptyList())
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitHub", it)
         emit(emptyList())
         Log.e("GitHubRepository", "Error fetching releases for $packageName.", it)
     }
@@ -142,7 +151,7 @@ class GitHubRepository(
     }.getOrDefault(Pair(name, 0L))
 
     private fun filterPreRelease(release: GitHubRelease) = when {
-        prefs.ignorePreRelease.get() && release.prerelease -> false
+        !com.apkupdater.glass.ReleasePolicy.allowed(release.tag_name + " " + release.name, prefs.ignoreAlpha.get(), prefs.ignoreBeta.get(), prefs.ignorePreRelease.get(), release.prerelease) -> false
         else -> true
     }
 

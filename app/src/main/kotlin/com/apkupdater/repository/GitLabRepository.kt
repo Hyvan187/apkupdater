@@ -48,7 +48,7 @@ class GitLabRepository(
         currentVersion: String,
         extra: Regex?
     ) = flow {
-        val releases = service.getReleases(user, repo)
+        val releases = service.getReleases(user, repo).filter { com.apkupdater.glass.ReleasePolicy.allowed(it.tag_name,prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get()) }
             .filter { Version(filterVersionTag(it.tag_name)) > Version(currentVersion) }
 
         if (releases.isNotEmpty()) {
@@ -70,6 +70,8 @@ class GitLabRepository(
             emit(emptyList())
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitLab", it)
         emit(emptyList())
         Log.e("GitLabRepository", "Error fetching releases for $packageName.", it)
     }
@@ -92,6 +94,8 @@ class GitLabRepository(
             }.collect()
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("GitLab", it)
         emit(Result.failure(it))
         Log.e("GitLabRepository", "Error searching.", it)
     }

@@ -35,7 +35,7 @@ class SearchRepository(
         if (sources.isNotEmpty()) {
             sources.combine { updates ->
                 val result = updates.filter { it.isSuccess }.mapNotNull { it.getOrNull() }
-                emit(Result.success(result.flatten().sortedBy { it.name }))
+                emit(Result.success(result.flatten().filter { com.apkupdater.glass.ReleasePolicy.allowed(it, prefs) }.sortedBy { it.name }))
             }.collect()
         } else {
             emit(Result.success(emptyList()))

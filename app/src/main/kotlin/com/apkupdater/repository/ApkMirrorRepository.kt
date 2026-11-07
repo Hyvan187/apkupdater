@@ -45,10 +45,13 @@ class ApkMirrorRepository(
     private val api = Build.VERSION.SDK_INT
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
-        apps.chunked(100)
-            .map { appExists(it.getPackageNames()) }
-            .combine { all -> emit(parseUpdates(all.flatMap { it }, apps)) }
-            .collect()
+        val found=mutableListOf<AppUpdate>()
+        emit(emptyList())
+        for(chunk in apps.chunked(100)) {
+            appExists(chunk.getPackageNames()).collect { data -> found+=parseUpdates(data,apps);emit(found.toList()) }
+            val problem=com.apkupdater.glass.SourceHealth.flow.value.firstOrNull{it.name=="ApkMirror"}?.problem.orEmpty()
+            if(listOf("HTTP 401","HTTP 403","HTTP 404","HTTP 429").any{problem.startsWith(it)})break
+        }
     }
 
     suspend fun search(text: String) = flow {
@@ -76,13 +79,23 @@ class ApkMirrorRepository(
         }
         emit(Result.success(result))
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkMirror", it)
         emit(Result.failure(it))
         Log.e("ApkMirrorRepository", "Error searching.", it)
     }
 
     private fun appExists(apps: List<String>) = flow {
-        emit(service.appExists(AppExistsRequest(apps, buildIgnoreList())).data)
+        var last: Exception?=null
+        for(attempt in 0..1){
+            try{emit(service.appExists(AppExistsRequest(apps,buildIgnoreList())).data);return@flow}
+            catch(e:kotlinx.coroutines.CancellationException){throw e}
+            catch(e:Exception){last=e;if(attempt==0 && (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException))kotlinx.coroutines.delay(700) else throw e}
+        }
+        throw requireNotNull(last)
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkMirror", it)
         emit(emptyList())
         Log.e("ApkMirrorRepository", "Error getting updates.", it)
     }
@@ -90,17 +103,10 @@ class ApkMirrorRepository(
     private fun parseUpdates(updates: List<AppExistsResponseData>, apps: List<AppInstalled>)
     = updates
         .filter { it.exists == true }
-        .mapNotNull { data ->
+        .flatMap { data ->
             data.apks
-                .asSequence()
-                .filter { filterSignature(it, apps.getSignature(data.pname))}
-                .filter { filterArch(it) }
                 .filter { it.versionCode > apps.getVersionCode(data.pname) }
-                .filter { filterMinApi(it) }
-                .filter { filterAndroidTv(it) }
-                .filter { filterWearOS(it) }
-                .maxByOrNull { it.versionCode }
-                ?.toAppUpdate(apps.getApp(data.pname)!!, data.release)
+                .mapNotNull { apk -> apps.getApp(data.pname)?.let { apk.toAppUpdate(it, data.release) } }
         }
 
     private fun filterSignature(apk: AppExistsResponseApk, signature: String?) = when {
@@ -147,8 +153,8 @@ class ApkMirrorRepository(
     }.getOrDefault(true)
 
     private fun buildIgnoreList() = mutableListOf<String>().apply {
-        if (prefs.ignoreAlpha.get()) add("alpha")
-        if (prefs.ignoreBeta.get()) add("beta")
+        if (prefs.ignoreAlpha.get() || prefs.ignorePreRelease.get()) add("alpha")
+        if (prefs.ignoreBeta.get() || prefs.ignorePreRelease.get()) add("beta")
     }
 
 }

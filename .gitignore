@@ -7,3 +7,5 @@
 .cxx
 /.idea/
 /app/build/
+
+.kotlin/

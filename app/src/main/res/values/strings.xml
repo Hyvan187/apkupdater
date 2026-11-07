@@ -1,7 +1,7 @@
 <resources>
 
     <string name="app_name" translatable="false">APKUpdater</string>
-    <string name="tab_apps">Apps</string>
+    <string name="tab_apps">System-Apps</string>
     <string name="tab_search">Search</string>
     <string name="tab_updates">Updates</string>
     <string name="tab_settings">Settings</string>
@@ -74,4 +74,5 @@
         <item quantity="other">Found %1$d updates.</item>
     </plurals>
 
+<string name="glass_overview">Übersicht</string>
 </resources>

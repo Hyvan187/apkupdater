@@ -199,6 +199,8 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 		)
 	}
 
+
+
 	item {
 		LargeTitle(stringResource(R.string.settings_sources), Modifier.padding(start = 16.dp, top = 16.dp))
 		SwitchSetting(
@@ -254,12 +256,6 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 	item {
 		LargeTitle(stringResource(R.string.settings_options), Modifier.padding(start = 16.dp, top = 16.dp))
 		SwitchSetting(
-			{ viewModel.getRootInstall() },
-			{ viewModel.setRootInstall(it) },
-			stringResource(R.string.root_install),
-			R.drawable.ic_root
-		)
-		SwitchSetting(
 			{ viewModel.getIgnoreAlpha() },
 			{ viewModel.setIgnoreAlpha(it) },
 			stringResource(R.string.ignore_alpha),
@@ -282,12 +278,6 @@ fun Settings(viewModel: SettingsViewModel) = LazyColumn {
 			{ viewModel.setUseSafeStores(it) },
 			stringResource(R.string.use_safe_stores),
 			R.drawable.ic_safe
-		)
-		SwitchSetting(
-			{ viewModel.getNewInstaller() },
-			{ viewModel.setNewInstaller(it) },
-			stringResource(R.string.settings_experimental_installer),
-			R.drawable.ic_root
 		)
 	}
 

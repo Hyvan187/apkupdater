@@ -1,267 +1,146 @@
 package com.apkupdater.util
 
-import android.annotation.SuppressLint
 import android.app.PendingIntent
-import android.app.PendingIntent.FLAG_MUTABLE
-import android.app.PendingIntent.FLAG_UPDATE_CURRENT
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.os.Process
-import android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES
-import android.util.Log
-import androidx.core.net.toUri
-import com.apkupdater.BuildConfig
+import android.provider.Settings
 import com.apkupdater.data.ui.AppInstallProgress
 import com.apkupdater.data.ui.AppInstallStatus
+import com.apkupdater.glass.ApkAnalyzer
+import com.apkupdater.glass.Compatibility
+import com.apkupdater.glass.DeviceDetection
 import com.apkupdater.prefs.Prefs
-import com.apkupdater.ui.activity.MainActivity
-import com.topjohnwu.superuser.Shell
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import java.io.File
 import java.io.InputStream
-import java.io.OutputStream
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.zip.ZipFile
-import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.io.DEFAULT_BUFFER_SIZE
-import kotlin.io.copyTo
-import kotlin.io.outputStream
-import kotlin.use
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
-
-@OptIn(ExperimentalAtomicApi::class)
-class SessionInstaller(
-    private val context: Context,
-    private val installLog: InstallLog,
-    private val prefs: Prefs
-) {
-    companion object {
-        const val INSTALL_ACTION = "installAction"
-    }
-
-    init {
-        // Cleanup old sessions
-        val installer = context.packageManager.packageInstaller
-        installer.mySessions.forEach { installer.abandonSession(it.sessionId) }
-    }
-
-    private val installMutex = AtomicBoolean(false)
+/** A single guarded path. Every install is re-inspected from the actual downloaded bytes. */
+class SessionInstaller(private val context: Context, private val installLog: InstallLog, private val prefs: Prefs, private val history: com.apkupdater.glass.HistoryStore) {
+    companion object { const val INSTALL_ACTION = "com.hyvan187.apkupdater.INSTALL" }
     private val mutex = Mutex()
-    private val scope = CoroutineScope(Dispatchers.IO)
-
-    suspend fun install(id: Int, packageName: String, stream: InputStream) {
-        if (prefs.newInstaller.get()) installNew(id, packageName, listOf(stream)) else installOld(id, packageName, listOf(stream))
+    fun inspect(file: File, packageName: String) = ApkAnalyzer(context, DeviceDetection(context, prefs)).analyze(file, packageName)
+    suspend fun install(id: Int, packageName: String, stream: InputStream, source: String="Direktdownload") = install(id, packageName, listOf(stream),source)
+    suspend fun install(id: Int, packageName: String, streams: List<InputStream>, source: String="Direktdownload") = mutex.withLock {
+        val dir = File(context.cacheDir, "preflight-${randomUUID()}").apply { mkdirs() }
+        try {
+            require(streams.size == 1) { "Split-Sets sind bis zur vollständigen Abhängigkeitsprüfung gesperrt." }
+            val file = File(dir, "base.apk")
+            streams.single().use { input ->
+                file.outputStream().use { output ->
+                    val buffer = ByteArray(65536); var total = 0L
+                    while (true) {
+                        val n = input.read(buffer); if (n < 0) break
+                        total += n
+                        require(total <= 512L * 1024 * 1024) { "APK überschreitet das Prüflimit von 512 MiB." }
+                        output.write(buffer, 0, n)
+                        installLog.emitProgress(AppInstallProgress(id, total))
+                    }
+                }
+            }
+            val before=runCatching{context.packageManager.getPackageInfo(packageName,0)}.getOrNull()
+            val beforeCode=before?.let{if(Build.VERSION.SDK_INT>=28)it.longVersionCode else @Suppress("DEPRECATION")it.versionCode.toLong()} ?: -1L
+            val beforeName=before?.versionName.orEmpty()
+            val appName=before?.applicationInfo?.let{runCatching{context.packageManager.getApplicationLabel(it).toString()}.getOrNull()} ?: packageName
+            val report = inspect(file, packageName)
+            require(com.apkupdater.glass.ReleasePolicy.allowed(report.candidate.versionName,prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get())) { "Vorabversion durch deine Filter ausgeblendet." }
+            require(report.verdict.installAllowed) {
+                report.verdict.evidence.filter { it.status != Compatibility.COMPATIBLE }.joinToString("; ") { "${it.property}: ${it.detail}" }
+            }
+            com.apkupdater.glass.DownloadArchive(context,prefs).publish(file,packageName,report.candidate.versionName)
+            val chosen=prefs.installerPackage.get()
+            if(chosen!="SYSTEM") {
+                val staged=com.apkupdater.glass.InstallerChoices.handoff(context,file,packageName,chosen)
+                history.pending(com.apkupdater.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),staged.absolutePath))
+            } else {
+                commit(id, packageName, file)
+                history.record(com.apkupdater.glass.InstallHistory(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,"Android PackageInstaller",System.currentTimeMillis(),true))
+                com.apkupdater.glass.DownloadArchive(context,prefs).installed(file)
+            }
+        } finally {
+            streams.forEach { runCatching { it.close() } }
+            dir.deleteRecursively()
+        }
     }
-
-    suspend fun install(id: Int, packageName: String, streams: List<InputStream>) {
-        if (prefs.newInstaller.get()) installNew(id, packageName, streams) else installOld(id, packageName, streams)
-    }
-
-    @SuppressLint("RequestInstallPackagesPolicy")
-    private suspend fun installNew(
-        id: Int,
-        packageName: String,
-        streams: List<InputStream>
-    ): Boolean {
-        val packageInstaller: PackageInstaller = context.packageManager.packageInstaller
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-        if (Build.VERSION.SDK_INT >= 24) params.setAppPackageName(packageName)
-        if (Build.VERSION.SDK_INT >= 31) params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
-        if (Build.VERSION.SDK_INT >= 33) params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
-
-
-        return suspendCancellableCoroutine { continuation ->
-
-            val receiver = object : BroadcastReceiver() {
-                override fun onReceive(context: Context, @SuppressLint("UnsafeIntentLaunch") intent: Intent?) {
-                    Log.i("InstallerReceiver", "onReceive called with intent: $intent")
-                    when (val extra = intent?.extras?.getInt(PackageInstaller.EXTRA_STATUS)) {
-                        PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                            Log.i("InstallerReceiver", "STATUS_PENDING_USER_ACTION")
-                            installLog.currentInstallId = intent.getAppId() ?: 0
-                            // Launch intent to confirm install
-                            intent.getIntentExtra()?.let {
-                                it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                scope.launch {
-                                    mutex.lock()
-                                    context.startActivity(it)
+    private suspend fun commit(id: Int, packageName: String, file: File) {
+        val installer = context.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
+            setAppPackageName(packageName)
+            setSize(file.length())
+            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_REQUIRED)
+            if (Build.VERSION.SDK_INT >= 33) setPackageSource(PackageInstaller.PACKAGE_SOURCE_DOWNLOADED_FILE)
+        }
+        val sessionId = installer.createSession(params)
+        val action = "$INSTALL_ACTION.${randomUUID()}"
+        var registered: BroadcastReceiver? = null
+        var success = false
+        try {
+            withTimeout(180_000) {
+                suspendCancellableCoroutine<Unit> { continuation ->
+                    val receiver = object : BroadcastReceiver() {
+                        override fun onReceive(c: Context, intent: Intent) {
+                            if (intent.action != action || !continuation.isActive) return
+                            when (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
+                                PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                                    val confirm = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java) else @Suppress("DEPRECATION") intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+                                    if (confirm == null) continuation.resumeWithException(IllegalStateException("Android liefert keinen Bestätigungsdialog"))
+                                    else runCatching { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.onFailure { continuation.resumeWithException(it) }
                                 }
+                                PackageInstaller.STATUS_SUCCESS -> { success = true; continuation.resume(Unit) }
+                                else -> continuation.resumeWithException(IllegalStateException(intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "Android hat die Installation verweigert"))
                             }
                         }
-                        PackageInstaller.STATUS_SUCCESS -> {
-                            Log.i("InstallerReceiver", "SUCCESS: $extra")
-                            installLog.emitStatus(AppInstallStatus(true, id, true))
-                            context.unregisterReceiver(this)
-                            if (mutex.isLocked) mutex.unlock()
-                            if (continuation.isActive) continuation.resume(true) {_, _, _ -> }
-                        }
-                        else -> {
-                            Log.i("InstallerReceiver", "FAILURE: $extra")
-                            installLog.emitStatus(AppInstallStatus(false, id, true))
-                            context.unregisterReceiver(this)
-                            if (mutex.isLocked) mutex.unlock()
-                            if (continuation.isActive) continuation.resume(false) {_, _, _ -> }
-                        }
                     }
-                }
-            }
-
-            if (Build.VERSION.SDK_INT >= 33) {
-                context.registerReceiver(receiver, IntentFilter("$INSTALL_ACTION.$id"), Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                context.registerReceiver(receiver, IntentFilter("$INSTALL_ACTION.$id"))
-            }
-
-            val callback = object : PackageInstaller.SessionCallback() {
-                override fun onBadgingChanged(sessionId: Int) {}
-                override fun onActiveChanged(sessionId: Int, active: Boolean) {}
-                override fun onCreated(sessionId: Int) {}
-                override fun onProgressChanged(sessionId: Int, p: Float) {}
-                override fun onFinished(sessionId: Int, success: Boolean) {
-                    Log.i("InstallerCallback", "onFinished($sessionId) called with success: $success")
-                    packageInstaller.unregisterSessionCallback(this)
-                    runCatching { packageInstaller.openSession(sessionId).close() }.getOrNull()
-                }
-            }
-
-            packageInstaller.registerSessionCallback(callback, Handler(Looper.getMainLooper()))
-
-            continuation.invokeOnCancellation {
-                runCatching {
-                    context.unregisterReceiver(receiver)
-                    packageInstaller.unregisterSessionCallback(callback)
-                }.getOrNull()
-            }
-
-            val sessionId = packageInstaller.createSession(params)
-            var totalBytes = 0L
-            packageInstaller.openSession(sessionId).use { session ->
-                streams.forEach { stream ->
-                    session.openWrite("$packageName.${randomUUID()}", 0, -1).use { output ->
-                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                        var bytes = stream.read(buffer)
-                        while (bytes >= 0) {
-                            output.write(buffer, 0, bytes)
-                            totalBytes += bytes
-                            installLog.emitProgress(AppInstallProgress(id, totalBytes))
-                            bytes = stream.read(buffer)
+                    registered = receiver
+                    if (Build.VERSION.SDK_INT >= 33) context.registerReceiver(receiver, IntentFilter(action), Context.RECEIVER_NOT_EXPORTED)
+                    else @Suppress("UnspecifiedRegisterReceiverFlag") context.registerReceiver(receiver, IntentFilter(action))
+                    try {
+                        installer.openSession(sessionId).use { session ->
+                            session.openWrite("base.apk", 0, file.length()).use { out ->
+                                file.inputStream().use { it.copyTo(out) }
+                                session.fsync(out)
+                            }
+                            val flags = PendingIntent.FLAG_UPDATE_CURRENT or (if (Build.VERSION.SDK_INT >= 31) PendingIntent.FLAG_MUTABLE else 0)
+                            val pending = PendingIntent.getBroadcast(context, sessionId, Intent(action).setPackage(context.packageName), flags)
+                            session.commit(pending.intentSender)
                         }
-                        session.fsync(output)
-                    }
-                    stream.close()
+                    } catch (e: Exception) { if (continuation.isActive) continuation.resumeWithException(e) }
+                    continuation.invokeOnCancellation { runCatching { installer.abandonSession(sessionId) } }
                 }
-
-                val intent = Intent("$INSTALL_ACTION.$id").apply { setPackage(context.packageName) }
-                val pending = PendingIntent.getBroadcast(context, sessionId, intent, FLAG_UPDATE_CURRENT or FLAG_MUTABLE)
-                session.commit(pending.intentSender)
             }
+            installLog.emitStatus(AppInstallStatus(true, id, true))
+        } finally {
+            registered?.let { runCatching { context.unregisterReceiver(it) } }
+            if (!success) runCatching { installer.abandonSession(sessionId) }
         }
     }
-
-    @SuppressLint("RequestInstallPackagesPolicy")
-    private suspend fun installOld(id: Int, packageName: String, streams: List<InputStream>) {
-        val packageInstaller: PackageInstaller = context.packageManager.packageInstaller
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
-        params.setAppPackageName(packageName)
-
-        if (Build.VERSION.SDK_INT > 24) {
-            params.setOriginatingUid(Process.myUid())
-        }
-
-        if (Build.VERSION.SDK_INT >= 31) {
-            params.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
-        }
-
-        if (Build.VERSION.SDK_INT >= 33) {
-            params.setPackageSource(PackageInstaller.PACKAGE_SOURCE_STORE)
-        }
-
-        val sessionId = packageInstaller.createSession(params)
-        var bytes = 0L
-        packageInstaller.openSession(sessionId).use { session ->
-            streams.forEach {
-                session.openWrite("$packageName.${randomUUID()}", 0, -1).use { output ->
-                    bytes += it.copyToAndNotify(output, id, installLog, bytes)
-                    it.close()
-                    session.fsync(output)
-                }
-            }
-
-            val intent = Intent(context, MainActivity::class.java).apply {
-                action = "$INSTALL_ACTION.$id"
-            }
-
-            installMutex.lock()
-            val pending = PendingIntent.getActivity(context, 0, intent, FLAG_MUTABLE)
-            session.commit(pending.intentSender)
-            session.close()
-        }
-    }
-
     fun rootInstall(file: File): Boolean {
-        val res = Shell.cmd("pm install -r ${file.absolutePath}").exec().isSuccess
         file.delete()
-        return res
+        error("Root-Installation ist in Glass deaktiviert.")
     }
-
-    fun finish() = installMutex.unlock()
-
+    fun finish() = Unit
     fun checkPermission(): Boolean {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if(!context.packageManager.canRequestPackageInstalls()) {
-                val uri = "package:${BuildConfig.APPLICATION_ID}".toUri()
-                val intent = Intent(ACTION_MANAGE_UNKNOWN_APP_SOURCES, uri)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                context.startActivity(intent, null)
-                return false
-            }
+        if(prefs.installerPackage.get()!="SYSTEM") {
+            val available=com.apkupdater.glass.InstallerChoices.available(context).any{it.first==prefs.installerPackage.get()}
+            if(!available)android.os.Handler(android.os.Looper.getMainLooper()).post{android.widget.Toast.makeText(context,"Gewählter Installer nicht verfügbar. Bitte Einstellungen prüfen.",android.widget.Toast.LENGTH_LONG).show()}
+            return available
+        }
+        if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
+            context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return false
         }
         return true
     }
-
-    @Suppress("BlockingMethodInNonBlockingContext")
     suspend fun installXapk(id: Int, packageName: String, stream: InputStream) {
-        // Copy file to disk.
-        // TODO: Find a way to do this without saving file
-        val file = File(context.cacheDir, randomUUID())
-        stream.copyTo(file.outputStream())
-
-        // Get entries
-        val zip = ZipFile(file)
-        val entries = zip.entries().toList()
-
-        // Install all the apks
-        // TODO: Try to install only needed apks
-        // TODO: Add root install support
-        val apks = entries.filter { it.name.contains(".apk") }.map { zip.getInputStream(it) }
-        install(id, packageName, apks)
-
-        // Cleanup
-        zip.close()
-        file.delete()
+        stream.close()
+        error("APKM, APKS und XAPK bleiben bis zur vollständigen Split-Prüfung gesperrt.")
     }
-
-}
-
-fun InputStream.copyToAndNotify(out: OutputStream, id: Int, installLog: InstallLog, total: Long, bufferSize: Int = DEFAULT_BUFFER_SIZE): Long {
-    var bytesCopied: Long = 0
-    val buffer = ByteArray(bufferSize)
-    var bytes = read(buffer)
-    while (bytes >= 0) {
-        out.write(buffer, 0, bytes)
-        bytesCopied += bytes
-        installLog.emitProgress(AppInstallProgress(id, progress = total + bytesCopied))
-        bytes = read(buffer)
-    }
-    return bytesCopied
 }

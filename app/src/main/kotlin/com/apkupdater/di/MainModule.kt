@@ -66,7 +66,7 @@ val mainModule = module {
 	}
 
 	single {
-		OkHttpClient.Builder()
+		OkHttpClient.Builder().dns(com.apkupdater.glass.NetworkDns(androidContext())).retryOnConnectionFailure(true).connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS).readTimeout(35, java.util.concurrent.TimeUnit.SECONDS).callTimeout(60, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false)
 			.cache(get())
 			.addUserAgentInterceptor("APKUpdater-v" + BuildConfig.VERSION_NAME)
 			//.addInterceptor(get<HttpLoggingInterceptor>())
@@ -110,7 +110,7 @@ val mainModule = module {
 	}
 
 	single {
-		val client = OkHttpClient.Builder()
+		val client = OkHttpClient.Builder().dns(com.apkupdater.glass.NetworkDns(androidContext())).retryOnConnectionFailure(true).connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS).readTimeout(35, java.util.concurrent.TimeUnit.SECONDS).callTimeout(60, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false)
 			.cache(get())
 			.addUserAgentInterceptor(AptoideRepository.UserAgent)
 			.build()
@@ -133,9 +133,9 @@ val mainModule = module {
 	}
 
 	single {
-		val client = OkHttpClient.Builder().followRedirects(true).cache(get()).build()
-		val auroraClient = OkHttpClient.Builder().followRedirects(true).cache(get()).addUserAgentInterceptor("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36").build()
-		val apkPureClient = OkHttpClient.Builder().followRedirects(true).cache(get()).addUserAgentInterceptor("APKPure/3.19.39 (Aegon)").build()
+		val client = OkHttpClient.Builder().dns(com.apkupdater.glass.NetworkDns(androidContext())).retryOnConnectionFailure(true).connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS).readTimeout(35, java.util.concurrent.TimeUnit.SECONDS).callTimeout(60, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false).followRedirects(true).cache(get()).build()
+		val auroraClient = OkHttpClient.Builder().dns(com.apkupdater.glass.NetworkDns(androidContext())).retryOnConnectionFailure(true).connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS).readTimeout(35, java.util.concurrent.TimeUnit.SECONDS).callTimeout(60, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false).followRedirects(true).cache(get()).addUserAgentInterceptor("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36").build()
+		val apkPureClient = OkHttpClient.Builder().dns(com.apkupdater.glass.NetworkDns(androidContext())).retryOnConnectionFailure(true).connectTimeout(12, java.util.concurrent.TimeUnit.SECONDS).readTimeout(35, java.util.concurrent.TimeUnit.SECONDS).callTimeout(60, java.util.concurrent.TimeUnit.SECONDS).followSslRedirects(false).followRedirects(true).cache(get()).addUserAgentInterceptor("APKPure/3.19.39 (Aegon)").build()
 		val dir = File(androidContext().cacheDir, "downloads").apply { mkdirs() }
 		Downloader(client, apkPureClient, auroraClient, dir)
 	}
@@ -158,19 +158,25 @@ val mainModule = module {
 
 	single(named("izzy")) { FdroidRepository(get(), "https://apt.izzysoft.de/fdroid/repo/", IzzySource, get()) }
 
-	single { UpdatesRepository(get(), get(), get(), get(named("main")), get(named("izzy")), get(), get(), get(), get(), get()) }
+	single { UpdatesRepository(get(), get(), get(), get(named("main")), get(named("izzy")), get(), get(), get(), get(), androidContext(), get()) }
 
 	single { SearchRepository(get(), get(named("main")), get(named("izzy")), get(), get(), get(), get(), get(), get()) }
 
-	single { KryptoBuilder.nocrypt(get(), androidContext().getString(R.string.app_name)) }
+	single { KryptoBuilder.nocrypt(get(), "APKUpdater Glass") }
+    single { com.apkupdater.glass.AppLanguageStore(get()) }
+    single { com.apkupdater.glass.HistoryStore(get()) }
+    single { com.apkupdater.glass.FavoriteStore(get()) }
+    single { com.apkupdater.glass.AppearanceStore(get()) }
+    single { com.apkupdater.glass.ReleaseFilterStore(get()) }
+    single { com.apkupdater.glass.AppSelection(get()) }
 
-	single { Prefs(get(), androidContext().isAndroidTv()) }
+	single { Prefs(get(), androidContext().isAndroidTv()).also { p -> if(p.sourceDefaultsSchema.get()==0){p.useApkMirror.put(true);p.usePlay.put(true);p.useGitHub.put(true);p.useGitLab.put(true);p.useFdroid.put(true);p.useIzzy.put(true);p.useApkPure.put(true);p.useAptoide.put(true);p.autoVerifyLimitMiB.put(128);p.sourceDefaultsSchema.put(1)} } }
 
 	single { UpdatesNotification(get()) }
 
 	single { Clipboard(androidContext()) }
 
-	single { SessionInstaller(get(), get(), get()) }
+	single { SessionInstaller(get(), get(), get(), get()) }
 
 	single { SnackBar() }
 
@@ -188,7 +194,7 @@ val mainModule = module {
 
 	viewModel { AppsViewModel(get(), get(), get()) }
 
-	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+	viewModel { UpdatesViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), androidContext()) }
 
 	viewModel { SettingsViewModel(get(), get(), WorkManager.getInstance(get()), get(), get(), get(), get()) }
 

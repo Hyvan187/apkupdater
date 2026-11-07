@@ -36,7 +36,9 @@ class PlayRepository(
 
     private fun refreshAuth(): AuthData {
         Log.i("PlayRepository", "Refreshing token.")
-        val properties = NativeDeviceInfoProvider(context).getNativeDeviceProperties()
+        val properties = NativeDeviceInfoProvider(context).getNativeDeviceProperties().apply {
+            prefs.simulatedModel.get().takeIf{it.isNotBlank()}?.let { setProperty("Build.MODEL",it);setProperty("UserReadableName","Liquid-APK-Store Testprofil: $it") }
+        }
         val playResponse = playHttpClient.postAuth(AUTH_URL, gson.toJson(properties).toByteArray())
         if (playResponse.isSuccessful) {
             val authData = gson.fromJson(String(playResponse.responseBytes), AuthData::class.java)
@@ -94,6 +96,8 @@ class PlayRepository(
             emit(Result.success(listOf(update)))
         }
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("Play", it)
         emit(Result.failure(it))
         Log.e("PlayRepository", "Error searching for $text.", it)
     }
@@ -114,6 +118,8 @@ class PlayRepository(
             }
         emit(updates)
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("Play", it)
         emit(emptyList())
         Log.e("PlayRepository", "Error looking for updates.", it)
     }
