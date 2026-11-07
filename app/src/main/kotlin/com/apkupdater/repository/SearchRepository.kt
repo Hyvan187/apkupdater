@@ -24,6 +24,7 @@ class SearchRepository(
 ) {
 
     fun search(text: String) = flow {
+        com.apkupdater.diagnostics.AppDiagnostics.info("search.started",mapOf("queryLength" to text.length))
         val sources = mutableListOf<Flow<Result<List<AppUpdate>>>>()
         if (prefs.useApkMirror.get()) sources.add(apkMirrorRepository.search(text))
         if (prefs.useFdroid.get()) sources.add(fdroidRepository.search(text))
@@ -37,14 +38,17 @@ class SearchRepository(
         if (sources.isNotEmpty()) {
             sources.map { it.flowOn(Dispatchers.IO) }.combine { updates ->
                 val result = updates.filter { it.isSuccess }.mapNotNull { it.getOrNull() }
+                com.apkupdater.diagnostics.AppDiagnostics.debug("search.results",mapOf("respondedProviders" to updates.size,"failedProviders" to updates.count{it.isFailure},"candidates" to result.sumOf{it.size}))
                 emit(Result.success(result.flatten().filter { com.apkupdater.glass.ReleasePolicy.allowed(it, prefs) }.sortedBy { it.name }))
             }.collect()
         } else {
             emit(Result.success(emptyList()))
         }
+        com.apkupdater.diagnostics.AppDiagnostics.info("search.finished",mapOf("outcome" to "COMPLETE"))
     }.catch {
+        if(it is kotlinx.coroutines.CancellationException){com.apkupdater.diagnostics.AppDiagnostics.info("search.finished",mapOf("outcome" to "CANCELLED"));throw it}
         emit(Result.failure(it))
-        Log.e("SearchRepository", "Error searching.", it)
-    }
+        com.apkupdater.diagnostics.AppDiagnostics.error("search.finished",mapOf("outcome" to "FAILED"),it)
+    }.flowOn(com.apkupdater.diagnostics.DiagnosticContext.element(mapOf("operationId" to com.apkupdater.diagnostics.DiagnosticContext.nextId("search"))))
 
 }

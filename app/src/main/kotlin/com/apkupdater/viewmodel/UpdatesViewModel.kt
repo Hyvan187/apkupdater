@@ -36,7 +36,7 @@ class UpdatesViewModel(
     private val state = MutableStateFlow<UpdatesUiState>(UpdatesUiState.Loading)
     private var scanJob: Job? = null
     private var batchJob: Job? = null
-    private val operationMutex = kotlinx.coroutines.sync.Mutex()
+    private val operationMutex = UpdateOperations.mutex
     fun cancelVerification(){batchJob?.cancel()}
     private data class Checked(val file: File, val report: ApkAnalyzer.Report,val checkedAt:Long=System.currentTimeMillis())
     private val verified = ConcurrentHashMap<String, Checked>()
@@ -45,7 +45,7 @@ class UpdatesViewModel(
     private val verifying: MutableSet<Int> = java.util.Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
     private fun identity(u: AppUpdate) = "${u.artifactKey}:${u.oldVersionCode}"
     init {
-        selection.scope.drop(1).onEach { refresh() }.launchIn(viewModelScope)
+        selection.scope.drop(1).onEach { refresh(debounceMillis=350) }.launchIn(viewModelScope)
         subscribeToInstallStatus()
         subscribeToInstallProgress { progress -> state.update { UpdatesUiState.Success(it.mutableUpdates().setProgress(progress)) } }
     }
@@ -72,11 +72,12 @@ class UpdatesViewModel(
         if(state.value is UpdatesUiState.Success)setSuccess(state.value.updates())
     }
     fun state(): StateFlow<UpdatesUiState> = state
-    fun refresh(load: Boolean = true): Job {
+    fun refresh(load: Boolean = true, debounceMillis:Long=0): Job {
         val previous = scanJob
         previous?.cancel()
         return viewModelScope.launch(Dispatchers.IO) {
             previous?.join()
+            if(debounceMillis>0)delay(debounceMillis)
             operationMutex.withLock {
             state.value = UpdatesUiState.Loading
             val progressId = ScanProgress.begin()
@@ -100,11 +101,11 @@ class UpdatesViewModel(
         }.also { scanJob = it }
     }
     fun verify(update: AppUpdate): Job = startVerification {
-        val progressId = ScanProgress.begin()
+        val progressId = ScanProgress.begin("explicit_single_check")
         ScanProgress.verification(progressId, 1)
         ScanProgress.checking(progressId, update.name)
         try {
-            ScanProgress.checked(progressId, verifyCandidate(update))
+            ScanProgress.checked(progressId, withContext(com.apkupdater.diagnostics.DiagnosticContext.element(mapOf("operationId" to "scan-$progressId"))){verifyCandidate(update,com.apkupdater.util.DownloadTrigger.SINGLE_CHECK)})
             ScanProgress.finish(progressId)
         } catch(e: CancellationException) {
             ScanProgress.finish(progressId, ScanPhase.CANCELLED)
@@ -112,7 +113,7 @@ class UpdatesViewModel(
         }
     }
     fun verifyAll(): Job = startVerification {
-        val progressId = ScanProgress.begin()
+        val progressId = ScanProgress.begin("explicit_batch_check")
         val plan = AutoCheckPolicy.plan(state.value.updates(), prefs.preferredSources.get(),
             prefs.autoVerifyLimitMiB.get()*1024L*1024, prefs.autoCheckCount.get(),
             prefs.autoCheckBudgetMiB.get()*1024L*1024, retryErrors=true)
@@ -121,7 +122,7 @@ class UpdatesViewModel(
             for (candidate in plan) {
                 ensureActive()
                 ScanProgress.checking(progressId, candidate.name)
-                ScanProgress.checked(progressId, verifyCandidate(candidate))
+                ScanProgress.checked(progressId, withContext(com.apkupdater.diagnostics.DiagnosticContext.element(mapOf("operationId" to "scan-$progressId"))){verifyCandidate(candidate,com.apkupdater.util.DownloadTrigger.BATCH_CHECK)})
             }
             ScanProgress.finish(progressId)
         } catch(e: CancellationException) {
@@ -137,7 +138,7 @@ class UpdatesViewModel(
             operationMutex.withLock { block() }
         }.also { batchJob = it }
     }
-    private suspend fun verifyCandidate(update: AppUpdate): Boolean {
+    private suspend fun verifyCandidate(update: AppUpdate,trigger:com.apkupdater.util.DownloadTrigger): Boolean {
         if(update.verdict.status == Compatibility.INCOMPATIBLE || !verifying.add(update.id)) return false
         val supported = update.link is Link.Url || update.link is Link.Xapk || update.link is Link.Play
         if(!supported || update.source == ApkMirrorSource) {
@@ -145,13 +146,14 @@ class UpdatesViewModel(
             snackBar.snackBar(viewModelScope, TextSnack("Für dieses Archiv ist noch keine vollständige Paketprüfung verfügbar."))
             return false
         }
+        com.apkupdater.diagnostics.AppDiagnostics.info("user.apk_download_requested",mapOf("package" to update.packageName,"source" to update.source.name,"trigger" to trigger.name))
         mark(update.id, true)
         var file: File? = null
         var lease: java.io.Closeable? = null
         try {
             lease = AppCache.begin()
             require(context.cacheDir.usableSpace > 256L*1024*1024){"Zu wenig freier Speicher für eine sichere APK-Prüfung."}
-            file = downloader.download(update.link, minOf(prefs.autoVerifyLimitMiB.get() * 1024L * 1024, context.cacheDir.usableSpace-128L*1024*1024))
+            file = downloader.download(update.link, trigger, minOf(prefs.autoVerifyLimitMiB.get() * 1024L * 1024, context.cacheDir.usableSpace-128L*1024*1024))
             currentCoroutineContext().ensureActive()
             val report = installer.inspect(file, update.packageName)
             require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)) { "Vorabversion durch deine Filter ausgeblendet." }

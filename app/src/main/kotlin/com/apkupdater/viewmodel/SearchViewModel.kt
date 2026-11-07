@@ -52,7 +52,7 @@ class SearchViewModel(
 
     fun search(text: String) {
         job?.cancel()
-        job = searchJob(text)
+        job = searchJob(text.trim().take(200))
     }
 
     private fun searchJob(text: String) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {

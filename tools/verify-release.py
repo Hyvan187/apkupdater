@@ -54,9 +54,10 @@ for name, expected_abis in variants.items():
     (reports/f"signature-{name}.txt").write_text(signature)
     badging = run([tools/"aapt", "dump", "badging", target])
     assert "name='com.hyvan187.apkupdater'" in badging
-    assert "versionCode='1007'" in badging and "versionName='0.6.0-rc2'" in badging
+    assert "versionCode='1008'" in badging and "versionName='0.6.0-rc3'" in badging
     assert "sdkVersion:'23'" in badging and "targetSdkVersion:'37'" in badging
     assert "application-debuggable" not in badging
+    assert "application-label:'Liquid-APK-Store'" in badging
     (reports/f"badging-{name}.txt").write_text(badging)
     alignment = run([tools/"zipalign", "-c", "-P", "16", "-v", "4", target])
     (reports/f"alignment-{name}.txt").write_text(alignment)
@@ -80,7 +81,7 @@ for name, expected_abis in variants.items():
                 assert destination not in archive.read(entry), f"Unobfuscated support destination in {entry.filename}"
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
     checksums.append(f"{digest}  {target.name}")
-    summary.append({"file":target.name,"size":target.stat().st_size,"sha256":digest,"abis":sorted(abis),"versionCode":1007,"versionName":"0.6.0-rc2","debuggable":False,"certificateSha256":expected_certificate,"signatureSchemes":[1,2,3],"zipAlignmentKiB":16,"native":native,"installerIconMatchesLauncher":True,"supportDestinationAbsentInPlaintext":True})
+    summary.append({"file":target.name,"size":target.stat().st_size,"sha256":digest,"abis":sorted(abis),"versionCode":1008,"versionName":"0.6.0-rc3","debuggable":False,"certificateSha256":expected_certificate,"signatureSchemes":[1,2,3],"zipAlignmentKiB":16,"native":native,"installerIconMatchesLauncher":True,"supportDestinationAbsentInPlaintext":True})
 
 (output/"SHA256SUMS.txt").write_text("\n".join(checksums)+"\n")
 (reports/"release-verification.json").write_text(json.dumps(summary,indent=2)+"\n")

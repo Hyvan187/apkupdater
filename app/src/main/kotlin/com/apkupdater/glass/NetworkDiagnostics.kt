@@ -14,6 +14,7 @@ class NetworkDns(private val context:Context):Dns {
 }
 object NetworkDiagnostics {
  fun hints(problem:String)=when{
+  problem.contains("401")->"Die API verlangt eine Anmeldung oder einen gültigen Zugriffsschlüssel. Wiederholungen lösen das nicht. Die Webseite bleibt separat nutzbar; API-Anfragen pausieren vorübergehend."
   problem.contains("DNS")->"Adresse kann über das aktuelle Netz nicht aufgelöst werden. Verbindung erneut testen; bei Bedarf privates DNS, VPN oder DNS-Filter prüfen. Andere Quellen bleiben nutzbar."
   problem.contains("403")->"Der Anbieter verweigert den App-Zugriff. Webseite manuell öffnen; Schutzmechanismen werden nicht umgangen."
   problem.contains("429")->"Anfragelimit erreicht. Später erneut prüfen; häufige Wiederholungen verlängern möglicherweise die Sperre."

@@ -15,6 +15,7 @@ import com.apkupdater.util.SessionInstaller
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.sync.withLock
 import com.apkupdater.util.UpdatesNotification
 import com.apkupdater.util.millisUntilHour
 import org.koin.core.component.KoinComponent
@@ -64,7 +65,8 @@ class UpdatesWorker(
 
     private val selection: AppSelection by inject()
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = UpdateOperations.mutex.withLock {
+        kotlinx.coroutines.withContext(com.apkupdater.diagnostics.DiagnosticContext.element(mapOf("operationId" to com.apkupdater.diagnostics.DiagnosticContext.nextId("worker")))) {
         val lease=AppCache.begin()
         com.apkupdater.diagnostics.AppDiagnostics.info("background.scan.started")
         try {
@@ -74,9 +76,10 @@ class UpdatesWorker(
         val ready = candidates.filter { it.verdict.status != Compatibility.INCOMPATIBLE }.map { it.packageName }.toMutableSet()
         if(ready.isNotEmpty()) notification.showUpdateNotification(ready.size)
         com.apkupdater.diagnostics.AppDiagnostics.info("background.scan.completed",mapOf("candidates" to candidates.size,"ready" to ready.size))
-        return Result.success()
+        return@withContext Result.success()
         } catch(e:CancellationException){com.apkupdater.diagnostics.AppDiagnostics.info("background.scan.cancelled");throw e}
         catch(e:Exception){com.apkupdater.diagnostics.AppDiagnostics.error("background.scan.failed",error=e);throw e}
         finally { lease.close() }
+        }
     }
 }

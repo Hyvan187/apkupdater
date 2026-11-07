@@ -45,6 +45,11 @@ class ApkMirrorRepository(
     private val api = Build.VERSION.SDK_INT
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
+        com.apkupdater.glass.ProviderCooldown.active("ApkMirror")?.let { block ->
+            com.apkupdater.diagnostics.AppDiagnostics.info("source.backoff",mapOf("source" to "ApkMirror","status" to block.status,"retryAfterMs" to block.until-System.currentTimeMillis()))
+            com.apkupdater.glass.SourceHealth.unavailable("ApkMirror",com.apkupdater.glass.SourceHealth.describe(com.apkupdater.glass.DownloadHttpException(block.status))+" · API-Pause; bei Bedarf ausdrücklich erneut abfragen.")
+            emit(emptyList());return@flow
+        }
         val found=mutableListOf<AppUpdate>()
         emit(emptyList())
         for(chunk in apps.chunked(100)) {
@@ -91,6 +96,8 @@ class ApkMirrorRepository(
     }.catch {
         if (it is kotlinx.coroutines.CancellationException) throw it
         com.apkupdater.glass.SourceHealth.failed("ApkMirror", it)
+        val status=when(it){is retrofit2.HttpException->it.code();is com.apkupdater.glass.DownloadHttpException->it.statusCode;else->0}
+        com.apkupdater.glass.ProviderCooldown.note("ApkMirror",status)
         emit(emptyList())
         Log.e("ApkMirrorRepository", "Error getting updates.", it)
     }

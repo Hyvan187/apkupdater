@@ -7,6 +7,7 @@ import java.io.File
 import java.io.InputStream
 import kotlinx.coroutines.ensureActive
 
+enum class DownloadTrigger { SINGLE_CHECK, BATCH_CHECK, SEARCH_INSTALL }
 
 class Downloader(
     private val client: OkHttpClient,
@@ -15,16 +16,22 @@ class Downloader(
     private val dir: File
 ) {
 
-    suspend fun download(link: com.apkupdater.data.ui.Link, maxBytes: Long = 512L * 1024 * 1024): File {
+    suspend fun download(link: com.apkupdater.data.ui.Link, trigger:DownloadTrigger, maxBytes: Long = 512L * 1024 * 1024): File {
         val task = kotlinx.coroutines.currentCoroutineContext()
         return com.apkupdater.glass.AppCache.use {
         task.ensureActive()
-        when(link) {
+        val id=com.apkupdater.diagnostics.DiagnosticContext.nextId("download")
+        val started=System.nanoTime()
+        com.apkupdater.diagnostics.AppDiagnostics.info("download.started",mapOf("downloadId" to id,"trigger" to trigger.name,"maxBytes" to maxBytes,"format" to if(link is com.apkupdater.data.ui.Link.Play)"PLAY_SET" else "DIRECT"))
+        try {
+        val result=when(link) {
             is com.apkupdater.data.ui.Link.Url -> download(link.link,maxBytes) { task.ensureActive() }
             is com.apkupdater.data.ui.Link.Xapk -> download(link.link,maxBytes) { task.ensureActive() }
             is com.apkupdater.data.ui.Link.Play -> {
+                com.apkupdater.diagnostics.AppDiagnostics.info("play.delivery.requested",mapOf("downloadId" to id))
                 val parts=link.getInstallFiles()
                 task.ensureActive()
+                com.apkupdater.diagnostics.AppDiagnostics.info("play.delivery.resolved",mapOf("downloadId" to id,"parts" to parts.size,"bases" to parts.count{it.type==com.aurora.gplayapi.data.models.PlayFile.Type.BASE},"splits" to parts.count{it.type==com.aurora.gplayapi.data.models.PlayFile.Type.SPLIT}))
                 require(parts.size in 1..128 && parts.count { it.type==com.aurora.gplayapi.data.models.PlayFile.Type.BASE }==1) { "Play liefert kein vollständiges, eindeutiges APK-Set." }
                 require(parts.all { it.type==com.aurora.gplayapi.data.models.PlayFile.Type.BASE || it.type==com.aurora.gplayapi.data.models.PlayFile.Type.SPLIT }) { "Nicht unterstützter Play-Paketbestandteil." }
                 val files=mutableListOf<File>();var result:File?=null
@@ -64,10 +71,14 @@ class Downloader(
             }
             else -> error("Diese Quelle liefert keine prüfbare Datei.")
         }
+        com.apkupdater.diagnostics.AppDiagnostics.info("download.finished",mapOf("downloadId" to id,"trigger" to trigger.name,"bytes" to result.length(),"elapsedMs" to (System.nanoTime()-started)/1_000_000))
+        result
+        } catch(e:kotlinx.coroutines.CancellationException) { com.apkupdater.diagnostics.AppDiagnostics.info("download.cancelled",mapOf("downloadId" to id));throw e }
+        catch(e:Exception) { com.apkupdater.diagnostics.AppDiagnostics.error("download.failed",mapOf("downloadId" to id,"category" to com.apkupdater.diagnostics.DiagnosticFailure.category(e)),e);throw e }
         }
     }
 
-    fun download(url: String, maxBytes: Long = 512L * 1024 * 1024, checkCancelled: () -> Unit = {}): File {
+    private fun download(url: String, maxBytes: Long = 512L * 1024 * 1024, checkCancelled: () -> Unit = {}): File {
         check(dir.exists() || dir.mkdirs()) { "Downloadcache ist nicht verfügbar." }
         val file = File(dir, randomUUID())
         try {
@@ -86,9 +97,9 @@ class Downloader(
         } catch (e: Exception) { file.delete(); throw e }
     }
 
-    fun downloadStream(url: String): InputStream? {
+    private fun downloadStream(url: String): InputStream? {
         val c = when { url.contains("apkpure") -> apkPureClient; url.contains("aurora") -> auroraClient; else -> client }
-        val response = c.newCall(downloadRequest(url)).execute()
+        val response = c.newCall(com.apkupdater.diagnostics.DiagnosticContext.tag(downloadRequest(url))).execute()
         if(!response.isSuccessful) { val code = response.code; response.close(); throw com.apkupdater.glass.DownloadHttpException(code) }
         if(!response.request.url.isHttps) { response.close(); error("Der Download wurde auf eine unsichere Adresse umgeleitet.") }
         return response.body.byteStream()

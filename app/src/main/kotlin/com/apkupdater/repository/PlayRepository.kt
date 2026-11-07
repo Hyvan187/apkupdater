@@ -36,19 +36,23 @@ class PlayRepository(
 
     private fun refreshAuth(): AuthData {
         Log.i("PlayRepository", "Refreshing token.")
+        val selectedModel=prefs.simulatedModel.get()
         val properties = NativeDeviceInfoProvider(context).getNativeDeviceProperties().apply {
-            prefs.simulatedModel.get().takeIf{it.isNotBlank()}?.let { setProperty("Build.MODEL",it);setProperty("UserReadableName","Liquid-APK-Store Testprofil: $it") }
+            selectedModel.takeIf{it.isNotBlank()}?.let { setProperty("Build.MODEL",it);setProperty("UserReadableName","Liquid-APK-Store Testprofil: $it") }
         }
         val playResponse = playHttpClient.postAuth(AUTH_URL, gson.toJson(properties).toByteArray())
         if (playResponse.isSuccessful) {
             val authData = gson.fromJson(String(playResponse.responseBytes), AuthData::class.java)
+            check(prefs.simulatedModel.get()==selectedModel) { "Das Testprofil wurde während der Play-Anmeldung geändert. Bitte erneut suchen." }
+            require(authData.email.isNotBlank()) { "Play-Anmeldedaten sind unvollständig." }
             prefs.playAuthData.put(authData)
+            prefs.lastPlayCheck.put(System.currentTimeMillis())
             return authData
         }
-        throw IllegalStateException("Auth not successful.")
+        throw com.apkupdater.glass.DownloadHttpException(playResponse.code)
     }
 
-    private fun auth(): AuthData {
+    @Synchronized private fun auth(): AuthData {
         val savedData = prefs.playAuthData.get()
         if (savedData.email.isEmpty()) {
             return refreshAuth()

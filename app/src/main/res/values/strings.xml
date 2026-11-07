@@ -1,6 +1,6 @@
 <resources>
 
-    <string name="app_name" translatable="false">APKUpdater</string>
+    <string name="app_name" translatable="false">Liquid-APK-Store</string>
     <string name="tab_apps">System-Apps</string>
     <string name="tab_search">Search</string>
     <string name="tab_updates">Updates</string>

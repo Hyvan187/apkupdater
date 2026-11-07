@@ -26,7 +26,6 @@ import org.koin.compose.koinInject
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun GlassSettingsScreen(onBack:()->Unit,onAppearance:()->Unit,onFiltersChanged:()->Unit={},onHistory:()->Unit={},onCacheCleared:()->Unit={}) {
-    val appearanceStore=koinInject<AppearanceStore>();val appearance by appearanceStore.state.collectAsState()
     val prefs=koinInject<Prefs>();val languages=koinInject<AppLanguageStore>();val history=koinInject<HistoryStore>()
     val selection=koinInject<AppSelection>();val selected by selection.scope.collectAsState()
     val filters=koinInject<ReleaseFilterStore>();val health by SourceHealth.flow.collectAsState();val entries by history.state.collectAsState()
@@ -47,7 +46,8 @@ import org.koin.compose.koinInject
     val choices=remember(installerMenu){InstallerChoices.available(context)}
     fun useModel(value: String) {
         if(!TestDeviceProfiles.valid(value)){profileMessage="Modellangabe ist ungültig. Höchstens 80 Zeichen ohne Steuerzeichen verwenden.";return}
-        prefs.simulatedModel.put(value.trim());prefs.playAuthData.put(com.aurora.gplayapi.data.models.AuthData("",""))
+        if(prefs.simulatedModel.get()==value.trim()){model=value.trim();profileMessage=if(model.isBlank())"Echtes Geräteprofil ist bereits aktiv." else "Dieses Testprofil ist bereits aktiv.";AppDiagnostics.debug("profile.unchanged");return}
+        prefs.simulatedModel.put(value.trim());prefs.lastPlayCheck.put(0);prefs.playAuthData.put(com.aurora.gplayapi.data.models.AuthData("",""))
         model=value.trim();profileMessage=if(model.isBlank())"Echtes Geräteprofil aktiv." else "Testprofil gespeichert. Wird bei der nächsten Play-Anmeldung verwendet."
         AppDiagnostics.info("profile.changed",mapOf("simulation" to model.isNotBlank()))
     }
@@ -61,7 +61,6 @@ import org.koin.compose.koinInject
                         Text("Erscheinungsbild",Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
                         TextButton(onClick=onAppearance){Text("Design anpassen")}
                     }
-                    GlassTransparencyControl(appearanceStore,appearance)
                     Text("Sprache",style=MaterialTheme.typography.titleSmall)
                     val tag=languages.current(context)
                     OutlinedButton(onClick={languageMenu=true},modifier=Modifier.fillMaxWidth()) { Text(when(tag){"de"->"Deutsch";"en"->"Englisch";else->"Systemsprache verwenden"}) }
@@ -123,7 +122,8 @@ import org.koin.compose.koinInject
                 item { GlassPanel {
                     HelpTitle("Quellenstatus","DNS: Anbieteradresse konnte nicht aufgelöst werden. HTTP: Ein Server hat geantwortet. Ein Netzwerkfehler ist kein Nachweis für eine unpassende APK.")
                     health.forEach{entry->Text(entry.name,style=MaterialTheme.typography.labelLarge);SecondaryText(if(entry.running)"Wird abgefragt …" else entry.problem ?: "Kein Fehler gemeldet");entry.problem?.let{SecondaryText(NetworkDiagnostics.hints(it))}}
-                    OutlinedButton(onClick={testing=true;scope.launch{try{diagnostic=NetworkDiagnostics.test(context)}finally{testing=false}}},enabled=!testing){Text(if(testing)"Verbindung wird geprüft …" else "APKMirror erneut testen")}
+                    OutlinedButton(onClick={testing=true;scope.launch{try{diagnostic=NetworkDiagnostics.test(context)}finally{testing=false}}},enabled=!testing){Text(if(testing)"Verbindung wird geprüft …" else "APKMirror-Webverbindung testen")}
+                    OutlinedButton(onClick={ProviderCooldown.retry("ApkMirror");onFiltersChanged()}){Text("APKMirror-API erneut abfragen")}
                     if(diagnostic.isNotBlank())SecondaryText(diagnostic)
                     TextButton(onClick={runCatching{uri.openUri("https://www.apkmirror.com/")}}){Text("APKMirror-Webseite öffnen")}
                 } }

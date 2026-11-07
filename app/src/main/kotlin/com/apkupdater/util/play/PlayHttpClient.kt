@@ -37,9 +37,11 @@ class PlayHttpClient(
         .connectTimeout(25, TimeUnit.SECONDS)
         .readTimeout(25, TimeUnit.SECONDS)
         .writeTimeout(25, TimeUnit.SECONDS)
+        .callTimeout(60,TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .followRedirects(true)
-        .followSslRedirects(true)
+        .followSslRedirects(false)
+        .addInterceptor(com.apkupdater.diagnostics.DiagnosticNetworkInterceptor())
         .cache(cache)
     private var okHttpClient = okHttpClientBuilder.build()
 
@@ -160,8 +162,9 @@ class PlayHttpClient(
         // Reset response code as flow doesn't sends the same value twice
         _responseCode.value = 0
 
-        val call = okHttpClient.newCall(request)
-        return buildPlayResponse(call.execute())
+        require(request.url.isHttps) { "Play requests require HTTPS" }
+        val call = okHttpClient.newCall(com.apkupdater.diagnostics.DiagnosticContext.tag(request))
+        return call.execute().use { buildPlayResponse(it) }
     }
 
     private fun buildUrl(url: String, params: Map<String, String>): HttpUrl {
@@ -180,7 +183,7 @@ class PlayHttpClient(
             errorString = if (!response.isSuccessful) response.message else ""
         ).also {
             _responseCode.value = response.code
-            Log.i("PlayHttpClient", "OKHTTP [${response.code}] ${response.request.url}")
+            Log.i("PlayHttpClient", "HTTP ${response.code} ${response.request.url.host}")
         }
     }
 }

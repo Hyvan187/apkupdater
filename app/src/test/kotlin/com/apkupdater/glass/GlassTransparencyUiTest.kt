@@ -34,8 +34,11 @@ class GlassTransparencyUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     @After fun cleanup() { stopKoin() }
 
-    @Test fun settingsTransparencyUpdatesImmediatelyAndSurvivesStoreReload() {
+    @Test fun transparencyHasOneLogicalHomeAndSurvivesStoreReload() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNodeWithContentDescription("Glastransparenz").assertDoesNotExist()
+        compose.onNodeWithText("Design anpassen").performClick()
+        compose.onAllNodesWithContentDescription("Glastransparenz").assertCountEquals(1)
         compose.onNodeWithContentDescription("Glastransparenz").assertIsDisplayed()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(.8f) }
         compose.onNodeWithText("Glastransparenz: 80 %").assertIsDisplayed()

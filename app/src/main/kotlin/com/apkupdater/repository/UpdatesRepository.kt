@@ -29,10 +29,11 @@ class UpdatesRepository(
     override fun updates(progressId: Long?) = flow<List<AppUpdate>> {
         appsRepository.getApps().collect { result ->
             result.onSuccess { apps ->
+                com.apkupdater.diagnostics.AppDiagnostics.info("scan.app_inventory",mapOf("operationId" to progressId?.let{"scan-$it"},"visibleApps" to apps.size,"scope" to prefs.scanScope.get(),"detectedRegion" to com.apkupdater.glass.DeviceDetection(context,prefs).region().name,"comparisonRegion" to prefs.manualRegion.get(),"modelSimulation" to prefs.simulatedModel.get().isNotBlank()))
                 val filtered = apps.filter { !it.ignored }.filter {
                     com.apkupdater.glass.CategoryPolicy.matches(com.apkupdater.glass.AppScope.entries.getOrElse(prefs.scanScope.get()) { com.apkupdater.glass.AppScope.ALL }, it.system, it.packageName)
                 }
-                com.apkupdater.glass.SourceHealth.reset()
+                com.apkupdater.glass.SourceHealth.reset(progressId?.let{"scan-$it"} ?: com.apkupdater.diagnostics.DiagnosticContext.current()["operationId"]?.toString())
                 val sources = mutableListOf<Pair<String, Flow<List<AppUpdate>>>>()
                 if (prefs.useApkMirror.get()) sources.add("ApkMirror" to apkMirrorRepository.updates(filtered))
                 if (prefs.useGitHub.get()) sources.add("GitHub" to gitHubRepository.updates(filtered))

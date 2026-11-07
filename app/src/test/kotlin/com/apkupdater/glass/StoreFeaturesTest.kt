@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.toList
 @Config(sdk=[37],application=android.app.Application::class)
 class StoreFeaturesTest {
  private lateinit var prefs:Prefs
- @Before fun setup(){prefs=Prefs(KryptoBuilder.nocrypt(RuntimeEnvironment.getApplication(),"store-features-test"),false)}
+ @Before fun setup(){ProviderCooldown.retry("ApkMirror");prefs=Prefs(KryptoBuilder.nocrypt(RuntimeEnvironment.getApplication(),"store-features-test"),false)}
  private fun app(i:Int=0,bytes:Long=0,status:Compatibility=Compatibility.UNKNOWN)=AppUpdate("App $i","com.example.app$i","2","1",2,1,ApkPureSource,link=Link.Url("https://example.org/$i.apk",bytes),verdict=Verdict(status,emptyList()))
  @Test fun budgetBoundsUnknownFileSizes(){assertEquals(2,AutoCheckPolicy.plan((0..10).map{app(it)},maxBytes=128,maxApps=12,budgetBytes=256).size)}
  @Test fun knownSizesUseAggregateBudget(){assertEquals(4,AutoCheckPolicy.plan((0..10).map{app(it,64)},maxBytes=128,maxApps=12,budgetBytes=256).size)}

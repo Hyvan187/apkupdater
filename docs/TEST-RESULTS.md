@@ -1,13 +1,14 @@
-# Validation: Liquid-APK-Store 0.6.0-rc2
+# Validation: Liquid-APK-Store 0.6.0-rc3
 
-7 November 2026. Package `com.hyvan187.apkupdater`, version `1007 / 0.6.0-rc2`, min/target/compile API `23 / 37 / 37`.
+7 November 2026. Package `com.hyvan187.apkupdater`, version `1008 / 0.6.0-rc3`, min/target/compile API `23 / 37 / 37`.
 Build baseline: JDK 21.0.2, Gradle 9.4.0, AGP 9.1.1, Compose compiler 2.3.10; application bytecode targets Java 17.
 
-**167 host tests passed: 0 failures, 0 errors, 0 skipped.** These are newly executed RC2 results, not the historical RC1 count.
+**183 host tests passed: 0 failures, 0 errors, 0 skipped.** These are newly executed RC3 results, not the historical RC1/RC2 counts.
 
 | Suite | Tests |
 |---|---:|
 | ExampleUnitTest | 1 |
+| DiagnosticQualityTest | 9 |
 | DiagnosticStoreTest | 7 |
 | ApkLimitsTest | 3 |
 | ApkSetInspectorTest | 7 |
@@ -20,6 +21,7 @@ Build baseline: JDK 21.0.2, Gradle 9.4.0, AGP 9.1.1, Compose compiler 2.3.10; ap
 | LiquidRegressionTest | 16 |
 | PlayDownloadTest | 9 |
 | RC2RegressionTest | 20 |
+| RC3QualityTest | 7 |
 | RegressionTest | 16 |
 | ReleasePolicyTest | 9 |
 | SecureMigrationTest | 2 |
@@ -38,20 +40,11 @@ Build baseline: JDK 21.0.2, Gradle 9.4.0, AGP 9.1.1, Compose compiler 2.3.10; ap
 
 Host APK tests inject PackageManager archive metadata because the framework mmap/signature parser is not a normal host-JDK parser. The app's manifest reader, APK signature verifier and set consistency checks still process actual signed bytes. Test network responses and document providers are controlled fixtures, not live Google Play or OEM services.
 
-## Release artifacts and lint
+## RC3 release validation
 
-The final Gradle command `:app:testDebugUnitTest :app:lintRelease :app:assembleRelease` completed successfully in 6m 7s. Lint reports **0 errors and 313 warnings**, with no concealment through a lint baseline. The warnings mostly cover inherited translation resources, icon-shape/duplicate guidance, style and dependency recommendations. The full XML/HTML/text reports are included.
+The 183 tests above passed on the current RC3 implementation. Final release lint, signing/alignment/ABI checks and the corresponding current-commit GitHub Android-17 smoke result are recorded with the distributed RC3 artifacts. Historical RC2 counts, byte sizes and timing must not be treated as RC3 results.
 
-All four optimized release APKs independently passed v1/v2/v3 signature verification, version/package/SDK checks, a non-debuggability check, 16-KiB ZIP alignment and ELF LOAD alignment checks. Their signer is the retained certificate `6d3055d0260d6afba37c6f8505b2e556e47d56d8363c0399fc43a5f0e11e28d6`. Application/activity icon resource references match. The complete reconstructed support URL is absent from the APK DEX/resources.
-
-| APK | Native ABIs | Bytes |
-|---|---|---:|
-| arm64-v8a.apk | arm64-v8a | 3759531 |
-| armeabi-v7a.apk | armeabi-v7a | 3756686 |
-| x86_64.apk | x86_64 | 3760183 |
-| universal.apk | arm64-v8a, armeabi-v7a, x86, x86_64 | 3809860 |
-
-The universal APK retains x86 as well as the three requested split architectures. Exactly four APKs are distributed. The certificate subject retains its historical Android Debug name; the APKs themselves are release builds with `debuggable=false`.
+SDK bootstrap and namespace-preserving normalization were independently verified in GitHub run 42395989264: build and Android-17 smoke jobs passed on the retained RC2 application baseline. The RC3 application commit requires its own run.
 
 ## Remaining device acceptance
 

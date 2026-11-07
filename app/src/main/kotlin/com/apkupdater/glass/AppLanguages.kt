@@ -58,7 +58,7 @@ object UiEnglish {
   "Projekt unterstützen" to "Support the project","Lizenzen und Rechtliches" to "Licenses and legal information","Lizenzen" to "Licenses","Frohe Feiertage" to "Happy holidays","Frohes neues Jahr" to "Happy New Year",
   "Apps entdecken" to "Discover apps","QUELLEN DURCHSUCHEN" to "SEARCH SOURCES","App- oder Paketname" to "App or package name","Suchen" to "Search","Herunterladen und prüfen" to "Download and check","Suche nicht möglich" to "Search unavailable","Suche nach einer App" to "Find an app","Android-App-Einstellungen" to "Android app settings","Updates prüfen" to "Check updates","☆ Als Favorit markieren" to "☆ Add favorite","★ Favorit entfernen" to "★ Remove favorite",
   "Sprache" to "Language","Systemsprache verwenden" to "Use system language","Deutsch" to "German","Englisch" to "English","Android-Spracheinstellungen öffnen" to "Open Android language settings",
-  HelpText.CHECK to "The APK is downloaded to private app storage. Checks cover package name, version, signature, Android requirements, architecture, package components and detectable dependencies. Nothing is installed or executed. Missing evidence stays unknown; runtime functionality cannot be guaranteed.",
+  HelpText.CHECK to "Only an explicitly chosen download action fetches APK bytes. Discovery and reading reports use metadata only. Checks cover package name, version, signature, Android requirements, architecture, package components and detectable dependencies. Nothing is installed or executed. Missing evidence stays unknown; runtime functionality cannot be guaranteed.",
   HelpText.BLOCKED to "Blocked means at least one verified requirement does not match, such as signature, Android version, architecture or system branch. This app does not offer installation for that file.",
   HelpText.RESTORE to "Clears only the hidden-release list. Those versions can reappear in the next search. No installed app is reset, removed or downgraded. Ignored apps remain ignored.",
   HelpText.PROFILE to "A manual region is a comparison hint. A simulated model is sent as a model value on the next Google Play authentication; other sources do not support device substitution. Android and other apps keep the real identity. Installation checks always use the actual device. Manual values are not compatibility evidence.",
@@ -96,9 +96,60 @@ object UiEnglish {
   "Mindestens eine technische Voraussetzung passt nicht. Installation gesperrt." to "At least one technical requirement does not match. Installation is blocked.",
   "Technisch geprüft, aber eine Vorabversion. Fehler und Datenverlust sind eher möglich; Freigabe ist keine Funktionsgarantie." to "Technically checked, but a prerelease. Failures and data loss may be more likely; approval is not a runtime guarantee."
  )
+ private val current=mapOf(
+  "APK-Analyse" to "APK analysis",
+  "APK-Prüfung abbrechen" to "Cancel APK check",
+  "APKMirror-API erneut abfragen" to "Retry APKMirror API",
+  "APKMirror-Webverbindung testen" to "Test APKMirror website connection",
+  "APKs gesammelt herunterladen und prüfen" to "Download and check APKs in a batch",
+  "Aktive Regionsübersicht" to "Current region overview",
+  "Ausführlich" to "Detailed",
+  "Ausgeblendete Versionsfunde wieder in die Updateprüfung aufnehmen." to "Include hidden versions in update discovery again.",
+  "Bestätigen" to "Confirm",
+  "Cache" to "Cache",
+  "Der Protokollspeicher konnte zuletzt nicht beschrieben werden." to "The diagnostic store could not be written to, or its queue was full.",
+  "Diagnoseprotokoll speichern" to "Save diagnostic log",
+  "Diagnoseprotokolle löschen" to "Clear diagnostic logs",
+  "Die Prüfung bestätigt technische Voraussetzungen, keine vollständige Funktionsgarantie." to "The checks establish technical requirements; they do not guarantee that the app will work.",
+  "Die Vergleichsregion weicht von der Geräte-ROM ab. Die Installation prüft weiterhin die echte ROM." to "The comparison region differs from the device ROM. Installation still checks the actual ROM.",
+  "Entwicklerdiagnose" to "Developer diagnostics",
+  "Erfasst auch Hintergrundprüfungen. Gespeicherte Protokolle bleiben nach Neustarts erhalten. Bei beendeter App läuft keine dauerhafte Aufzeichnung." to "Includes background checks. Saved logs survive app restarts. No continuous recording takes place while the app is stopped.",
+  "Keine automatischen APK-Downloads. Downloads erst nach deiner ausdrücklichen Aktion." to "No automatic APK downloads. A download requires your explicit action.",
+  "Kurzprotokoll exportieren" to "Export short log",
+  "Manuelle Prüfdownloads" to "Explicit check downloads",
+  "Modellnummer oder Testname, z. B. CPH2745" to "Model number or test label, for example CPH2745",
+  "Prüfverfahren" to "How checks work",
+  "Quellen teilweise nicht erreichbar" to "Some sources are unavailable",
+  "Startet nur nach dieser Aktion einen begrenzten Sammeldownload. Öffnen von Prüfinformationen lädt keine APK." to "Only this action starts a bounded batch download. Opening check details does not download an APK.",
+  "Technische Risiken" to "Technical risks",
+  "Updateverlauf löschen" to "Clear installation history",
+  "Vollständiges Protokoll exportieren" to "Export full log",
+  "Darstellung und Sprache" to "Appearance and language",
+  "Gerät und ROM" to "Device and ROM",
+  "Quellen und Verbindung" to "Sources and connection",
+  "Verlauf und Speicher" to "History and storage",
+  "Diagnose und Entwicklung" to "Diagnostics and development",
+  "Projekt" to "Project",
+  "Testgerät auswählen" to "Choose test device",
+  "Sprache auswählen" to "Choose language",
+  "Kein Fehler gemeldet" to "No reported errors",
+  "1 Nachweis offen" to "1 check remains unresolved",
+  "1 technischer Konflikt" to "1 technical conflict",
+  "Keine festgestellten technischen Konflikte" to "No identified technical conflicts",
+  "Geräte-ROM:" to "Device ROM:",
+  "Wirksame Prüfregion:" to "Effective check region:",
+  "Vergleichsregion:" to "Comparison region:",
+  "Standard" to "Standard",
+  "Aus" to "Off",
+  "Cache leeren" to "Clear cache",
+  "Protokolle konnten nicht gelöscht werden. Bitte erneut versuchen." to "The logs could not be cleared. Please try again.",
+  "Diagnoseprotokoll exportiert." to "Diagnostic log exported.",
+  "Export fehlgeschlagen. Bitte einen anderen Speicherort wählen." to "Export failed. Please select another destination.",
+  "Liquid-APK-Store steht unter GNU GPLv3. Enthält Code aus APKUpdater, Copyright rumboalla und Mitwirkende; Änderungen von Hyvan187. Vollständige Lizenz und passender Quellcode liegen dem Downloadpaket bei. Android-Roboter: von Google bereitgestelltes Werk gemäß CC BY 3.0; Liquid-Glass-Darstellung angepasst." to "Liquid-APK-Store is licensed under GNU GPLv3. Includes APKUpdater code, copyright rumboalla and contributors, with modifications by Hyvan187. The full license and corresponding source are included in the download. Android robot artwork is provided by Google under CC BY 3.0 and adapted for the glass design."
+ )
  fun translate(raw:String,language:String):String {
   if(language!="en")return raw
-  (exact[raw] ?: explanations[raw])?.let{return it}
+  (current[raw] ?: exact[raw] ?: explanations[raw])?.let{return it}
   if(raw.contains("\n\n"))return raw.split("\n\n").joinToString("\n\n"){translate(it,language)}
   var out=raw
   val replacements=listOf("Glastransparenz:" to "Glass transparency:","Effektqualität:" to "Effect quality:","Glasdeckkraft:" to "Glass opacity:","Geschwindigkeit:" to "Speed:","Effektdichte:" to "Effect density:","Zusätzliche Textgröße:" to "Additional text size:","Deckkraft:" to "Opacity:","Apps pro Durchlauf:" to "Apps per run:","Einzellimit:" to "Per-file limit:","Gesamtbudget:" to "Total budget:","Manuelle Region:" to "Manual region:","Risiko:" to "Risk:","Versionscode:" to "Version code:","Letzte Suche" to "Last search","Updates bereit." to "updates ready.","Architektur noch offen" to "Architecture unknown","Quelle" to "Source","Quellen" to "Sources","Ungeklärt" to "Uncertain","Erhöht" to "Elevated","Restrisiko" to "Residual risk")

@@ -87,7 +87,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
                             composable("updates") { GlassUpdatesScreen(updates, onSettings = { go("settings") }) }
                             composable("apps") { SystemAppsScreen(onSettings = { go("settings") }) }
                             composable("search") { GlassSearchScreen(search, onBack = { go("overview") }) }
-                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh() },onHistory={nav.navigate("history")},onCacheCleared={updates.invalidateVerificationCache()}) }
+                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh(debounceMillis=350) },onHistory={nav.navigate("history")},onCacheCleared={updates.invalidateVerificationCache()}) }
                             composable("history") { HistoryScreen(onBack={nav.popBackStack()}) }
                             composable("appearance") { AppearanceScreen(onBack = { nav.popBackStack() }) }
                         }

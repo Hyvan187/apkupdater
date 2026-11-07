@@ -75,7 +75,7 @@ val mainModule = module {
 
 	single {
 		Retrofit.Builder()
-			.client(get())
+			.callFactory(com.apkupdater.diagnostics.DiagnosticCallFactory(get()))
 			.baseUrl("https://www.apkmirror.com")
 			.addConverterFactory(GsonConverterFactory.create(get()))
 			.build()
@@ -84,7 +84,7 @@ val mainModule = module {
 
 	single {
 		Retrofit.Builder()
-			.client(get())
+			.callFactory(com.apkupdater.diagnostics.DiagnosticCallFactory(get()))
 			.baseUrl("https://api.github.com")
 			.addConverterFactory(GsonConverterFactory.create(get()))
 			.build()
@@ -93,7 +93,7 @@ val mainModule = module {
 
 	single {
 		Retrofit.Builder()
-			.client(get())
+			.callFactory(com.apkupdater.diagnostics.DiagnosticCallFactory(get()))
 			.baseUrl("https://gitlab.com")
 			.addConverterFactory(GsonConverterFactory.create(get()))
 			.build()
@@ -102,7 +102,7 @@ val mainModule = module {
 
 	single {
 		Retrofit.Builder()
-			.client(get())
+			.callFactory(com.apkupdater.diagnostics.DiagnosticCallFactory(get()))
 			.baseUrl("https://f-droid.org/repo/")
 			.addConverterFactory(GsonConverterFactory.create(get()))
 			.build()
@@ -116,7 +116,7 @@ val mainModule = module {
 			.build()
 
 		Retrofit.Builder()
-			.client(client)
+			.callFactory(com.apkupdater.diagnostics.DiagnosticCallFactory(client))
 			.baseUrl("https://ws75.aptoide.com/api/7/")
 			.addConverterFactory(GsonConverterFactory.create(get()))
 			.build()
@@ -125,7 +125,7 @@ val mainModule = module {
 
 	single {
 		Retrofit.Builder()
-			.client(get())
+			.callFactory(com.apkupdater.diagnostics.DiagnosticCallFactory(get()))
 			.baseUrl("https://tapi.pureapk.com/")
 			.addConverterFactory(GsonConverterFactory.create(get()))
 			.build()

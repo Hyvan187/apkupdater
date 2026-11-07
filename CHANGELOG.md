@@ -1,3 +1,14 @@
+# 0.6.0-rc3
+
+- Review both supplied diagnostic formats; improve causal information, request/operation correlation, outcomes, timestamp and source-build metadata, cancellation/exit classification, safe short-export bounds and redaction.
+- Place glass transparency only in Appearance; preserve all existing slider behavior and glass effects.
+- Require an explicit purpose in every APK download call. Keep discovery and reports free of APK downloads.
+- Cover Play networking in redacted diagnostics; bound calls, serialize authentication and avoid reauthenticating unchanged model selections.
+- Debounce rapid settings changes, separate stale query status and share foreground/background update-operation serialization.
+- Pause repeated auth/rate-rejected APKMirror API attempts and provide an explicit retry action.
+- Unify application labels and verify architecture-specific native libraries and universal contents.
+- Repair SDK setup and XML namespace preservation in CI. See validation records for the exact host/emulator coverage.
+
 # 0.6.0-rc2
 
 - Keep APK downloads behind explicitly named actions; migrate the retired automatic setting and never silently redownload a missing verified file.

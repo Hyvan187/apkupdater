@@ -23,7 +23,7 @@ object ScanProgress {
     private val sequence = AtomicLong()
     private val mutable = MutableStateFlow(ScanState())
     val state = mutable.asStateFlow()
-    fun begin(): Long = sequence.incrementAndGet().also { mutable.value = ScanState(it, ScanPhase.PREPARING); AppDiagnostics.info("scan.started") }
+    fun begin(kind:String="discovery"): Long = sequence.incrementAndGet().also { mutable.value = ScanState(it, ScanPhase.PREPARING); AppDiagnostics.info("scan.started",mapOf("operationId" to "scan-$it","kind" to kind)) }
     fun sources(id: Long, count: Int) = mutable.update { if(it.id == id) it.copy(phase=ScanPhase.SOURCES,total=count,completed=0,finishedSources=emptySet(),failedSources=emptySet()) else it }
     fun sourceFinished(id: Long?, name: String, failed: Boolean) {
         if (id == null) return
@@ -35,7 +35,12 @@ object ScanProgress {
     fun verification(id: Long, total: Int) = mutable.update { if(it.id==id)it.copy(phase=ScanPhase.VERIFYING,total=total,completed=0,current="") else it }
     fun checking(id: Long, name: String) = mutable.update { if(it.id==id)it.copy(current=name) else it }
     fun checked(id: Long, successful: Boolean = true) = mutable.update { if(it.id==id && it.phase==ScanPhase.VERIFYING)it.copy(completed=(it.completed+1).coerceAtMost(it.total),failedChecks=it.failedChecks + if(successful) 0 else 1) else it }
-    fun finish(id: Long, phase: ScanPhase = ScanPhase.COMPLETE) = mutable.update { if(it.id==id)it.copy(phase=phase,current="") else it }
+    fun finish(id: Long, phase: ScanPhase = ScanPhase.COMPLETE) {
+        val snapshot=mutable.value
+        if(snapshot.id!=id || !snapshot.active)return
+        AppDiagnostics.info("scan.finished",mapOf("operationId" to "scan-$id","outcome" to phase.name,"phase" to snapshot.phase.name,"completed" to snapshot.completed,"total" to snapshot.total,"failedSources" to snapshot.failedSources.size,"failedChecks" to snapshot.failedChecks))
+        mutable.update { if(it.id==id && it.active)it.copy(phase=phase,current="") else it }
+    }
 }
 
 @Composable fun ScanProgressCard() {

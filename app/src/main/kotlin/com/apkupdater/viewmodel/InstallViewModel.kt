@@ -61,31 +61,15 @@ abstract class InstallViewModel(
         block(it)
     }.launchIn(viewModelScope)
 
-    protected fun downloadAndRootInstall(id: Int, link: Link) = runCatching {
-        when (link) {
-            is Link.Url -> {
-                if (installer.rootInstall(downloader.download(link.link))) {
-                    finishInstall(id)
-                } else {
-                    cancelInstall(id)
-                }
-            }
-            else -> snackBar.snackBar(
-                viewModelScope,
-                TextSnack(stringer.get(R.string.root_install_not_supported))
-            )
-        }
-    }.getOrElse {
-        Log.e("InstallViewModel", "Error in downloadAndRootInstall.", it)
-        cancelInstall(id)
-    }
+    protected fun downloadAndRootInstall(id: Int, link: Link) = cancelInstall(id)
 
     protected suspend fun downloadAndInstall(id: Int, packageName: String, link: Link) {
         var file: java.io.File? = null
         val lease = com.apkupdater.glass.AppCache.begin()
         try {
             installLog.emitProgress(AppInstallProgress(id, 0L))
-            file = downloader.download(link)
+            com.apkupdater.diagnostics.AppDiagnostics.info("user.apk_download_requested",mapOf("package" to packageName,"trigger" to "SEARCH_INSTALL"))
+            file = downloader.download(link,com.apkupdater.util.DownloadTrigger.SEARCH_INSTALL)
             installer.install(id, packageName, file.inputStream())
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e

@@ -29,6 +29,8 @@ object AppDiagnostics {
     @Volatile private var store: DiagnosticStore? = null
     @Volatile private var application: Application? = null
     @Volatile private var ioFailed = false
+    private val dropped = java.util.concurrent.atomic.AtomicLong()
+    private val droppedTotal = java.util.concurrent.atomic.AtomicLong()
 
     @Synchronized fun initialize(app: Application) {
         if (application === app && store != null) return
@@ -65,7 +67,7 @@ object AppDiagnostics {
                 val manager = app.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                 val exits = manager.getHistoricalProcessExitReasons(app.packageName, 0, 8).filter { it.timestamp > last }
                 exits.sortedBy { it.timestamp }.forEach { exit ->
-                    if (mutable.value.enabled) store?.append(DiagnosticLevel.WARN, "app.previous_exit", mapOf("reason" to exit.reason, "status" to exit.status, "exitTime" to exit.timestamp, "pssKiB" to exit.pss, "rssKiB" to exit.rss))
+                    if (mutable.value.enabled) store?.append(ExitReason.level(exit.reason), "app.previous_exit", mapOf("reason" to exit.reason, "reasonName" to ExitReason.name(exit.reason), "status" to exit.status, "exitTime" to exit.timestamp, "pssKiB" to exit.pss, "rssKiB" to exit.rss))
                 }
                 exits.maxOfOrNull { it.timestamp }?.let { settings.edit().putLong("lastExit", it).apply() }
             }.onFailure { debug("diagnostic.exit_history_unavailable", mapOf("exception" to it.javaClass.simpleName)) }
@@ -82,18 +84,52 @@ object AppDiagnostics {
     fun warn(event: String, fields: Map<String, Any?> = emptyMap()) = record(DiagnosticLevel.WARN, event, fields)
     private fun record(level: DiagnosticLevel, event: String, fields: Map<String, Any?>, error: Throwable? = null) {
         if (!state.value.enabled || level == DiagnosticLevel.DEBUG && !state.value.verbose) return
+        val capturedFields = DiagnosticContext.current() + fields
         if (!writer.execute {
             val config = state.value
             if (config.enabled && (level != DiagnosticLevel.DEBUG || config.verbose)) {
-                runCatching { store?.append(level, event, fields, error, config.verbose) }.onFailure { ioFailed = true }
+                runCatching {
+                    val lost=dropped.getAndSet(0)
+                    if(lost>0)store?.append(DiagnosticLevel.WARN,"diagnostic.events_dropped",mapOf("count" to lost))
+                    store?.append(level, event, capturedFields, error, config.verbose)
+                }.onFailure { ioFailed = true }
             }
-        }) ioFailed = true
+        }) { ioFailed = true; dropped.incrementAndGet();droppedTotal.incrementAndGet() }
     }
-    private fun metadata(): Map<String, String> = mapOf("application" to BuildConfig.APPLICATION_ID, "version" to BuildConfig.VERSION_NAME, "versionCode" to BuildConfig.VERSION_CODE.toString(), "androidApi" to Build.VERSION.SDK_INT.toString(), "abis" to Build.SUPPORTED_ABIS.joinToString(), "manufacturer" to Build.MANUFACTURER, "model" to Build.MODEL)
+    private fun metadata(): Map<String, String> = buildMap {
+        put("application",BuildConfig.APPLICATION_ID);put("version",BuildConfig.VERSION_NAME);put("versionCode",BuildConfig.VERSION_CODE.toString())
+        put("buildType",BuildConfig.BUILD_TYPE);put("buildFingerprint",BuildConfig.BUILD_FINGERPRINT)
+        put("androidApi",Build.VERSION.SDK_INT.toString());put("androidRelease",Build.VERSION.RELEASE)
+        put("securityPatch",Build.VERSION.SECURITY_PATCH);put("abis",Build.SUPPORTED_ABIS.joinToString())
+        put("manufacturer",Build.MANUFACTURER);put("model",Build.MODEL);put("session",DiagnosticContext.session)
+        put("queuedEventsDropped",droppedTotal.get().toString());put("timeZone",java.util.TimeZone.getDefault().id)
+        application?.let { app ->
+            put("packagedAbis",runCatching { java.util.zip.ZipFile(app.applicationInfo.sourceDir).use { zip->zip.entries().asSequence().filter{it.name.startsWith("lib/") && it.name.endsWith(".so")}.map{it.name.split('/')[1]}.toSet().sorted().joinToString().ifBlank{"JAVA_ONLY"} } }.getOrDefault("UNKNOWN"))
+            val config=app.resources.configuration
+            put("densityDpi",config.densityDpi.toString());put("fontScale",config.fontScale.toString())
+            put("widthDp",config.screenWidthDp.toString());put("heightDp",config.screenHeightDp.toString())
+            put("language",if(Build.VERSION.SDK_INT>=24)config.locales[0].toLanguageTag() else @Suppress("DEPRECATION")config.locale.toLanguageTag())
+        }
+        networkFields().forEach { (key,value)->put(key,value.toString()) }
+    }
+    fun networkFields(): Map<String,Any?> = runCatching {
+        val app=application ?: return emptyMap()
+        val manager=app.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val capabilities=manager.getNetworkCapabilities(manager.activeNetwork)
+        mapOf("connected" to (capabilities!=null),"metered" to manager.isActiveNetworkMetered,
+            "transport" to when {
+                capabilities==null->"NONE"
+                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN)->"VPN"
+                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)->"WIFI"
+                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_CELLULAR)->"CELLULAR"
+                capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET)->"ETHERNET"
+                else->"OTHER"
+            })
+    }.getOrDefault(mapOf("transport" to "UNKNOWN"))
     private fun flush() { writer.flush() }
     suspend fun storageBytes(): Long = withContext(Dispatchers.IO) { store?.size() ?: 0L }
     fun storageProblem() = ioFailed
-    suspend fun clear() = withContext(Dispatchers.IO) { flush(); store?.clear(); ioFailed = false }
+    suspend fun clear() = withContext(Dispatchers.IO) { flush(); store?.clear(); ioFailed = false; dropped.set(0);droppedTotal.set(0) }
     suspend fun export(context: Context, uri: Uri, kind: DiagnosticExport) = withContext(Dispatchers.IO) {
         info("diagnostic.export", mapOf("type" to kind.name)); flush()
         val target = requireNotNull(store) { "Diagnose wurde noch nicht initialisiert." }
@@ -101,16 +137,39 @@ object AppDiagnostics {
     }
 }
 
-/** Captures only host, verb, status and timing. Headers, query strings and bodies stay private. */
-class DiagnosticNetworkInterceptor : Interceptor {
-    override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request(); val started = System.nanoTime()
-        val fields = mapOf("host" to request.url.host, "method" to request.method)
-        return try {
-            val response = chain.proceed(request)
-            val result = fields + mapOf("status" to response.code, "elapsedMs" to (System.nanoTime() - started) / 1_000_000)
-            if (response.code >= 400) AppDiagnostics.warn("network.http_error", result) else AppDiagnostics.debug("network.response", result)
-            response
-        } catch (e: Exception) { AppDiagnostics.error("network.failure", fields, e); throw e }
+/** Logs no headers, query strings or bodies. Request IDs survive Retrofit's worker handoff. */
+class DiagnosticNetworkInterceptor(
+    private val recorder: (DiagnosticLevel,String,Map<String,Any?>,Throwable?) -> Unit = { level,event,fields,error ->
+        when(level) {
+            DiagnosticLevel.DEBUG->AppDiagnostics.debug(event,fields)
+            DiagnosticLevel.INFO->AppDiagnostics.info(event,fields)
+            DiagnosticLevel.WARN->AppDiagnostics.warn(event,fields)
+            DiagnosticLevel.ERROR->AppDiagnostics.error(event,fields,error)
+        }
     }
+) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request=chain.request();val started=System.nanoTime()
+        val trace=request.tag(DiagnosticRequest::class.java) ?: DiagnosticRequest(DiagnosticContext.nextId("request"),emptyMap())
+        val fields=trace.fields+mapOf("requestId" to trace.id,"host" to request.url.host,"method" to request.method)+AppDiagnostics.networkFields()
+        recorder(DiagnosticLevel.DEBUG,"network.started",fields,null)
+        return try {
+            val response=chain.proceed(request)
+            val result=fields+mapOf("status" to response.code,"elapsedMs" to (System.nanoTime()-started)/1_000_000)
+            recorder(if(response.code>=400)DiagnosticLevel.WARN else DiagnosticLevel.DEBUG,if(response.code>=400)"network.http_error" else "network.response",result,null)
+            response
+        } catch(e:Exception) {
+            val category=DiagnosticFailure.category(e,chain.call().isCanceled())
+            val result=fields+mapOf("category" to category,"elapsedMs" to (System.nanoTime()-started)/1_000_000)
+            recorder(if(category=="CANCELLED")DiagnosticLevel.DEBUG else DiagnosticLevel.ERROR,if(category=="CANCELLED")"network.cancelled" else "network.failure",result,if(category=="CANCELLED")null else e)
+            throw e
+        }
+    }
+}
+
+object ExitReason {
+    fun name(reason:Int)=when(reason) {
+        0->"UNKNOWN";1->"EXIT_SELF";2->"SIGNALED";3->"LOW_MEMORY";4->"CRASH";5->"CRASH_NATIVE";6->"ANR";7->"INITIALIZATION_FAILURE";8->"PERMISSION_CHANGE";9->"EXCESSIVE_RESOURCE_USAGE";10->"USER_REQUESTED";11->"USER_STOPPED";12->"DEPENDENCY_DIED";13->"OTHER";14->"FREEZER";15->"PACKAGE_STATE_CHANGE";16->"PACKAGE_UPDATED";else->"UNKNOWN_$reason"
+    }
+    fun level(reason:Int)=when(reason) {4,5,6,7->DiagnosticLevel.ERROR;1,8,10,11,15,16->DiagnosticLevel.INFO;else->DiagnosticLevel.WARN}
 }

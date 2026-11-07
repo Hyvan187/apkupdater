@@ -1,6 +1,6 @@
-# Liquid-APK-Store 0.6.0-rc2
+# Liquid-APK-Store 0.6.0-rc3
 
-A native Android APK discovery, inspection and update application with configurable liquid-glass visuals. Package `com.hyvan187.apkupdater`, version code 1007, minimum API 23, compile/target API 37.
+A native Android APK discovery, inspection and update application with configurable liquid-glass visuals. Package `com.hyvan187.apkupdater`, version code 1008, minimum API 23, compile/target API 37.
 
 ## Updates and safety
 
@@ -11,6 +11,15 @@ A native Android APK discovery, inspection and update application with configura
 - Manual batch checking covers eligible direct APKs sequentially, one per app. Web-only providers/unsupported archives are excluded. Cached evidence does not transfer between sources. Manual cancellation is available; an in-flight blocking network call may finish before stopping.
 - No automatic APK downloads. Discovery, background work and reading reports only use metadata. Explicit batch defaults: up to 12 apps, 128 MiB per APK and 768 MiB total reserved budget. Limits are configurable. Unknown file sizes reserve the entire per-file limit. Private inspection cache and free-storage headroom are bounded.
 - Risk is separate from technical status. Prereleases, system dependencies and another update owner raise warnings even when technical conditions pass.
+
+## RC3 changes
+
+- Glass transparency has one home under Appearance; the general settings entry only opens that screen.
+- Format-2 diagnostics add operation/request IDs, outcomes, UTC timestamps, typed fields, sanitized cause chains and source-build identity. Expected cancellations and ordinary package/user exits are distinct from failures. Short exports keep complete UTF-8 records and accurate counts.
+- Explicit download purposes are required by the APK downloader. Play request diagnostics avoid full URLs and credentials. Rapid settings changes are debounced and periodic/foreground update operations share a gate.
+- Auth/rate rejection pauses repeated APKMirror API calls; a deliberate retry and a separate website connectivity test remain available. This does not supply missing API credentials.
+- Launcher/installer branding is consistent across resources. Each split APK contains only its declared ABI; universal contains all supported ABIs. Similar rounded sizes are expected because native code is a small part of this application.
+- GitHub SDK setup and namespace-preserving API-37 metadata normalization repair automated build and emulator validation.
 
 ## RC2 changes
 

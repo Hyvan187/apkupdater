@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.FileInputStream
 import java.util.Properties
+import java.security.MessageDigest
 
 
 plugins {
@@ -23,10 +24,15 @@ android {
         applicationId = "com.hyvan187.apkupdater"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1007
-        versionName = "0.6.0-rc2"
+        versionCode = 1008
+        versionName = "0.6.0-rc3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
+        val fingerprint = MessageDigest.getInstance("SHA-256")
+        (fileTree("src/main").files + listOf(file("build.gradle.kts"))).filter { it.isFile }.sortedBy { it.relativeTo(projectDir).path }.forEach { source ->
+            fingerprint.update(source.relativeTo(projectDir).path.toByteArray()); fingerprint.update(source.readBytes())
+        }
+        buildConfigField("String", "BUILD_FINGERPRINT", "\"" + fingerprint.digest().joinToString("") { "%02x".format(it) } + "\"")
     }
 
     signingConfigs {

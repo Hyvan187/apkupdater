@@ -29,5 +29,5 @@ object InstallerChoices {
  }
 }
 class InstallResultReceiver : BroadcastReceiver() {
- override fun onReceive(context: Context,intent: Intent) { val pending=goAsync();kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch{try{GlobalContext.getOrNull()?.get<HistoryStore>()?.reconcile(context)}finally{pending.finish()}} }
+ override fun onReceive(context: Context,intent: Intent) { if(intent.action!=Intent.ACTION_MY_PACKAGE_REPLACED)return;val pending=goAsync();kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch{try{GlobalContext.getOrNull()?.get<HistoryStore>()?.reconcile(context)}finally{pending.finish()}} }
 }
