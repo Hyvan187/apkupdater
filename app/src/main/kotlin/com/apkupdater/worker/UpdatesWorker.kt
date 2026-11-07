@@ -59,33 +59,24 @@ class UpdatesWorker(
         }
     }
 
-    private val updatesRepository: UpdatesRepository by inject()
+    private val updatesRepository: com.apkupdater.repository.UpdatesQuery by inject()
     private val notification: UpdatesNotification by inject()
 
     private val selection: AppSelection by inject()
-    private val downloader: Downloader by inject()
-    private val installer: SessionInstaller by inject()
 
     override suspend fun doWork(): Result {
+        val lease=AppCache.begin()
+        com.apkupdater.diagnostics.AppDiagnostics.info("background.scan.started")
+        try {
         selection.scope.value // Apply legacy category migration before querying.
         var candidates = emptyList<AppUpdate>()
-        updatesRepository.updates().collect { candidates = it }
-        val ready = candidates.filter { it.verdict.installAllowed }.map { it.packageName }.toMutableSet()
-        if(AutomaticChecks.allowed(applicationContext, prefs.autoVerify.get(), prefs.autoVerifyWifiOnly.get())) {
-            val limit = prefs.autoVerifyLimitMiB.get() * 1024L * 1024
-            for(candidate in AutoCheckPolicy.plan(candidates, prefs.preferredSources.get(), limit,prefs.autoCheckCount.get(),prefs.autoCheckBudgetMiB.get()*1024L*1024)) {
-                currentCoroutineContext().ensureActive()
-                var file: java.io.File? = null
-                try {
-                    file = downloader.download((candidate.link as Link.Url).link, limit)
-                    val report=installer.inspect(file,candidate.packageName)
-                    if(report.verdict.installAllowed && ReleasePolicy.allowed(candidate.copy(version=report.candidate.versionName),prefs)) ready.add(candidate.packageName)
-                } catch(e: CancellationException) { throw e }
-                catch(e: Exception) { if(e !is AutomaticSizeLimit) SourceHealth.failed(candidate.source.name, e) }
-                finally { file?.delete() }
-            }
-        }
+        updatesRepository.updates(null).collect { candidates = it }
+        val ready = candidates.filter { it.verdict.status != Compatibility.INCOMPATIBLE }.map { it.packageName }.toMutableSet()
         if(ready.isNotEmpty()) notification.showUpdateNotification(ready.size)
+        com.apkupdater.diagnostics.AppDiagnostics.info("background.scan.completed",mapOf("candidates" to candidates.size,"ready" to ready.size))
         return Result.success()
+        } catch(e:CancellationException){com.apkupdater.diagnostics.AppDiagnostics.info("background.scan.cancelled");throw e}
+        catch(e:Exception){com.apkupdater.diagnostics.AppDiagnostics.error("background.scan.failed",error=e);throw e}
+        finally { lease.close() }
     }
 }

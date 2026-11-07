@@ -1,6 +1,6 @@
-# Liquid-APK-Store 0.6.0-rc1
+# Liquid-APK-Store 0.6.0-rc2
 
-A native Android APK discovery, inspection and update application with configurable liquid-glass visuals. Package `com.hyvan187.apkupdater`, version code 1006, minimum API 23, compile/target API 37.
+A native Android APK discovery, inspection and update application with configurable liquid-glass visuals. Package `com.hyvan187.apkupdater`, version code 1007, minimum API 23, compile/target API 37.
 
 ## Updates and safety
 
@@ -9,10 +9,17 @@ A native Android APK discovery, inspection and update application with configura
 - Package name, numeric version code, recognizable system branch, signature, Android SDK, ABI, split requirements and detectable dependencies are checked. A higher code alone cannot authorize an older DocumentsUI branch (17 → 14).
 - Downloaded APKs are never executed during inspection. ZIP/manifest size and decoded-text limits reject oversized or malformed structures. Installation re-inspects private bytes and requires Android confirmation.
 - Manual batch checking covers eligible direct APKs sequentially, one per app. Web-only providers/unsupported archives are excluded. Cached evidence does not transfer between sources. Manual cancellation is available; an in-flight blocking network call may finish before stopping.
-- Automatic default: 12 apps, 128 MiB per APK, 768 MiB total reserved budget, unmetered networks. Limits are configurable. Unknown file sizes reserve the entire per-file limit. Private inspection cache and free-storage headroom are bounded.
+- No automatic APK downloads. Discovery, background work and reading reports only use metadata. Explicit batch defaults: up to 12 apps, 128 MiB per APK and 768 MiB total reserved budget. Limits are configurable. Unknown file sizes reserve the entire per-file limit. Private inspection cache and free-storage headroom are bounded.
 - Risk is separate from technical status. Prereleases, system dependencies and another update owner raise warnings even when technical conditions pass.
 
-## Release candidate changes
+## RC2 changes
+
+- Play source selection resolves the entire BASE/SPLIT set only after an explicit action. Every component is inspected together; missing splits, mixed signers and unsupported expansion files are rejected.
+- Successful installations are confirmed against PackageManager and reconciled across all sources, including late metadata results. Pending self-updates survive process replacement.
+- Bounded local diagnostics provide standard/detailed capture and short/full ZIP exports. Settings include history deletion, safe cache clearing, language/model choices and a live actual/selected/effective region overview.
+- Animated backgrounds span the full window. Appearance sliders preview without repeated preference writes; glass effects are cached and settings use reduced rendering work. The transparency setting remains effective in light/dark themes, dialogs and with blur disabled.
+
+## Previous release candidate changes
 
 - Source flows run independently on IO dispatchers.
 - A single explicit APK set is checked as a unit and committed in one Android installation session; verification is repeated before installation.
@@ -39,7 +46,7 @@ The missing ACCESS_NETWORK_STATE declaration has been added. DNS uses the curren
 
 ## Files, installation and history
 
-Manual direct APKs are copied to `Download/Liquid-APK-Store`, or a user-selected persisted document tree on any supported Android version. Android may restrict root directories; a subfolder can be created in its picker. Existing files are not moved. Temporary automatic inspection files stay private.
+Manual direct APKs are copied to `Download/Liquid-APK-Store`, or a user-selected persisted document tree on any supported Android version. Android may restrict root directories; a subfolder can be created in its picker. Existing files are not moved. Inspection files stay private and are fetched only after an explicit download action.
 
 Keep-APKs defaults off. Public copies are deleted only after confirmed installation success; aborted/failed attempts retain them. Identical files are reused by SHA-256. Private checked bytes remain the installation input. Browser downloads are outside app management.
 
@@ -53,12 +60,13 @@ Automatic ROM detection remains independent from system language/location/SIM. M
 
 ## Install and build
 
-Extract the universal release-candidate ZIP and install its `Liquid-APK-Store-0.6.0-rc1-Universal-Release.apk`. This is the optimized release build with `android:debuggable=false`; its version remains a release candidate because physical-device acceptance is incomplete. The retained 0.2/0.3/0.4 signer and package ID allow an in-place update. Independently signed CI builds may use another key. Private signing material is excluded from the distribution and source.
+Extract the release ZIP and install `arm64-v8a.apk` on a modern ARM64 phone such as OnePlus 15, or choose `universal.apk` for other devices. `armeabi-v7a.apk` and `x86_64.apk` are supplied separately. This is the optimized release build with `android:debuggable=false`; its version remains a release candidate because physical-device acceptance is incomplete. The retained 0.2/0.3/0.4 signer and package ID allow an in-place update. Independently signed CI builds may use another key. Private signing material is excluded from the distribution and source.
 
 Use JDK 21 for API-37 Robolectric tests; app bytecode targets Java 17:
 
 ```sh
 sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+python3 tools/normalize-sdk37.py
 ./gradlew :app:testDebugUnitTest :app:lintRelease :app:assembleRelease
 ```
 

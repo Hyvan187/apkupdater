@@ -23,8 +23,8 @@ android {
         applicationId = "com.hyvan187.apkupdater"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1006
-        versionName = "0.6.0-rc1"
+        versionCode = 1007
+        versionName = "0.6.0-rc2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -45,6 +45,15 @@ android {
         }
     }
     dependenciesInfo { includeInApk = false; includeInBundle = false }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = true
+        }
+    }
 
     buildTypes {
         getByName("release") {
@@ -124,6 +133,8 @@ dependencies {
     implementation("org.jsoup:jsoup:1.24.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+    testImplementation("androidx.work:work-testing:2.11.1")
     testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("androidx.test.espresso:espresso-core:3.7.0")
     testImplementation("androidx.compose.ui:ui-test-junit4")

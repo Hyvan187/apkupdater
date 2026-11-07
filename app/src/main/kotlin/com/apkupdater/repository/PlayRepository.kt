@@ -127,7 +127,6 @@ class PlayRepository(
     private fun getInstallFiles(app: App) = PurchaseHelper(auth())
         .using(playHttpClient)
         .purchase(app.packageName, app.versionCode, app.offerType)
-        .filter { it.type == PlayFile.Type.BASE || it.type == PlayFile.Type.SPLIT }
 
 }
 

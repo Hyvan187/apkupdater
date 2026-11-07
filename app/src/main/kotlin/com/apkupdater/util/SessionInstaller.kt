@@ -27,11 +27,17 @@ import kotlin.coroutines.resumeWithException
 class SessionInstaller(private val context: Context, private val installLog: InstallLog, private val prefs: Prefs, private val history: com.apkupdater.glass.HistoryStore) {
     companion object { const val INSTALL_ACTION = "com.hyvan187.apkupdater.INSTALL" }
     private val mutex = Mutex()
-    fun inspect(file: File, packageName: String) = com.apkupdater.glass.ApkSetInspector(context, DeviceDetection(context, prefs)).inspect(file, packageName)
+    fun inspect(file: File, packageName: String) = com.apkupdater.glass.AppCache.use {
+        try { com.apkupdater.glass.ApkSetInspector(context, DeviceDetection(context, prefs)).inspect(file, packageName).also { com.apkupdater.diagnostics.AppDiagnostics.debug("apk.checked", mapOf("package" to packageName, "status" to it.verdict.status.name)) } }
+        catch(e: Exception) { com.apkupdater.diagnostics.AppDiagnostics.error("apk.check_failed",mapOf("package" to packageName),e); throw e }
+    }
     suspend fun install(id: Int, packageName: String, stream: InputStream, source: String="Direktdownload") = install(id, packageName, listOf(stream),source)
     suspend fun install(id: Int, packageName: String, streams: List<InputStream>, source: String="Direktdownload") = mutex.withLock {
-        val dir = File(context.cacheDir, "preflight-${randomUUID()}").apply { mkdirs() }
+        val lease = com.apkupdater.glass.AppCache.begin()
+        val dir = File(context.cacheDir, "preflight-${randomUUID()}")
         try {
+            check(dir.mkdirs())
+            com.apkupdater.diagnostics.AppDiagnostics.info("install.started",mapOf("package" to packageName,"parts" to streams.size))
             require(streams.size in 1..128) { "Ein Paket benötigt zwischen 1 und 128 APK-Bestandteile." }
             var total = 0L
             val staged = streams.mapIndexed { index, input ->
@@ -68,21 +74,43 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
             require(report.verdict.installAllowed) {
                 report.verdict.evidence.filter { it.status != Compatibility.COMPATIBLE }.joinToString("; ") { "${it.property}: ${it.detail}" }
             }
-            com.apkupdater.glass.DownloadArchive(context,prefs).publish(file,packageName,report.candidate.versionName)
+            val published=com.apkupdater.glass.DownloadArchive(context,prefs).publish(file,packageName,report.candidate.versionName)
+            val publishedDigest=prefs.downloadArchive.get().entries.firstOrNull { it.value==published.toString() }?.key
             val chosen=prefs.installerPackage.get()
             if(chosen!="SYSTEM") {
                 require(prepared.files.size == 1 && prepared.files.single() == file) { "APK-Archive und APK-Sets benötigen den Android PackageInstaller. Bitte diesen in den Einstellungen auswählen." }
                 val staged=com.apkupdater.glass.InstallerChoices.handoff(context,prepared.files.single(),packageName,chosen)
-                history.pending(com.apkupdater.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),staged.absolutePath))
+                history.pending(com.apkupdater.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),staged.absolutePath,downloadDigest=publishedDigest))
             } else {
-                commit(id, packageName, prepared.files)
-                history.record(com.apkupdater.glass.InstallHistory(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,"Android PackageInstaller",System.currentTimeMillis(),true))
+                val pending = com.apkupdater.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),installer="Android PackageInstaller",downloadDigest=publishedDigest)
+                // Persist before commit: a self-update can terminate this process.
+                history.pending(pending)
+                try { commit(id, packageName, prepared.files) }
+                catch (e: Exception) { history.cancelPending(pending); throw e }
+                val expected=requireNotNull(report.candidate.versionCode)
+                val actual = com.apkupdater.glass.awaitInstalledVersion(expected) {
+                    try {
+                        val info=context.packageManager.getPackageInfo(packageName,0)
+                        com.apkupdater.glass.ActualInstalledVersion(if(Build.VERSION.SDK_INT>=28)info.longVersionCode else @Suppress("DEPRECATION")info.versionCode.toLong(),info.versionName.orEmpty())
+                    } catch (_: android.content.pm.PackageManager.NameNotFoundException) { null }
+                    catch (e: Exception) {
+                        com.apkupdater.diagnostics.AppDiagnostics.error("install.version_query_failed",mapOf("package" to packageName),e)
+                        null
+                    }
+                }
+                history.complete(pending, actual)
                 com.apkupdater.glass.DownloadArchive(context,prefs).installed(file)
+                installLog.emitStatus(AppInstallStatus(true,id,true))
             }
             }
+        } catch (e: Exception) {
+            com.apkupdater.diagnostics.AppDiagnostics.error("install.failed", mapOf("package" to packageName, "cancelled" to (e is kotlinx.coroutines.CancellationException)), e)
+            installLog.emitStatus(AppInstallStatus(false,id,true))
+            throw e
         } finally {
             streams.forEach { runCatching { it.close() } }
             dir.deleteRecursively()
+            lease.close()
         }
     }
     private suspend fun commit(id: Int, packageName: String, files: List<File>) {
@@ -133,7 +161,7 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
                     continuation.invokeOnCancellation { runCatching { installer.abandonSession(sessionId) } }
                 }
             }
-            installLog.emitStatus(AppInstallStatus(true, id, true))
+            // Success is emitted only after the installed package version has been confirmed.
         } finally {
             registered?.let { runCatching { context.unregisterReceiver(it) } }
             if (!success) runCatching { installer.abandonSession(sessionId) }

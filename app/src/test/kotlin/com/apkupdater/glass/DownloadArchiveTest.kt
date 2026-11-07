@@ -35,4 +35,16 @@ class DownloadArchiveTest {
  @Test fun keepOptionRetainsPublicCopy() {prefs.keepDownloadedApks.put(true);archive.publish(input,"com.example","1.0");archive.installed(input);assertEquals(1,provider.files.size)}
  @Test fun failuresNeverTriggerDeletion() {assertFalse(DownloadNames.deleteAfterSuccess(false,false));assertFalse(DownloadNames.deleteAfterSuccess(false,true));assertTrue(DownloadNames.deleteAfterSuccess(true,false))}
  @Test fun unsafeNamesCannotEscapeFolder() {val n=DownloadNames.name("com.example","../../bad/version","abcdef0123");assertFalse(n.contains('/'));assertTrue(n.endsWith("abcdef01.apk"))}
+ @Test fun confirmedSelfUpdateCleansPublicCopyAfterProcessRestart() {
+  val context=RuntimeEnvironment.getApplication()
+  archive.publish(input,"org.example.update","2")
+  val digest=prefs.downloadArchive.get().keys.single()
+  val pending=PendingInstall("org.example.update","Fixture","1","2",1,2,"Play",System.currentTimeMillis(),installer="Android PackageInstaller",downloadDigest=digest)
+  HistoryStore(prefs).pending(pending)
+  org.robolectric.Shadows.shadowOf(context.packageManager).installPackage(android.content.pm.PackageInfo().apply {
+   packageName="org.example.update";longVersionCode=2;versionName="2";applicationInfo=android.content.pm.ApplicationInfo().apply{packageName="org.example.update"}
+  })
+  val restarted=HistoryStore(prefs);restarted.reconcile(context)
+  assertEquals(1,restarted.state.value.size);assertTrue(provider.files.isEmpty());assertTrue(input.exists())
+ }
 }

@@ -17,11 +17,12 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 class UpdatesViewModel(
-    private val updatesRepository: UpdatesRepository,
+    private val updatesRepository: com.apkupdater.repository.UpdatesQuery,
     private val installer: SessionInstaller,
     private val prefs: Prefs,
     private val badger: Badger,
@@ -35,9 +36,12 @@ class UpdatesViewModel(
     private val state = MutableStateFlow<UpdatesUiState>(UpdatesUiState.Loading)
     private var scanJob: Job? = null
     private var batchJob: Job? = null
+    private val operationMutex = kotlinx.coroutines.sync.Mutex()
     fun cancelVerification(){batchJob?.cancel()}
     private data class Checked(val file: File, val report: ApkAnalyzer.Report,val checkedAt:Long=System.currentTimeMillis())
     private val verified = ConcurrentHashMap<String, Checked>()
+    private val installedFacts=ConcurrentHashMap<String,ActualInstalledVersion>()
+    private val removedPackages:MutableSet<String> = java.util.Collections.newSetFromMap(ConcurrentHashMap<String,Boolean>())
     private val verifying: MutableSet<Int> = java.util.Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
     private fun identity(u: AppUpdate) = "${u.artifactKey}:${u.oldVersionCode}"
     init {
@@ -45,54 +49,113 @@ class UpdatesViewModel(
         subscribeToInstallStatus()
         subscribeToInstallProgress { progress -> state.update { UpdatesUiState.Success(it.mutableUpdates().setProgress(progress)) } }
     }
+    fun invalidateVerificationCache() {
+        verified.clear()
+        setSuccess(state.value.updates().map { if(it.verifiedAt != null) it.copy(verdict=Verdict(Compatibility.UNKNOWN,listOf(Evidence("Prüfdatei","Cache geleert; APK vor Installation erneut prüfen.",Compatibility.UNKNOWN))),sha256=null,verifiedAt=null,updateOwner=null) else it })
+    }
+    suspend fun reconcileInstalledUpdates(packageName:String?=null) = withContext(Dispatchers.IO) {
+        val current=state.value.updates()
+        val names=current.map{it.packageName}.toSet()+installedFacts.keys+removedPackages+listOfNotNull(packageName)
+        for(pkg in names) {
+            try {
+                val info=context.packageManager.getPackageInfo(pkg,0)
+                val code=if(android.os.Build.VERSION.SDK_INT>=28)info.longVersionCode else @Suppress("DEPRECATION")info.versionCode.toLong()
+                val actual=ActualInstalledVersion(code,info.versionName.orEmpty())
+                installedFacts[pkg]=actual;removedPackages.remove(pkg)
+                if(current.any{it.packageName==pkg && it.oldVersionCode!=code}) {
+                    verified.entries.filter{it.value.report.candidate.packageName==pkg}.forEach{entry->verified.remove(entry.key)?.file?.delete()}
+                    com.apkupdater.diagnostics.AppDiagnostics.info("installed.version_changed",mapOf("package" to pkg,"versionCode" to code))
+                }
+            } catch(e:android.content.pm.PackageManager.NameNotFoundException){installedFacts.remove(pkg);removedPackages.add(pkg)}
+            catch(e:Exception){com.apkupdater.diagnostics.AppDiagnostics.error("installed.reconcile_failed",mapOf("package" to pkg),e)}
+        }
+        if(state.value is UpdatesUiState.Success)setSuccess(state.value.updates())
+    }
     fun state(): StateFlow<UpdatesUiState> = state
     fun refresh(load: Boolean = true): Job {
         val previous = scanJob
         previous?.cancel()
         return viewModelScope.launch(Dispatchers.IO) {
             previous?.join()
+            operationMutex.withLock {
             state.value = UpdatesUiState.Loading
+            val progressId = ScanProgress.begin()
+            var scanLease: java.io.Closeable? = null
             try {
-                updatesRepository.updates().collect { found ->
+                scanLease = AppCache.begin()
+                updatesRepository.updates(progressId).collect { found ->
                     val previous=state.value.updates().associateBy{it.artifactKey}
                     val withEvidence = found.map{u->u.copy(isInstalling=previous[u.artifactKey]?.isInstalling ?: false,verificationError=previous[u.artifactKey]?.verificationError)}.filter { ReleasePolicy.allowed(it,prefs) }.map { u -> verified[identity(u)]?.takeIf { it.file.exists() }?.report?.let { report -> u.copy(verdict = report.verdict, sha256 = report.sha256, updateOwner=report.owner, version = report.candidate.versionName, versionCode = report.candidate.versionCode ?: u.versionCode, minSdk = report.candidate.minSdk, targetSdk = report.targetSdk, abis = report.candidate.abis, verifiedAt = verified[identity(u)]?.checkedAt) } ?: u }
                     setSuccess(withEvidence)
                 }
                 if(state.value is UpdatesUiState.Loading) state.value = UpdatesUiState.Success(emptyList())
-                if(AutomaticChecks.allowed(context, prefs.autoVerify.get(), prefs.autoVerifyWifiOnly.get())) {
-                    AutoCheckPolicy.plan(state.value.updates(), prefs.preferredSources.get(), prefs.autoVerifyLimitMiB.get() * 1024L * 1024,prefs.autoCheckCount.get(),prefs.autoCheckBudgetMiB.get()*1024L*1024).forEach {
-                        ensureActive(); verifyCandidate(it, automatic = true)
-                    }
-                }
-            } catch(e: CancellationException) { throw e } catch(e: Exception) {
+                ScanProgress.finish(progressId)
+            } catch(e: CancellationException) { ScanProgress.finish(progressId,ScanPhase.CANCELLED); throw e } catch(e: Exception) {
+                ScanProgress.finish(progressId,ScanPhase.FAILED)
+                com.apkupdater.diagnostics.AppDiagnostics.error("scan.failed",error=e)
                 state.value = UpdatesUiState.Error
                 snackBar.snackBar(viewModelScope, TextSnack(e.message ?: "Die Updatequellen konnten nicht abgefragt werden."))
+            } finally { scanLease?.close() }
             }
         }.also { scanJob = it }
     }
-    fun verify(update: AppUpdate): Job = viewModelScope.launch(Dispatchers.IO) { verifyCandidate(update) }
-    fun verifyAll(): Job { batchJob?.cancel();return viewModelScope.launch(Dispatchers.IO) {
-        AutoCheckPolicy.plan(state.value.updates(), prefs.preferredSources.get(), 512L*1024*1024,Int.MAX_VALUE,retryErrors=true).forEach { ensureActive(); verifyCandidate(it) }
+    fun verify(update: AppUpdate): Job = startVerification {
+        val progressId = ScanProgress.begin()
+        ScanProgress.verification(progressId, 1)
+        ScanProgress.checking(progressId, update.name)
+        try {
+            ScanProgress.checked(progressId, verifyCandidate(update))
+            ScanProgress.finish(progressId)
+        } catch(e: CancellationException) {
+            ScanProgress.finish(progressId, ScanPhase.CANCELLED)
+            throw e
+        }
     }
-    .also{batchJob=it}
+    fun verifyAll(): Job = startVerification {
+        val progressId = ScanProgress.begin()
+        val plan = AutoCheckPolicy.plan(state.value.updates(), prefs.preferredSources.get(),
+            prefs.autoVerifyLimitMiB.get()*1024L*1024, prefs.autoCheckCount.get(),
+            prefs.autoCheckBudgetMiB.get()*1024L*1024, retryErrors=true)
+        ScanProgress.verification(progressId, plan.size)
+        try {
+            for (candidate in plan) {
+                ensureActive()
+                ScanProgress.checking(progressId, candidate.name)
+                ScanProgress.checked(progressId, verifyCandidate(candidate))
+            }
+            ScanProgress.finish(progressId)
+        } catch(e: CancellationException) {
+            ScanProgress.finish(progressId, ScanPhase.CANCELLED)
+            throw e
+        }
     }
-    private suspend fun verifyCandidate(update: AppUpdate, automatic: Boolean = false) {
-        if(update.verdict.status == Compatibility.INCOMPATIBLE || !verifying.add(update.id)) return
-        val url = when(val link=update.link) { is Link.Url -> link.link; is Link.Xapk -> link.link; else -> null }
-        if(url == null || update.source == ApkMirrorSource) {
+    private fun startVerification(block: suspend CoroutineScope.() -> Unit): Job {
+        val previous = batchJob
+        previous?.cancel()
+        return viewModelScope.launch(Dispatchers.IO) {
+            previous?.join()
+            operationMutex.withLock { block() }
+        }.also { batchJob = it }
+    }
+    private suspend fun verifyCandidate(update: AppUpdate): Boolean {
+        if(update.verdict.status == Compatibility.INCOMPATIBLE || !verifying.add(update.id)) return false
+        val supported = update.link is Link.Url || update.link is Link.Xapk || update.link is Link.Play
+        if(!supported || update.source == ApkMirrorSource) {
             verifying.remove(update.id)
             snackBar.snackBar(viewModelScope, TextSnack("Für dieses Archiv ist noch keine vollständige Paketprüfung verfügbar."))
-            return
+            return false
         }
         mark(update.id, true)
         var file: File? = null
+        var lease: java.io.Closeable? = null
         try {
+            lease = AppCache.begin()
             require(context.cacheDir.usableSpace > 256L*1024*1024){"Zu wenig freier Speicher für eine sichere APK-Prüfung."}
-            file = downloader.download(url, minOf(if(automatic) prefs.autoVerifyLimitMiB.get() * 1024L * 1024 else 512L * 1024 * 1024, context.cacheDir.usableSpace-128L*1024*1024))
+            file = downloader.download(update.link, minOf(prefs.autoVerifyLimitMiB.get() * 1024L * 1024, context.cacheDir.usableSpace-128L*1024*1024))
             currentCoroutineContext().ensureActive()
             val report = installer.inspect(file, update.packageName)
             require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)) { "Vorabversion durch deine Filter ausgeblendet." }
-            if(!automatic) runCatching { DownloadArchive(context,prefs).publish(file,update.packageName,report.candidate.versionName) }.onFailure { snackBar.snackBar(viewModelScope,TextSnack("Öffentliche Kopie nicht gespeichert: ${it.message}")) }
+            runCatching { DownloadArchive(context,prefs).publish(file,update.packageName,report.candidate.versionName) }.onFailure { snackBar.snackBar(viewModelScope,TextSnack("Öffentliche Kopie nicht gespeichert: ${it.message}")) }
             // Bound private verification cache; old evidence may require re-checking before installation.
             if(verified.values.sumOf{it.file.length()}+file.length()>768L*1024*1024){
                 verified.entries.sortedBy{it.value.file.lastModified()}.forEach { entry ->
@@ -101,13 +164,15 @@ class UpdatesViewModel(
             }
             verified.put(identity(update), Checked(file, report))?.file?.delete()
             file = null
-            state.update { s -> UpdatesUiState.Success(s.updates().map { if(it.id == update.id) it.copy(verdict = report.verdict, sha256 = report.sha256, updateOwner=report.owner, version = report.candidate.versionName, versionCode = report.candidate.versionCode ?: it.versionCode, minSdk = report.candidate.minSdk, targetSdk = report.targetSdk, abis = report.candidate.abis, verifiedAt = System.currentTimeMillis(), verificationError = null, isInstalling = false) else it }) }
+            setSuccess(state.value.updates().map { if(it.id == update.id) it.copy(verdict = report.verdict, sha256 = report.sha256, updateOwner=report.owner, version = report.candidate.versionName, versionCode = report.candidate.versionCode ?: it.versionCode, minSdk = report.candidate.minSdk, targetSdk = report.targetSdk, abis = report.candidate.abis, verifiedAt = System.currentTimeMillis(), verificationError = null, isInstalling = false) else it })
+            return true
         } catch(e: CancellationException) { throw e } catch(e: Exception) {
             val message = SourceHealth.describe(e)
             state.update { s -> UpdatesUiState.Success(s.updates().map { if(it.id == update.id) it.copy(verificationError = message) else it }) }
             if(e !is AutomaticSizeLimit && e !is InspectionException) SourceHealth.failed(update.source.name, e)
-            if(!automatic) snackBar.snackBar(viewModelScope, TextSnack(message))
-        } finally { file?.delete(); verifying.remove(update.id); mark(update.id, false) }
+            snackBar.snackBar(viewModelScope, TextSnack(message))
+            return false
+        } finally { file?.delete(); verifying.remove(update.id); mark(update.id, false); lease?.close() }
     }
     private fun mark(id: Int, active: Boolean) = state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(id, active)) }
     fun installAll() = viewModelScope.launch(Dispatchers.IO) { state.value.updates().filter { it.verdict.installAllowed }.forEach { downloadAndInstall(it).join() } }
@@ -122,30 +187,43 @@ class UpdatesViewModel(
         setSuccess(state.value.updates())
     }
     override fun cancelInstall(id: Int) = viewModelScope.launch { mark(id, false) }
-    override fun finishInstall(id: Int) = viewModelScope.launch { setSuccess(state.value.updates().filter { it.id != id }) }
+    override fun finishInstall(id: Int) = viewModelScope.launch(Dispatchers.IO) { reconcileInstalledUpdates() }
     override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch { snackBar.snackBar(viewModelScope, TextSnack("Root-Installationen sind deaktiviert.")) }
     override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+        operationMutex.withLock {
         if(!update.verdict.installAllowed) { snackBar.snackBar(viewModelScope, TextSnack("Diese APK hat keine Installationsfreigabe.")); return@launch }
         val checked = verified[identity(update)]
-        if(checked == null || !checked.file.exists()) { verifyCandidate(update); snackBar.snackBar(viewModelScope, TextSnack("Prüfdatei erneut geladen. Bitte die angezeigte Version kontrollieren und Installation erneut bestätigen.")); return@launch }
+        if(checked == null || !checked.file.exists()) {
+            verified.remove(identity(update))
+            setSuccess(state.value.updates().map { if(it.id==update.id)it.copy(verdict=Verdict(Compatibility.UNKNOWN,listOf(Evidence("Prüfdatei","Prüfdatei fehlt. APK ausdrücklich erneut herunterladen und prüfen.",Compatibility.UNKNOWN))),verifiedAt=null,sha256=null) else it })
+            snackBar.snackBar(viewModelScope,TextSnack("Prüfdatei fehlt. Bitte die APK über die Quellenauswahl erneut herunterladen."));return@launch
+        }
         if(!installer.checkPermission()) return@launch
         mark(update.id, true)
+        var installLease: java.io.Closeable? = null
         try {
+            installLease = AppCache.begin()
             val report = installer.inspect(checked.file, update.packageName)
             require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)) { "Vorabversion durch deine Filter ausgeblendet." }
             require(report.sha256 == checked.report.sha256) { "Die geprüfte Datei wurde verändert." }
             require(report.verdict.installAllowed) { report.verdict.summary }
             installer.install(update.id, update.packageName, checked.file.inputStream(),update.source.name)
         } catch(e: CancellationException) { throw e } catch(e: Exception) { snackBar.snackBar(viewModelScope, TextSnack(e.message ?: "Installation verweigert")) }
-        finally { mark(update.id, false) }
+        finally { mark(update.id, false); installLease?.close() }
+        }
     }
     override fun sendInstallSnack(log: AppInstallStatus) {
         if(log.snack) state.value.updates().find { it.id == log.id }?.let { app -> snackBar.snackBar(viewModelScope, TextSnack(stringer.get(if(log.success) R.string.install_success else R.string.install_failure, app.name))) }
     }
     private fun setSuccess(updates: List<AppUpdate>) {
-        val filtered = updates.filter { ReleasePolicy.allowed(it,prefs) }.filter { it.id !in prefs.ignoredVersions.get() && releaseKey(it) !in prefs.ignoredReleases.get() }
-            .distinctBy { it.artifactKey }
-        state.value = UpdatesUiState.Success(filtered)
+        state.update {
+            val filtered = updates.filter { it.packageName !in removedPackages }.mapNotNull { update ->
+                val actual=installedFacts[update.packageName]
+                if(actual==null) update else InstalledUpdatePolicy.reconcile(update,actual)
+            }.filter { ReleasePolicy.allowed(it,prefs) }.filter { it.id !in prefs.ignoredVersions.get() && releaseKey(it) !in prefs.ignoredReleases.get() }.distinctBy { it.artifactKey }
+            UpdatesUiState.Success(filtered)
+        }
+        val filtered = state.value.updates()
         badger.changeUpdatesBadge(filtered.appGroups().count { it.status == Compatibility.COMPATIBLE }.takeIf { it > 0 }?.toString().orEmpty())
     }
     override fun onCleared() { verified.values.forEach { it.file.delete() }; verified.clear(); batchJob?.cancel(); super.onCleared() }

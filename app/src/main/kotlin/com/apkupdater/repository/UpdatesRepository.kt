@@ -24,9 +24,9 @@ class UpdatesRepository(
     private val playRepository: PlayRepository,
     private val context: android.content.Context,
     private val prefs: Prefs
-) {
+) : UpdatesQuery {
 
-    fun updates() = flow<List<AppUpdate>> {
+    override fun updates(progressId: Long?) = flow<List<AppUpdate>> {
         appsRepository.getApps().collect { result ->
             result.onSuccess { apps ->
                 val filtered = apps.filter { !it.ignored }.filter {
@@ -43,8 +43,9 @@ class UpdatesRepository(
                 if (prefs.useGitLab.get()) sources.add("GitLab" to gitLabRepository.updates(filtered))
                 if (prefs.usePlay.get()) sources.add("Play" to playRepository.updates(filtered))
 
+                progressId?.let { com.apkupdater.glass.ScanProgress.sources(it,sources.size) }
                 if (sources.isNotEmpty()) {
-                    sources.map { (name, source) -> com.apkupdater.glass.SourceHealth.observe(name, emptyList<AppUpdate>(), source.flowOn(Dispatchers.IO)) }
+                    sources.map { (name, source) -> com.apkupdater.glass.SourceHealth.observe(name, emptyList<AppUpdate>(), source.flowOn(Dispatchers.IO),progressId) }
                         .combine { updates ->
                             val detection = com.apkupdater.glass.DeviceDetection(context, prefs)
                             val assessed = updates.flatMap { it }.map { u ->

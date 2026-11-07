@@ -41,8 +41,11 @@ class DownloadArchive(private val context: Context,private val prefs: Prefs) {
   } catch(e: Exception){runCatching{if(!DocumentsContract.isDocumentUri(context,uri))resolver.delete(uri,null,null) else DocumentsContract.deleteDocument(resolver,uri)};throw e}
  }
  fun installed(file: File) = synchronized(lock) {
+  installedDigest(hash(file))
+ }
+ fun installedDigest(key: String) = synchronized(lock) {
   if(!DownloadNames.deleteAfterSuccess(true,prefs.keepDownloadedApks.get()))return@synchronized
-  val key=hash(file);val saved=prefs.downloadArchive.get()[key] ?: return@synchronized;val uri=Uri.parse(saved)
+  val saved=prefs.downloadArchive.get()[key] ?: return@synchronized;val uri=Uri.parse(saved)
   val removed=runCatching{if(!DocumentsContract.isDocumentUri(context,uri))context.contentResolver.delete(uri,null,null)>0 else DocumentsContract.deleteDocument(context.contentResolver,uri)}.getOrDefault(false)
   if(removed)prefs.downloadArchive.put(prefs.downloadArchive.get()-key)
  }

@@ -1,4 +1,6 @@
-# Liquid-APK-Store 0.5 task audit
+# Liquid-APK-Store 0.5 task audit (historical)
+
+Current behavior and acceptance status: [RC2 audit](RELEASE-RC2.md). RC2 removes automatic APK downloads.
 
 | Request | Implementation | Practical limit |
 |---|---|---|

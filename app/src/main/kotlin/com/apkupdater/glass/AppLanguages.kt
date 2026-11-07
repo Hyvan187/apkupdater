@@ -21,7 +21,8 @@ val LocalDisplayLanguage=staticCompositionLocalOf{"de"}
 class AppLanguageStore(private val prefs:Prefs) {
  private val mutable=MutableStateFlow(prefs.appLanguage.get())
  val state:StateFlow<String> = mutable
- fun set(context:Context,tag:String){require(tag in setOf("SYSTEM","de","en"));if(Build.VERSION.SDK_INT>=33){context.getSystemService(LocaleManager::class.java).applicationLocales=if(tag=="SYSTEM")LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)}else{prefs.appLanguage.put(tag);mutable.value=tag}}
+ fun current(context:Context):String = if(Build.VERSION.SDK_INT>=33)context.getSystemService(LocaleManager::class.java).applicationLocales.toLanguageTags().substringBefore(",").ifBlank{"SYSTEM"} else prefs.appLanguage.get()
+ fun set(context:Context,tag:String){require(tag in setOf("SYSTEM","de","en"));if(Build.VERSION.SDK_INT>=33){context.getSystemService(LocaleManager::class.java).applicationLocales=if(tag=="SYSTEM")LocaleList.getEmptyLocaleList() else LocaleList.forLanguageTags(tag)}else{prefs.appLanguage.put(tag);mutable.value=tag};prefs.appLanguage.put(tag);mutable.value=tag}
  fun openSettings(context:Context){if(Build.VERSION.SDK_INT>=33)context.startActivity(Intent(Settings.ACTION_APP_LOCALE_SETTINGS,Uri.parse("package:${context.packageName}")))}
 }
 @Composable fun Text(text:String,modifier:Modifier=Modifier,color:Color=Color.Unspecified,style:TextStyle=LocalTextStyle.current,fontWeight:FontWeight?=null,maxLines:Int=Int.MAX_VALUE,overflow:TextOverflow=TextOverflow.Clip){
@@ -29,6 +30,11 @@ class AppLanguageStore(private val prefs:Prefs) {
 }
 object UiEnglish {
  private val exact=mapOf(
+  "Glastransparenz" to "Glass transparency", "Standard: 54 %" to "Default: 54%", "0 % · deckend" to "0% · opaque", "100 % · transparent" to "100% · transparent",
+  "Für Karten, Menüs, Dialoge und Navigation. Höher zeigt mehr Hintergrund; Text und Symbole bleiben deckend. Unschärfe bleibt separat einstellbar." to "For cards, menus, dialogs and navigation. Higher values reveal more background; text and icons remain opaque. Blur is adjusted separately.",
+  "Standard · 54 % Glastransparenz · Unschärfe und Brechung an" to "Standard · 54% glass transparency · blur and refraction on",
+  "Standard ist ausgewogen. Hoch kostet mehr Grafikleistung; Aus deaktiviert Unschärfe und Brechung. Die Transparenz bleibt einstellbar." to "Standard is balanced. High requires more graphics work; Off disables blur and refraction. Transparency remains adjustable.",
+  "Setzt nur Qualität, Glastransparenz, Unschärfe und Brechung auf ausgewogene Werte. Deine Farben bleiben erhalten." to "Resets quality, glass transparency, blur and refraction to balanced values. Your colors are retained.",
   "Einstellungen" to "Settings","Erscheinungsbild" to "Appearance","Design anpassen" to "Customize appearance","Updateprüfung" to "Update checks","Updates" to "Updates","Start" to "Home","Apps" to "Apps","Deine Apps" to "Your apps","INSTALLIERTE PAKETE" to "INSTALLED PACKAGES","App oder Paket suchen" to "Search apps or packages",
   "Alle" to "All","Allgemeine" to "User apps","Allgemeine Apps" to "User apps","System-Apps" to "System apps","Google-System-Apps" to "Google system apps","Alle Zustände" to "All states","Deaktiviert" to "Disabled","Ignoriert" to "Ignored","Favoriten" to "Favorites","Nur Favoriten" to "Favorites only",
   "Prüfstatus" to "Check status","Bereit" to "Ready","Prüfen" to "Check","Blockiert" to "Blocked","Abgelehnt" to "Rejected","Prüfung offen" to "Check pending","Prüfung läuft …" to "Checking …","Geprüft · bereit" to "Checked · ready",
@@ -95,7 +101,7 @@ object UiEnglish {
   (exact[raw] ?: explanations[raw])?.let{return it}
   if(raw.contains("\n\n"))return raw.split("\n\n").joinToString("\n\n"){translate(it,language)}
   var out=raw
-  val replacements=listOf("Effektqualität:" to "Effect quality:","Glasdeckkraft:" to "Glass opacity:","Geschwindigkeit:" to "Speed:","Effektdichte:" to "Effect density:","Zusätzliche Textgröße:" to "Additional text size:","Deckkraft:" to "Opacity:","Apps pro Durchlauf:" to "Apps per run:","Einzellimit:" to "Per-file limit:","Gesamtbudget:" to "Total budget:","Manuelle Region:" to "Manual region:","Risiko:" to "Risk:","Versionscode:" to "Version code:","Letzte Suche" to "Last search","Updates bereit." to "updates ready.","Architektur noch offen" to "Architecture unknown","Quelle" to "Source","Quellen" to "Sources","Ungeklärt" to "Uncertain","Erhöht" to "Elevated","Restrisiko" to "Residual risk")
+  val replacements=listOf("Glastransparenz:" to "Glass transparency:","Effektqualität:" to "Effect quality:","Glasdeckkraft:" to "Glass opacity:","Geschwindigkeit:" to "Speed:","Effektdichte:" to "Effect density:","Zusätzliche Textgröße:" to "Additional text size:","Deckkraft:" to "Opacity:","Apps pro Durchlauf:" to "Apps per run:","Einzellimit:" to "Per-file limit:","Gesamtbudget:" to "Total budget:","Manuelle Region:" to "Manual region:","Risiko:" to "Risk:","Versionscode:" to "Version code:","Letzte Suche" to "Last search","Updates bereit." to "updates ready.","Architektur noch offen" to "Architecture unknown","Quelle" to "Source","Quellen" to "Sources","Ungeklärt" to "Uncertain","Erhöht" to "Elevated","Restrisiko" to "Residual risk")
   for((de,en) in replacements.sortedByDescending{it.first.length})out=out.replace(de,en)
   return out
  }

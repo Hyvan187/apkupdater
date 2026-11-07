@@ -21,8 +21,8 @@ class ApkSetInspector(private val context: Context, private val detection: Devic
         val packageName get() = manifest["package"].orEmpty()
         val version get() = manifest["versionCode"].orEmpty() to manifest["versionCodeMajor"].orEmpty()
         val required get() = tags.filter { it.name == "uses-split" && it.attrs["required"] != "false" }.map { requireNotNull(it.attrs["name"]) }.toSet()
-        val requiredTypes get() = tags.flatMap { it.attrs["requiredSplitTypes"].orEmpty().split(',') }.filter { it.isNotBlank() }.toSet()
-        val types get() = tags.flatMap { it.attrs["splitTypes"].orEmpty().split(',') }.filter { it.isNotBlank() }.toSet()
+        val requiredTypes get() = tags.flatMap { it.attrs["requiredSplitTypes"].orEmpty().split(',') }.map { it.trim() }.filter { it.isNotBlank() }.toSet()
+        val types get() = tags.flatMap { it.attrs["splitTypes"].orEmpty().split(',') }.map { it.trim() }.filter { it.isNotBlank() }.toSet()
     }
     fun inspect(file: File, expectedPackage: String? = null) = prepare(file, expectedPackage).use { it.report }
     fun prepare(file: File, expectedPackage: String? = null): Prepared {
@@ -88,8 +88,8 @@ class ApkSetInspector(private val context: Context, private val detection: Devic
             require(parent.isNullOrBlank() || parent in names) { "Ein Konfigurations-Split verweist auf ein fehlendes Feature." }
             val min = part.tags.firstOrNull { it.name == "uses-sdk" }?.attrs?.get("minSdkVersion")
             require(min == null || min.toIntOrNull()?.let { it <= Build.VERSION.SDK_INT } == true) { "Ein Split benötigt eine neuere oder nicht eindeutig lesbare Android-Version." }
-            if (part.tags.any { it.attrs["isSplitRequired"] == "true" } && part.required.isEmpty() && part.requiredTypes.isEmpty()) {
-                throw InspectionException("Die APK verlangt weitere Splits, benennt deren vollständigen Umfang aber nicht eindeutig.")
+            if (part.manifest["isSplitRequired"] == "true" && parts.size <= 1) {
+                throw InspectionException("Die Basis-APK verlangt mindestens einen zusätzlichen Split.")
             }
         }
         // Dependencies between features must be acyclic.

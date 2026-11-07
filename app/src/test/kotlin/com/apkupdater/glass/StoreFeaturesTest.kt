@@ -36,7 +36,7 @@ class StoreFeaturesTest {
  @Test fun unknownNeverBecomesVerifiedBySource(){assertEquals("Ungeklärt",RiskPolicy.risk(app().copy(source=GitHubSource)).level)}
  @Test fun dnsAnd403HaveDifferentAdvice(){assertTrue(NetworkDiagnostics.hints("DNS-Fehler").contains("privates DNS"));assertTrue(NetworkDiagnostics.hints("HTTP 403").contains("nicht umgangen"))}
  @Test fun animationsStopForAccessibilityBackgroundAndPowerSave(){assertFalse(MotionPolicy.active(false,false,true,false));assertFalse(MotionPolicy.active(true,true,true,false));assertFalse(MotionPolicy.active(true,false,false,false));assertFalse(MotionPolicy.active(true,false,true,true));assertTrue(MotionPolicy.active(true,false,true,false))}
- @Test fun randomAnimationIsValidAndSeasonalIsLocal(){assertNotEquals(MotionMode.RANDOM,MotionPolicy.mode(10,false,7,12));assertEquals(MotionMode.SNOW,MotionPolicy.mode(0,true,12,1));assertEquals("Frohes neues Jahr",MotionPolicy.greeting(1,1))}
+ @Test fun randomAnimationIsValidAndSeasonalIsLocal(){assertNotEquals(MotionMode.RANDOM,MotionPolicy.mode(10,false,7,12));assertEquals(MotionMode.NONE,MotionPolicy.mode(0,true,12,1));assertEquals(MotionMode.SNOW,MotionPolicy.mode(10,true,12,1));assertEquals("Frohes neues Jahr",MotionPolicy.greeting(1,1))}
  @Test fun allScreenshotAnimationModesExist(){assertEquals(listOf("Keine","Kreise","Ringe","Netz","Weltraum","Formen","Schnee","Raster","Partikel","Lavalampe","Zufällig"),MotionMode.entries.map{it.label})}
  @Test fun defaultSourceFlagsAreOn(){assertTrue(prefs.useApkMirror.get());assertTrue(prefs.usePlay.get());assertTrue(prefs.useFdroid.get());assertTrue(prefs.useGitHub.get())}
  @Test fun apkmirrorRetriesDnsOnlyOnce()=runBlocking {

@@ -26,3 +26,6 @@
 -keep class com.apkupdater.glass.InstallHistory { *; }
 -keep class com.apkupdater.glass.PendingInstall { *; }
 -keep class com.aurora.gplayapi.data.models.** { *; }
+
+# Keep the decoder opaque to constant folding, while allowing its name to be obfuscated.
+-keep,allowobfuscation class com.apkupdater.glass.SupportLink { *; }

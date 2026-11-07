@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 data class InstallHistory(val packageName: String,val name: String,val fromVersion: String,val toVersion: String,val fromCode: Long,val toCode: Long,val source: String,val installer: String,val time: Long,val verifiedSuccess: Boolean)
-data class PendingInstall(val packageName: String,val name: String,val fromVersion: String,val toVersion: String,val fromCode: Long,val toCode: Long,val source: String,val time: Long,val stagedPath: String="")
+data class PendingInstall(val packageName: String,val name: String,val fromVersion: String,val toVersion: String,val fromCode: Long,val toCode: Long,val source: String,val time: Long,val stagedPath: String="",val installer: String? = null,val downloadDigest: String? = null)
 class HistoryStore(private val prefs: Prefs) {
  private val mutable=MutableStateFlow(prefs.updateHistory.get())
  val state: StateFlow<List<InstallHistory>> = mutable
@@ -17,19 +17,27 @@ class HistoryStore(private val prefs: Prefs) {
   val list=(listOf(entry)+prefs.updateHistory.get()).distinctBy{listOf(it.packageName,it.toCode,it.time)}.take(500)
   prefs.updateHistory.put(list);mutable.value=list
  }
- fun pending(p: PendingInstall){prefs.pendingInstalls.put((prefs.pendingInstalls.get().filterNot{it.packageName==p.packageName}+p).takeLast(50))}
+ @Synchronized fun pending(p: PendingInstall){prefs.pendingInstalls.put((prefs.pendingInstalls.get().filterNot{it.packageName==p.packageName}+p).takeLast(50))}
+ @Synchronized fun cancelPending(p: PendingInstall) { prefs.pendingInstalls.put(prefs.pendingInstalls.get().filterNot { it.packageName==p.packageName && it.time==p.time && it.toCode==p.toCode }) }
+ @Synchronized fun complete(p: PendingInstall, actual: ActualInstalledVersion) {
+  if (actual.code < p.toCode || actual.code <= p.fromCode || prefs.pendingInstalls.get().none { it.packageName==p.packageName && it.time==p.time && it.toCode==p.toCode }) return
+  record(InstallHistory(p.packageName,p.name,p.fromVersion,actual.name.ifBlank { p.toVersion },p.fromCode,actual.code,p.source,"${p.installer ?: "Externe Übergabe"} · Paketstand bestätigt",System.currentTimeMillis(),true))
+  cancelPending(p)
+ }
  @Synchronized fun reconcile(context: Context) {
   val keep=mutableListOf<PendingInstall>()
   prefs.pendingInstalls.get().forEach { p ->
-   val installed=runCatching{context.packageManager.getPackageInfo(p.packageName,0)}.getOrNull()
+   val installed=try { context.packageManager.getPackageInfo(p.packageName,0) }
+   catch (_: android.content.pm.PackageManager.NameNotFoundException) { null }
+   catch (e: Exception) { com.apkupdater.diagnostics.AppDiagnostics.error("history.reconcile_failed",mapOf("package" to p.packageName),e); keep+=p; return@forEach }
    val code=installed?.let{if(Build.VERSION.SDK_INT>=28)it.longVersionCode else @Suppress("DEPRECATION")it.versionCode.toLong()}
-   if(code==p.toCode && code>p.fromCode){record(InstallHistory(p.packageName,p.name,p.fromVersion,p.toVersion,p.fromCode,p.toCode,p.source,"Externe Übergabe · Paketstand bestätigt",System.currentTimeMillis(),true));if(p.stagedPath.isNotBlank()){val f=java.io.File(p.stagedPath);if(f.parentFile?.canonicalPath==java.io.File(context.cacheDir,"external-installer").canonicalPath){runCatching{DownloadArchive(context,prefs).installed(f)};f.delete()}}}
+   if(code==p.toCode && code>p.fromCode){complete(p,ActualInstalledVersion(code,installed.versionName.orEmpty()));p.downloadDigest?.let { digest -> runCatching { DownloadArchive(context,prefs).installedDigest(digest) }.onFailure { com.apkupdater.diagnostics.AppDiagnostics.error("history.download_cleanup_failed",error=it) } };if(p.stagedPath.isNotBlank()){val f=java.io.File(p.stagedPath);if(f.parentFile?.canonicalPath==java.io.File(context.cacheDir,"external-installer").canonicalPath){runCatching{DownloadArchive(context,prefs).installed(f)};f.delete()}}}
    else if(System.currentTimeMillis()-p.time<7*86400000L)keep+=p
    else if(p.stagedPath.isNotBlank()){val f=java.io.File(p.stagedPath);if(f.parentFile?.canonicalPath==java.io.File(context.cacheDir,"external-installer").canonicalPath)f.delete()}
   }
   prefs.pendingInstalls.put(keep)
  }
- fun clear(){prefs.updateHistory.put(emptyList());mutable.value=emptyList()}
+ @Synchronized fun clear(){prefs.updateHistory.put(emptyList());mutable.value=emptyList()}
 }
 class FavoriteStore(private val prefs: Prefs) {
  private val mutable=MutableStateFlow(prefs.favorites.get().toSet())

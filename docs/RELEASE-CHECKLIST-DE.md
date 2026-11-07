@@ -1,19 +1,14 @@
-# Veröffentlichungsprüfung: 0.6.0-rc1
+# Veröffentlichungsprüfung: 0.6.0-rc2
 
-**Status: Release-Kandidat, keine vollständige Produktionsfreigabe.**
+Status: signierter Release-Kandidat zur Geräteabnahme.
 
-| Bereich | Nachweis | Noch offen |
+| Bereich | Bestätigt | Noch am Gerät zu prüfen |
 |---|---|---|
-| Funktionen | 124 automatisierte Tests ohne Fehler; Paket-, Versions-, Signatur-, Split- und Filterprüfungen | Vollständige Live-Prüfung aller Quellen und Installationswege; APKMirror API antwortet ohne gültige Zugangsdaten mit 401 |
-| Oberfläche | Hoch-/Querformat, Navigation, gespeicherte Einstellungen und selektive runde Info-Symbole im API-37-Host geprüft; Ansichten visuell kontrolliert | Vollständige Geräte-/Schriftgrößen-/Barrierefreiheitsmatrix |
-| Stabilität und Leistung | Release kompiliert, Code und Ressourcen optimiert | OnePlus-Dauertest, reale Flüssigglas-FPS, GPU-/Akku- und Speicher-Messungen |
-| Sicherheit und Datenschutz | APK-Signaturen vor Installation, geprüfte private Dateien, Keystore-Migration mit Entfernung alter Klartextdaten implementiert; alte gemeinsame API-Zugangsdaten entfernt; jsoup aktualisiert | Vollständige Abhängigkeits-/Datenschutzprüfung und Geräteabnahme der Sicherheitsfunktionen |
-| Kompatibilität | Ein APK für ARMv7, ARM64, x86 und x86_64; min API 23, target API 37; 16-KiB-ZIP-/ELF-Ausrichtung geprüft | Persönliches OnePlus 15 mit IN-ROM, verifizierte APK-ROM-Herkunft und alle echten Android-Versionen |
-| Sprache | Deutsch/Englisch/Systemsprache auswählbar | Vollständige Übersetzung sämtlicher Texte und weitere Sprachen |
-| Paket | Nicht debuggbarer, signierter und optimierter Release-Build; bisherige Signatur für Aktualisierung beibehalten | Endgültige Freigabe nach Schließung der offenen Punkte |
+| Funktion | 167 aktuelle Tests, keine Fehler oder übersprungenen Tests; keine automatischen APK-Downloads, Play-Set-Prüfung, installierter Versionsabgleich, Cache und Diagnose | Live-Play-Zustellung, echte Installation und Abbruch, OnePlus-ROM |
+| Oberfläche | 22 Oberflächentests; Glastransparenz und alle konkreten Animationsmodi im Hoch-/Querformat; kompakte Navigation | Tatsächliche Flüssigkeit, OEM-Installationslogo, große Schrift-/Displaymatrix |
+| Paket | Vier optimierte Release-APKs, identische bisherige Signatur, Version 1007, min/target API 23/37, nicht debuggbar | Aktualisierung auf Cems OnePlus 15 |
+| Ausrichtung | ZIP und sämtliche nativen ELF-LOAD-Segmente mindestens 16 KiB | Ausführung auf verschiedenen echten Geräten |
+| Diagnose | Begrenzte Aufbewahrung, Redaktion, kurze/vollständige Exporte, überlaufsicherer Flush getestet | Export über den echten Android-Dateiauswahldialog |
+| Quellen | Fehlerdiagnose und Browserfallback erhalten | Zugangsbeschränkte APKMirror-API, vollständige Live-Matrix |
 
-283 Lint-Warnungen bleiben im vollständigen Bericht sichtbar. Überwiegend betreffen sie alte Übersetzungsressourcen, Sprachkonfigurationen und Empfehlungen. Es wurden keine Lint-Fehler durch eine Baseline ausgeblendet.
-
-Eindeutige APK-Sets werden gemeinsam geprüft. Variantenarchive, unklare erforderliche Splits, OBB-Dateien und die Übergabe von Archiven an externe Installer bleiben gesperrt. Eine manuell eingestellte Region ersetzt keinen Herkunftsnachweis.
-
-Zusatzlauf: Ein Softwareemulator mit Android 10/API 29 startete. Die Installation überschritt jedoch das Zeitlimit. Dieser Versuch zählt nicht als bestandener Start-, Installations- oder Keystore-Gerätetest.
+Lint: 0 Fehler, 313 offen ausgewiesene Warnungen. Vollständige Berichte und Prüfsummen liegen im Lieferpaket. Keine Lint-Baseline blendet Fehler aus. Die detaillierte Anforderungsliste steht in RELEASE-RC2.md; die Prüfumfänge und Grenzen in TEST-RESULTS.md.

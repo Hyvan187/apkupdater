@@ -141,6 +141,59 @@ class GlassUiTest {
         compose.onNodeWithText("Auswahl herunterladen und prüfen").performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals(com.apkupdater.data.ui.AptoideSource, checked?.source) }
     }
+    @Test fun playPickerAndReportsNeverResolveOrDownloadFiles() {
+        var resolutions=0
+        var selected: com.apkupdater.data.ui.AppUpdate?=null
+        val play=com.apkupdater.data.ui.AppUpdate("Play fixture","org.example.play","2","1",2,1,com.apkupdater.data.ui.PlaySource,
+            link=com.apkupdater.data.ui.Link.Play { resolutions++;error("Reading metadata must not resolve downloads") })
+        compose.runOnUiThread { compose.activity.setContent {
+            com.apkupdater.ui.theme.AppTheme(true) { GlassScene { Column(Modifier.fillMaxSize().padding(20.dp)) {
+                UpdateGroupCard(UpdateGroup(play.packageName,listOf(play)),null,{selected=it},{},{},{})
+            } } }
+        } }
+        compose.onNodeWithContentDescription("Hilfe: Technische Risiken").performClick()
+        compose.onNodeWithText("Verstanden").performClick()
+        compose.onNodeWithText("Play fixture").performClick()
+        compose.onNodeWithText("Technische Details").performClick()
+        compose.onNodeWithText("Schließen").performClick()
+        compose.onNodeWithContentDescription("Hilfe: Prüfverfahren").performClick()
+        compose.onNodeWithText("Verstanden").performClick()
+        compose.onNodeWithText("Play fixture").performClick()
+        compose.onNodeWithText("Quelle wählen und prüfen").performClick()
+        compose.onNodeWithText("Play").performClick()
+        compose.onNodeWithText("Paketformat derzeit nicht prüfbar").assertDoesNotExist()
+        compose.onNodeWithText("Auswahl herunterladen und prüfen").assertIsEnabled()
+        compose.runOnIdle { org.junit.Assert.assertNull(selected);org.junit.Assert.assertEquals(0,resolutions) }
+        compose.onNodeWithText("Auswahl herunterladen und prüfen").performClick()
+        compose.runOnIdle { org.junit.Assert.assertEquals(com.apkupdater.data.ui.PlaySource,selected?.source);org.junit.Assert.assertEquals(0,resolutions) }
+    }
+
+    @Test fun everyAnimationModeDrawsAcrossFullPortraitWindow() = assertAnimationsCoverWindow()
+    @Test @Config(qualifiers="de-w915dp-h412dp-xhdpi")
+    fun everyAnimationModeDrawsAcrossFullLandscapeWindow() = assertAnimationsCoverWindow()
+    private fun assertAnimationsCoverWindow() {
+        for(mode in MotionMode.entries.filter { it !in listOf(MotionMode.NONE,MotionMode.RANDOM) }) {
+            compose.runOnUiThread { compose.activity.setContent {
+                androidx.compose.runtime.CompositionLocalProvider(LocalAppearance provides Appearance(oled=true,motion=mode.ordinal,density=1f,reduceMotion=true,customAccent=true,accent=0xffffffff)) {
+                    com.apkupdater.ui.theme.AppTheme(true) { GlassScene {} }
+                }
+            } }
+            compose.waitForIdle()
+            compose.runOnUiThread {
+                val view=compose.activity.window.decorView
+                val bitmap=Bitmap.createBitmap(view.width,view.height,Bitmap.Config.ARGB_8888)
+                android.view.PixelCopy.request(compose.activity.window,bitmap,{},android.os.Handler(android.os.Looper.getMainLooper()))
+                var lower=0;var right=0
+                for(y in bitmap.height/2 until bitmap.height-40 step 2) for(x in 8 until bitmap.width-8 step 2) {
+                    val p=bitmap.getPixel(x,y)
+                    if(android.graphics.Color.red(p)>8) { lower++;if(x>bitmap.width/2)right++ }
+                }
+                bitmap.recycle()
+                org.junit.Assert.assertTrue("${mode.name} misses lower half",lower>10)
+                org.junit.Assert.assertTrue("${mode.name} misses lower-right quadrant",right>5)
+            }
+        }
+    }
     @Test fun appearanceColorPersistsAndCategorySelectionIsShared() {
         val koin = GlobalContext.get()
         val store = koin.get<AppearanceStore>()

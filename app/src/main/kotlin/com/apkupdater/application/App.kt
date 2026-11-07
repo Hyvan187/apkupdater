@@ -19,6 +19,7 @@ open class App : Application(), SingletonImageLoader.Factory, KoinComponent {
 
 	override fun onCreate() {
 		super.onCreate()
+        com.apkupdater.diagnostics.AppDiagnostics.initialize(this)
 
 		Shell.setDefaultBuilder(Shell.Builder.create().setTimeout(10))
 

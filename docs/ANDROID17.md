@@ -15,10 +15,10 @@ AGP 9.1.1 documents support for API 37.0, JDK 17 and Gradle >=9.3.1. The existin
 | Certificate transparency | No bypass or trust weakening in app networking; verify each provider on API 37 |
 | Native dynamic loading | No added dynamic native loading; packaged Compose native dependency must still be exercised on device |
 | Large-screen resizability | No forced orientation; layouts use available width and scrolling. Full tablet/adaptive navigation audit remains outstanding |
-| Edge-to-edge | Existing enableEdgeToEdge and Scaffold insets retained; visual tests remain required |
+| Edge-to-edge | Existing enableEdgeToEdge and Scaffold insets retained; portrait, landscape and compact host visual tests pass; real-device acceptance remains required |
 | Package visibility | QUERY_ALL_PACKAGES is justified by installed-app update discovery; API-33 flags used where available |
 | Installation and ownership | PackageInstaller USER_ACTION_REQUIRED, no silent-update permission, owner shown when public APIs allow it |
-| Notifications | Existing notification permission request retained; only verified candidates should notify |
+| Notifications | Existing notification permission request retained; notifications describe metadata candidates; APK verification/download remains an explicit action |
 | Background work | WorkManager with connected/unmetered constraints, no exact-alarm permission added |
 | OTP/contacts/IME/widgets/medical domains | No new use of these APIs; changes generally outside this app's scope |
 | Old Android | Minimum API 23 retained; RenderEffect guarded at 31, AGSL at 33, package flags at 33, owner at 34 |

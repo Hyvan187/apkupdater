@@ -18,7 +18,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_store"
+        android:roundIcon="@mipmap/ic_store_round"
+        android:logo="@mipmap/ic_store"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
@@ -29,9 +31,11 @@
         <provider android:name="androidx.core.content.FileProvider" android:authorities="${applicationId}.checked-files" android:exported="false" android:grantUriPermissions="true">
             <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/checked_paths" />
         </provider>
-        <receiver android:name=".glass.InstallResultReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.PACKAGE_REPLACED"/><data android:scheme="package"/></intent-filter></receiver>
+        <receiver android:name=".glass.InstallResultReceiver" android:exported="false"><intent-filter><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter></receiver>
         <activity
             android:name=".ui.activity.MainActivity"
+            android:icon="@mipmap/ic_store"
+            android:logo="@mipmap/ic_store"
             android:exported="true"
             android:launchMode="singleTask"
         >

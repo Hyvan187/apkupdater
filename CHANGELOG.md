@@ -1,3 +1,15 @@
+# 0.6.0-rc2
+
+- Keep APK downloads behind explicitly named actions; migrate the retired automatic setting and never silently redownload a missing verified file.
+- Enable Play BASE/SPLIT selection and complete-set download/inspection, with aggregate limits, checksums and temporary-file cleanup.
+- Reconcile actual installed versions across all source variants and late emissions; preserve pending self-updates and confirm history only after observing the installed code.
+- Add bounded, redacted local diagnostics, persisted capture levels and short/full exports; fix queue saturation, retention and crash-handler timing.
+- Preserve and unify glass transparency, fix duplicate controls, full-window animations, seasonal precedence, cached effects and deferred slider persistence.
+- Reorder settings, provide glass language/model choices, live actual/effective region information, safe cache clearing and confirmed history deletion.
+- Serialize discovery and explicit checks, cancel individual/batch work, count unsuccessful checks accurately and reject stale progress callbacks.
+- Ship four signed, optimized release variants with the existing signer, a unified launcher/installer logo and monochrome adaptive icon.
+- See docs/TEST-RESULTS.md and docs/RELEASE-RC2.md for validation and remaining real-device acceptance checks.
+
 # 0.6.0-rc1
 
 - Build an optimized, resource-shrunk, non-debuggable universal release candidate with the retained signing identity for in-place updates.

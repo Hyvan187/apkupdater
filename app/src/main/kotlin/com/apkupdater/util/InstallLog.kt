@@ -16,7 +16,7 @@ class InstallLog {
     fun progress() = progress.asSharedFlow()
 
     fun cancelCurrentInstall() = status.tryEmit(AppInstallStatus(false, currentInstallId, false))
-    fun emitStatus(newStatus: AppInstallStatus) = status.tryEmit(newStatus)
+    fun emitStatus(newStatus: AppInstallStatus): Boolean { com.apkupdater.diagnostics.AppDiagnostics.info("install.result",mapOf("success" to newStatus.success,"id" to newStatus.id)); return status.tryEmit(newStatus) }
     fun emitProgress(newProgress: AppInstallProgress) = progress.tryEmit(newProgress)
 
 }

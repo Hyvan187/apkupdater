@@ -8,6 +8,11 @@ import com.apkupdater.ui.screen.MainScreen
 
 
 class MainActivity : ComponentActivity() {
+    override fun onStop() {
+        runCatching { org.koin.core.context.GlobalContext.getOrNull()?.getOrNull<com.apkupdater.glass.AppearanceStore>()?.commitPreview() }
+        super.onStop()
+    }
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		enableEdgeToEdge()
 		super.onCreate(savedInstanceState)

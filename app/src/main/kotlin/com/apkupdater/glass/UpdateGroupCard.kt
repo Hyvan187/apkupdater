@@ -53,8 +53,13 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
         Spacer(Modifier.height(10.dp))
         SecondaryText("${architectureLabel(update.abis)} · ${group.sources().size} ${if(group.sources().size == 1) "Quelle" else "Quellen"}")
         if(blocked) SecondaryText(update.verdict.summary)
-        val risk=RiskPolicy.risk(update)
-        Row(verticalAlignment=Alignment.CenterVertically){Text("Risiko: ${risk.level}",Modifier.weight(1f),style=MaterialTheme.typography.labelSmall);HelpButton("Risikoeinstufung",risk.detail+" Quelle: ${update.source.name}. Eine bekannte Quelle allein bestätigt weder Signatur noch Unbedenklichkeit.");HelpButton(if(blocked)"Blockiert" else "Prüfung",if(blocked)HelpText.BLOCKED else HelpText.CHECK)}
+        val assessment=TechnicalAssessment.from(update)
+        Row(verticalAlignment=Alignment.CenterVertically) {
+            Text("Technische Risiken",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium)
+            HelpButton("Technische Risiken",assessment.details())
+        }
+        SecondaryText(assessment.headline)
+        SecondaryText(assessment.summary)
         update.verificationError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         if(expanded) {
             Spacer(Modifier.height(12.dp))
@@ -66,6 +71,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             FactRow("Signatur", when(update.verdict.evidence.find { it.property == "Signatur" }?.status) { Compatibility.COMPATIBLE -> "Passt zur Installation"; Compatibility.INCOMPATIBLE -> "Passt nicht"; else -> "Noch offen" })
             update.verifiedAt?.let { FactRow("Geprüft", DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it))) }
             TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { technical = true }) { Text("Technische Details") }
+            Row(verticalAlignment=Alignment.CenterVertically) { Text("Prüfverfahren",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium);HelpButton("Prüfverfahren",HelpText.CHECK) }
         }
         if(busy) { Spacer(Modifier.height(10.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) }
         else if(!blocked || group.candidates.any { it.verdict.status != Compatibility.INCOMPATIBLE }) {
@@ -79,27 +85,26 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
     if(picker) {
         var selected by remember { mutableStateOf(update) }
         var variants by remember { mutableStateOf<String?>(null) }
-        ModalBottomSheet(onDismissRequest = { picker = false }) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).navigationBarsPadding()) {
+        GlassMenuSheet(onDismiss = { picker = false }) {
                 HelpTitle("Quelle auswählen","Wähle Anbieter und Variante. Geprüft wird genau diese Datei; andere Quellen übernehmen ihre Freigabe nicht. APKMirror öffnet die Webseite.")
                 SecondaryText("${update.name} · Anbieter behalten eigene Varianten und Prüfergebnisse.")
-                LazyColumn(Modifier.heightIn(max = 390.dp)) {
+                LazyColumn(Modifier.weight(1f,fill=false).heightIn(max = 390.dp)) {
                     items(group.sources(preferred), key = { it.source.name }) { option ->
-                        val allowed = option.verdict.status != Compatibility.INCOMPATIBLE && (option.link is Link.Url || option.link is Link.Xapk)
+                        val allowed = option.verdict.status != Compatibility.INCOMPATIBLE && (option.link is Link.Url || option.link is Link.Xapk || option.link is Link.Play)
                         Row(Modifier.fillMaxWidth().clickable(enabled = allowed) { selected = option }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(selected.source == option.source, { if(allowed) selected = option }, enabled = allowed)
                             Column(Modifier.weight(1f)) {
                                 Text(option.source.name, style = MaterialTheme.typography.titleSmall)
                                 SecondaryText("${option.version} · ${architectureLabel(option.abis)}")
-                                SecondaryText(if(option.verdict.status == Compatibility.INCOMPATIBLE) "Gesperrt: ${option.verdict.summary}" else if((option.link !is Link.Url && option.link !is Link.Xapk)) "Paketformat derzeit nicht prüfbar" else if(option.source == ApkMirrorSource) "Webseite · Download und lokale Prüfung nötig" else if(option.verdict.installAllowed) "APK geprüft" else "Direkter Download · wird geprüft")
+                                SecondaryText(if(option.verdict.status == Compatibility.INCOMPATIBLE) "Gesperrt: ${option.verdict.summary}" else if((option.link !is Link.Url && option.link !is Link.Xapk && option.link !is Link.Play)) "Paketformat derzeit nicht prüfbar" else if(option.source == ApkMirrorSource) "Webseite · Download und lokale Prüfung nötig" else if(option.verdict.installAllowed) "APK geprüft" else if(option.link is Link.Play) "Play-Paketset · Basis und Splits werden gemeinsam geprüft" else "Direkter Download · wird geprüft")
                             }
                         }
                         val alternatives = group.candidates.filter { it.source == option.source }
                         if(alternatives.size > 1) {
                             TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { variants = if(variants == option.source.name) null else option.source.name }) { Text("${alternatives.size} Varianten") }
                             if(variants == option.source.name) alternatives.forEach { variant ->
-                                Row(Modifier.fillMaxWidth().clickable(enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && (variant.link is Link.Url || variant.link is Link.Xapk)) { selected = variant }, verticalAlignment = Alignment.CenterVertically) {
-                                    RadioButton(selected.artifactKey == variant.artifactKey, { selected = variant }, enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && (variant.link is Link.Url || variant.link is Link.Xapk))
+                                Row(Modifier.fillMaxWidth().clickable(enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && (variant.link is Link.Url || variant.link is Link.Xapk || variant.link is Link.Play)) { selected = variant }, verticalAlignment = Alignment.CenterVertically) {
+                                    RadioButton(selected.artifactKey == variant.artifactKey, { selected = variant }, enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && (variant.link is Link.Url || variant.link is Link.Xapk || variant.link is Link.Play))
                                     SecondaryText("${variant.version} · ${architectureLabel(variant.abis)}${if(variant.verdict.status == Compatibility.INCOMPATIBLE) " · gesperrt" else ""}")
                                 }
                             }
@@ -107,13 +112,12 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                     }
                 }
                 Button(onClick = {
-                    if(selected.verdict.status != Compatibility.INCOMPATIBLE && (selected.link is Link.Url || selected.link is Link.Xapk)) {
+                    if(selected.verdict.status != Compatibility.INCOMPATIBLE && (selected.link is Link.Url || selected.link is Link.Xapk || selected.link is Link.Play)) {
                         chosenKey = selected.artifactKey; prefer(selected); picker = false
                         if(selected.source == ApkMirrorSource) { if(external != null) external() else (selected.link as? Link.Url)?.let { handler.openUri(it.link) } }
                         else verify(selected)
                     }
-                }, enabled = selected.verdict.status != Compatibility.INCOMPATIBLE && (selected.link is Link.Url || selected.link is Link.Xapk), modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) { Text(if(selected.source == ApkMirrorSource) "Quellseite öffnen" else "Auswahl herunterladen und prüfen") }
-            }
+                }, enabled = selected.verdict.status != Compatibility.INCOMPATIBLE && (selected.link is Link.Url || selected.link is Link.Xapk || selected.link is Link.Play), modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) { Text(if(selected.source == ApkMirrorSource) "Quellseite öffnen" else "Auswahl herunterladen und prüfen") }
         }
     }
     if(technical) AlertDialog(onDismissRequest = { technical = false }, title = { Text("Technische Details") }, text = {

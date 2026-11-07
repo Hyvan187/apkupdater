@@ -22,7 +22,9 @@ jobs:
           java-version: '21'
       - uses: android-actions/setup-android@v3
       - name: Install Android 17 SDK
-        run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+        run: |
+          sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+          python3 tools/normalize-sdk37.py
       - uses: gradle/actions/setup-gradle@v4
       - name: Tests, lint and debug APK
         run: |
@@ -31,7 +33,7 @@ jobs:
       - name: Name and verify artifact
         run: |
           mkdir -p artifacts
-          cp app/build/outputs/apk/debug/app-debug.apk artifacts/Liquid-APK-Store-Debug.apk
+          cp app/build/outputs/apk/debug/app-universal-debug.apk artifacts/Liquid-APK-Store-Debug.apk
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs artifacts/Liquid-APK-Store-Debug.apk > artifacts/signature.txt
           git rev-parse HEAD > artifacts/commit.txt
           cd artifacts

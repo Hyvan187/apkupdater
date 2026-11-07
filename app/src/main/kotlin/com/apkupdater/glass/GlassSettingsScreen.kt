@@ -1,5 +1,7 @@
 package com.apkupdater.glass
+
 import android.content.Intent
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -14,113 +16,168 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import androidx.work.WorkManager
 import com.apkupdater.BuildConfig
+import com.apkupdater.diagnostics.AppDiagnostics
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.worker.UpdatesWorker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun GlassSettingsScreen(onBack:()->Unit,onAppearance:()->Unit,onFiltersChanged:()->Unit={},onHistory:()->Unit={}) {
- val languages=koinInject<AppLanguageStore>()
- val prefs=koinInject<Prefs>();val selection=koinInject<AppSelection>();val selected by selection.scope.collectAsState();val filters=koinInject<ReleaseFilterStore>();val health by SourceHealth.flow.collectAsState()
- val context=LocalContext.current;val uri=LocalUriHandler.current;val scope=rememberCoroutineScope()
- var folderText by remember{mutableStateOf(if(prefs.downloadTree.get().isBlank())"Download/Liquid-APK-Store" else "Eigener Ordner ausgewählt")}
- var diagnostic by remember{mutableStateOf<String?>(null)};var testing by remember{mutableStateOf(false)}
- val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){}
- val folder=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()){u->if(u!=null)runCatching{context.contentResolver.takePersistableUriPermission(u,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION);prefs.downloadTree.put(u.toString());folderText="Eigener Ordner ausgewählt"}.onFailure{folderText="Ordnerzugriff fehlgeschlagen. Bitte einen anderen Ordner wählen."}}
- var region by remember{mutableStateOf(prefs.manualRegion.get())};var model by remember{mutableStateOf(prefs.simulatedModel.get())}
- var confirmRegion by remember{mutableStateOf<String?>(null)};var confirmModel by remember{mutableStateOf(false)};var restore by remember{mutableStateOf(false)}
- var legal by remember{mutableStateOf(false)}
- var installer by remember{mutableStateOf(prefs.installerPackage.get())};var installerMenu by remember{mutableStateOf(false)};var confirmInstaller by remember{mutableStateOf<Pair<String,String>?>(null)}
- val choices=remember(installerMenu){InstallerChoices.available(context)}
- Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=20.dp)) {
-  ScreenHeader("Einstellungen","LIQUID-APK-STORE",onBack=onBack)
-  LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=32.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-   item{GlassPanel(Modifier.clickable(onClick=onAppearance)){HelpTitle("Erscheinungsbild","Öffnet Farben, Glas, OLED-Modus, Schrift und Hintergrundanimationen. Die Updateprüfung wird dadurch nicht verändert.");TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick=onAppearance){Text("Design anpassen")}}}
-   item{GlassPanel{
-    HelpTitle("Sprache","Android 13 und neuer verwaltet die App-Sprache. Systemsprache folgt der Android-Auswahl. Derzeit gibt es Deutsch und Englisch für die Oberfläche; einige Hilfs- und technische Meldungen bleiben in der Ausgangssprache. Nicht unterstützte Systemsprachen verwenden Englisch. Android übersetzt fehlende Sprachen nicht automatisch.")
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf("SYSTEM" to "Systemsprache verwenden","de" to "Deutsch","en" to "Englisch").forEach{(tag,label)->TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={languages.set(context,tag)}){Text(label)}}}
-    if(android.os.Build.VERSION.SDK_INT>=33)OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={languages.openSettings(context)}){Text("Android-Spracheinstellungen öffnen")}
-   }}
-   item{Text("Updateprüfung",style=MaterialTheme.typography.titleMedium)}
-   item{GlassPanel{
-    HelpTitle("App-Auswahl","Alle umfasst sämtliche sichtbaren Apps. Allgemeine Apps sind selbst installierte Apps. System umfasst alle Systempakete. Google-System-Apps ist eine Teilmenge nach Paketname und Android-Systemkennzeichnung.")
-    ScopeChoices(selected,selection::select)
-    SettingSwitch("Beta-Versionen ausblenden","Erkennbare Beta-Versionen nicht anbieten.",{prefs.ignoreBeta.get()},{filters.change(beta=it);onFiltersChanged()})
-    SettingSwitch("Alpha-Versionen ausblenden","Erkennbare Alpha-Versionen nicht anbieten.",{prefs.ignoreAlpha.get()},{filters.change(alpha=it);onFiltersChanged()})
-    SettingSwitch("Alle Vorabversionen ausblenden","Auch Beta, Alpha, RC, Preview und markierte Testversionen.",{prefs.ignorePreRelease.get()},{filters.change(preview=it);onFiltersChanged()})
-    HelpTitle("Wie werden APKs geprüft?",HelpText.CHECK)
-   }}
-   item{GlassPanel{
-    HelpTitle("Automatische APK-Prüfung","Prüft direkt verfügbare APKs nacheinander, ohne Installation. Standard: bis zu 12 Apps, 128 MiB je APK, 768 MiB Gesamtbudget pro Durchlauf. Unbekannte Dateigrößen reservieren das volle Einzellimit. Das schützt Speicher, Netz und Akku auch auf schnellen Geräten.")
-    SettingSwitch("Automatische Prüfung aktiv","Nach der Suche geeignete APKs laden und prüfen.",{prefs.autoVerify.get()},{prefs.autoVerify.put(it)})
-    SettingSwitch("Automatische APK-Prüfung nur ungetaktet","Schont mobiles Datenvolumen.",{prefs.autoVerifyWifiOnly.get()},{prefs.autoVerifyWifiOnly.put(it)})
-    var count by remember{mutableIntStateOf(prefs.autoCheckCount.get())};var size by remember{mutableIntStateOf(prefs.autoVerifyLimitMiB.get())};var budget by remember{mutableIntStateOf(prefs.autoCheckBudgetMiB.get())}
-    ValueSlider("Apps pro Durchlauf: $count",count.toFloat(),12f,{count=it.toInt();prefs.autoCheckCount.put(count)},1f..24f,22,"Anzahl automatisch geprüfter Apps. 12 ist ein ausgewogener Ausgangswert; höhere Werte benötigen mehr Daten und Speicher.")
-    HelpTitle("Einzellimit: $size MiB","Eine Datei darf dieses Downloadlimit nicht überschreiten. Größere APKs können einzeln manuell geprüft werden.")
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf(64,128,256).forEach{v->FilterChip(size==v,{size=v;prefs.autoVerifyLimitMiB.put(v)},label={Text("$v MiB")})}}
-    HelpTitle("Gesamtbudget: $budget MiB","Obergrenze geplanter automatischer Downloads pro Durchlauf; bekannte Größen werden addiert. Fehlende Größen reservieren das Einzellimit.")
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf(256,768,1536).forEach{v->FilterChip(budget==v,{budget=v;prefs.autoCheckBudgetMiB.put(v)},label={Text("$v MiB")})}}
-   }}
-   item{GlassPanel{
-    HelpTitle("Hintergrundsuche","Android führt geplante Arbeit aus, wenn Netz- und Systembedingungen passen. Eine exakte Uhrzeit ist nicht garantiert.")
-    SettingSwitch("Täglich nach Updates suchen","Keine automatische Installation.",{prefs.enableAlarm.get()},{prefs.enableAlarm.put(it);val wm=WorkManager.getInstance(context);if(it){UpdatesWorker.launch(wm);if(android.os.Build.VERSION.SDK_INT>=33)permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)}else UpdatesWorker.cancel(wm)})
-    SettingSwitch("Hintergrundsuche nur ungetaktet","Sucht nur ohne getaktete Verbindung.",{prefs.wifiOnly.get()},{prefs.wifiOnly.put(it);if(prefs.enableAlarm.get())UpdatesWorker.launch(WorkManager.getInstance(context))})
-   }}
-   item{GlassPanel{
-    HelpTitle("Updatequellen","Alle Quellen sind beim ersten Start dieser Version eingeschaltet. Du kannst sie einzeln deaktivieren. Herkunft und Reihenfolge ersetzen keine APK-Prüfung.")
-    SettingSwitch("APKMirror","API-Abfrage und manuelle Webseite; keine Downloadfreigabe.",{prefs.useApkMirror.get()},{prefs.useApkMirror.put(it);onFiltersChanged()})
-    SettingSwitch("GitHub","Zugeordnete Entwickler-Releases.",{prefs.useGitHub.get()},{prefs.useGitHub.put(it);onFiltersChanged()})
-    SettingSwitch("GitLab","Zugeordnete Entwickler-Releases.",{prefs.useGitLab.get()},{prefs.useGitLab.put(it);onFiltersChanged()})
-    SettingSwitch("F-Droid","Open-Source-Katalog; Signatur kann abweichen.",{prefs.useFdroid.get()},{prefs.useFdroid.put(it);onFiltersChanged()})
-    SettingSwitch("IzzyOnDroid","Open-Source-Repository.",{prefs.useIzzy.get()},{prefs.useIzzy.put(it);onFiltersChanged()})
-    SettingSwitch("APKPure","Anbieterkatalog; jede Datei separat prüfen.",{prefs.useApkPure.get()},{prefs.useApkPure.put(it);onFiltersChanged()})
-    SettingSwitch("Aptoide","Anbieterkatalog; jede Datei separat prüfen.",{prefs.useAptoide.get()},{prefs.useAptoide.put(it);onFiltersChanged()})
-    SettingSwitch("Google Play","Vorhandene experimentelle Integration; Verfügbarkeit abhängig vom Dienst.",{prefs.usePlay.get()},{prefs.usePlay.put(it);onFiltersChanged()})
-   }}
-   item{GlassPanel{
-    HelpTitle("Quellenstatus", "DNS bedeutet, dass die Internetadresse nicht aufgelöst wurde. Das kann an Verbindung, privatem DNS, VPN oder einem Filter liegen. Ein HTTP-Fehler bedeutet, dass ein Server geantwortet hat. Beides ist kein Beleg für eine unpassende APK.")
-    health.forEach{s->Text(s.name,style=MaterialTheme.typography.labelLarge);SecondaryText(if(s.running)"Wird abgefragt …" else s.problem ?: "Kein Fehler gemeldet");s.problem?.let{SecondaryText(NetworkDiagnostics.hints(it))}}
-    Row{OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={testing=true;scope.launch{diagnostic=NetworkDiagnostics.test(context);testing=false}},enabled=!testing){Text(if(testing)"Verbindung wird geprüft …" else "APKMirror erneut testen")};HelpButton("Verbindungstest","Prüft DNS und HTTPS von APKMirror. Eine erreichbare Webseite bestätigt nicht automatisch den API-Zugriff.")}
-    diagnostic?.let{SecondaryText(it)}
-    Row{TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={uri.openUri("https://www.apkmirror.com/")}){Text("APKMirror-Webseite öffnen")};HelpButton("Web-Fallback","Öffnet den Browser. Eine dort geladene Datei lässt sich über den lokalen APK-Analyzer prüfen. Zugriffssperren werden nicht umgangen.")}
-   }}
-   item{GlassPanel{
-    HelpTitle("Downloads und Installation","Manuell geladene APKs werden öffentlich abgelegt. Die Installation verwendet weiterhin die privat geprüften Bytes. Automatische temporäre Prüfdateien bleiben privat.")
-    SecondaryText(folderText)
-    Row{OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={folder.launch(null)}){Text("APK-Ordner auswählen")};HelpButton("APK-Ordner auswählen","Wähle einen vorhandenen oder lege im Android-Dialog einen neuen Unterordner an. Android 11+ erlaubt nicht jeden Stammordner. Bereits gespeicherte APKs werden nicht verschoben.")}
-    Row{TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={prefs.downloadTree.put("");folderText="Download/Liquid-APK-Store"}){Text("Standardordner verwenden")}}
-    SettingSwitch("APKs nach Installation behalten","Aus: erst nach bestätigtem Erfolg löschen. Bei Fehler oder Abbruch behalten.",{prefs.keepDownloadedApks.get()},{prefs.keepDownloadedApks.put(it)})
-    HelpTitle("Installer",HelpText.EXTERNAL)
-    OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={installerMenu=true}){Text(if(installer=="SYSTEM")"Android PackageInstaller" else choices.find{it.first==installer}?.second ?: "Gewählter Installer nicht verfügbar")}
-    DropdownMenu(installerMenu,{installerMenu=false}){
-     DropdownMenuItem(text={Text("Android PackageInstaller · empfohlen")},onClick={installer="SYSTEM";prefs.installerPackage.put(installer);installerMenu=false})
-     choices.forEach{c->DropdownMenuItem(text={Text(c.second)},onClick={installerMenu=false;confirmInstaller=c})}
+@Composable fun GlassSettingsScreen(onBack:()->Unit,onAppearance:()->Unit,onFiltersChanged:()->Unit={},onHistory:()->Unit={},onCacheCleared:()->Unit={}) {
+    val appearanceStore=koinInject<AppearanceStore>();val appearance by appearanceStore.state.collectAsState()
+    val prefs=koinInject<Prefs>();val languages=koinInject<AppLanguageStore>();val history=koinInject<HistoryStore>()
+    val selection=koinInject<AppSelection>();val selected by selection.scope.collectAsState()
+    val filters=koinInject<ReleaseFilterStore>();val health by SourceHealth.flow.collectAsState();val entries by history.state.collectAsState()
+    val language by languages.state.collectAsState();val context=LocalContext.current;val uri=LocalUriHandler.current;val scope=rememberCoroutineScope();val layout=LocalDeviceLayout.current
+    var languageMenu by remember { mutableStateOf(false) };var presetMenu by remember { mutableStateOf(false) };var installerMenu by remember { mutableStateOf(false) }
+    var region by remember { mutableStateOf(prefs.manualRegion.get()) };var model by remember { mutableStateOf(prefs.simulatedModel.get()) };var profileMessage by remember { mutableStateOf("") }
+    var folderText by remember { mutableStateOf(if(prefs.downloadTree.get().isBlank())"Download/Liquid-APK-Store" else "Eigener Ordner ausgewählt") }
+    var installer by remember { mutableStateOf(prefs.installerPackage.get()) };var confirmInstaller by remember { mutableStateOf<Pair<String,String>?>(null) }
+    var legal by remember { mutableStateOf(false) };var restore by remember { mutableStateOf(false) };var clearHistory by remember { mutableStateOf(false) }
+    var testing by remember { mutableStateOf(false) };var diagnostic by remember { mutableStateOf("") };var clearing by remember { mutableStateOf(false) };var cacheMessage by remember { mutableStateOf("") }
+    val detection=remember { DeviceDetection(context,prefs) }
+    val rom by produceState<RomResult?>(null) { value=withContext(Dispatchers.IO){detection.rom()} }
+    val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){}
+    val folder=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { selectedUri ->
+        if(selectedUri!=null)runCatching { context.contentResolver.takePersistableUriPermission(selectedUri,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION);prefs.downloadTree.put(selectedUri.toString());folderText="Eigener Ordner ausgewählt" }
+            .onFailure { folderText="Ordnerzugriff fehlgeschlagen. Bitte einen anderen Ordner wählen.";AppDiagnostics.error("downloads.folder_failed",error=it) }
     }
-   }}
-   item{GlassPanel{
-    HelpTitle("Updateverlauf","Zeigt nur bestätigte, über diese App gestartete Installationen. Externe Übergaben werden anhand des Paketstands bestätigt.")
-    OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick=onHistory){Text("Updateverlauf öffnen")}
-    HelpTitle("Ausgeblendete Versionen",HelpText.RESTORE)
-    OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={restore=true}){Text("Versionen wieder einblenden")}
-   }}
-   item{GlassPanel{
-    HelpTitle("Region und Testprofil",HelpText.PROFILE)
-    SecondaryText("Manuelle Region: $region")
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("AUTO","EU","GLO","IN","CN","OTHER").forEach{v->FilterChip(region==v,{if(v=="AUTO"){region=v;prefs.manualRegion.put(v)}else confirmRegion=v},label={Text(if(v=="AUTO")"Automatisch" else v)})}}
-    OutlinedTextField(model,{model=it.take(80)},label={Text("Simuliertes Gerätemodell")},modifier=Modifier.fillMaxWidth(),singleLine=true)
-    Row{OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={confirmModel=true}){Text("Testprofil anwenden")};HelpButton("Gerätesimulation",HelpText.PROFILE)}
-    TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={model="";region="AUTO";prefs.simulatedModel.put("");prefs.manualRegion.put("AUTO");prefs.playAuthData.put(com.aurora.gplayapi.data.models.AuthData("",""))}){Text("Echtes Geräteprofil verwenden")}
-    if(ProfilePolicy.simulationActive(prefs))SecondaryText("Testprofil aktiv. Keine Aufhebung von Installationssperren; keine globale Geräteänderung.")
-   }}
-   item{GlassPanel{Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={uri.openUri("https://www.paypal.me/cem7dzemo")},modifier=Modifier.weight(1f)){Text("☕ Like my project? Buy me a coffee :)")}}}}
-   item{SecondaryText("Liquid-APK-Store ${BuildConfig.VERSION_NAME}");Row{TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={legal=true}){Text("Lizenzen und Rechtliches")}}}
-  }
- }
- if(legal)AlertDialog(onDismissRequest={legal=false},title={Text("Lizenzen und Rechtliches")},text={Text("Liquid-APK-Store steht unter GNU GPLv3. Enthält Code aus APKUpdater, Copyright rumboalla und Mitwirkende; Änderungen von Hyvan187. Die vollständige Lizenz und der passende Quellcode liegen dem Downloadpaket bei. Android-Roboter: aus einem von Google bereitgestellten Werk abgeleitet, verwendet gemäß CC BY 3.0. Änderungen: Liquid-Glass-Darstellung.")},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={legal=false}){Text("Schließen")}})
- if(restore)AlertDialog(onDismissRequest={restore=false},title={Text("Versionen wieder einblenden?")},text={Text(HelpText.RESTORE)},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={prefs.ignoredVersions.put(emptyList());prefs.ignoredReleases.put(emptyList());restore=false;onFiltersChanged()}){Text("Wieder einblenden")}},dismissButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={restore=false}){Text("Abbrechen")}})
- confirmRegion?.let{v->AlertDialog(onDismissRequest={confirmRegion=null},title={Text("Manuelle Region verwenden?")},text={Text(HelpText.PROFILE)},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={region=v;prefs.manualRegion.put(v);confirmRegion=null}){Text("Als Vergleich speichern")}},dismissButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={confirmRegion=null}){Text("Abbrechen")}})}
- if(confirmModel)AlertDialog(onDismissRequest={confirmModel=false},title={Text("Gerätesimulation aktivieren?")},text={Text(HelpText.PROFILE)},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={prefs.simulatedModel.put(model.trim());prefs.playAuthData.put(com.aurora.gplayapi.data.models.AuthData("",""));confirmModel=false}){Text("Testprofil speichern")}},dismissButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={confirmModel=false}){Text("Abbrechen")}})
- confirmInstaller?.let{c->AlertDialog(onDismissRequest={confirmInstaller=null},title={Text("${c.second} verwenden?")},text={Text(HelpText.EXTERNAL)},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={installer=c.first;prefs.installerPackage.put(installer);confirmInstaller=null}){Text("Installer wählen")}},dismissButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={confirmInstaller=null}){Text("Abbrechen")}})}
+    val choices=remember(installerMenu){InstallerChoices.available(context)}
+    fun useModel(value: String) {
+        if(!TestDeviceProfiles.valid(value)){profileMessage="Modellangabe ist ungültig. Höchstens 80 Zeichen ohne Steuerzeichen verwenden.";return}
+        prefs.simulatedModel.put(value.trim());prefs.playAuthData.put(com.aurora.gplayapi.data.models.AuthData("",""))
+        model=value.trim();profileMessage=if(model.isBlank())"Echtes Geräteprofil aktiv." else "Testprofil gespeichert. Wird bei der nächsten Play-Anmeldung verwendet."
+        AppDiagnostics.info("profile.changed",mapOf("simulation" to model.isNotBlank()))
+    }
+    Box(Modifier.fillMaxSize(),contentAlignment=Alignment.TopCenter) {
+        Column(Modifier.widthIn(max=layout.contentMaxWidth).fillMaxSize().statusBarsPadding().padding(horizontal=layout.horizontalPadding)) {
+            ScreenHeader("Einstellungen","LIQUID-APK-STORE",onBack=onBack)
+            LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=32.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+                item { SettingsSection("Darstellung und Sprache") }
+                item { GlassPanel {
+                    Row(Modifier.fillMaxWidth().clickable(onClick=onAppearance),verticalAlignment=Alignment.CenterVertically) {
+                        Text("Erscheinungsbild",Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
+                        TextButton(onClick=onAppearance){Text("Design anpassen")}
+                    }
+                    GlassTransparencyControl(appearanceStore,appearance)
+                    Text("Sprache",style=MaterialTheme.typography.titleSmall)
+                    val tag=languages.current(context)
+                    OutlinedButton(onClick={languageMenu=true},modifier=Modifier.fillMaxWidth()) { Text(when(tag){"de"->"Deutsch";"en"->"Englisch";else->"Systemsprache verwenden"}) }
+                    SecondaryText("Display automatisch: ${layout.dpi} dpi · ${layout.widthDp} × ${layout.heightDp} dp")
+                } }
+                item { SettingsSection("Updateprüfung") }
+                item { GlassPanel {
+                    HelpTitle("App-Auswahl","Alle umfasst sichtbare Apps. Allgemeine Apps sind selbst installiert; System umfasst Systempakete. Google-System-Apps ist die entsprechende Teilmenge.")
+                    ScopeChoices(selected,selection::select)
+                    SettingSwitch("Beta-Versionen ausblenden","Erkennbare Beta-Versionen nicht anbieten.",{prefs.ignoreBeta.get()},{filters.change(beta=it);onFiltersChanged()})
+                    SettingSwitch("Alpha-Versionen ausblenden","Erkennbare Alpha-Versionen nicht anbieten.",{prefs.ignoreAlpha.get()},{filters.change(alpha=it);onFiltersChanged()})
+                    SettingSwitch("Alle Vorabversionen ausblenden","Auch Beta, Alpha, RC, Preview und markierte Testversionen.",{prefs.ignorePreRelease.get()},{filters.change(preview=it);onFiltersChanged()})
+                    HelpTitle("Wie werden APKs geprüft?",HelpText.CHECK)
+                } }
+                item { GlassPanel {
+                    HelpTitle("Manuelle Prüfdownloads","Suche, Hintergrundsuche und Prüfinformationen verwenden nur Metadaten. APK-Dateien werden ausschließlich nach einer ausdrücklich bezeichneten Downloadaktion geladen. Die Grenzwerte gelten für bewusste Einzel- und Sammeldownloads.",showHelp=true)
+                    SecondaryText("Keine automatischen APK-Downloads. Downloads erst nach deiner ausdrücklichen Aktion.")
+                    var count by remember{mutableIntStateOf(prefs.autoCheckCount.get())};var size by remember{mutableIntStateOf(prefs.autoVerifyLimitMiB.get())};var budget by remember{mutableIntStateOf(prefs.autoCheckBudgetMiB.get())}
+                    ValueSlider("Apps pro Durchlauf: $count",count.toFloat(),12f,{count=it.toInt();prefs.autoCheckCount.put(count)},1f..24f,22,"Maximale Anzahl bei einem bewusst gestarteten Sammeldownload.")
+                    HelpTitle("Einzellimit: $size MiB","Maximale Größe pro bewusst gestarteter APK-Prüfung beziehungsweise pro Play-Paketset.")
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf(64,128,256,512).forEach{v->FilterChip(size==v,{size=v;prefs.autoVerifyLimitMiB.put(v)},label={Text("$v MiB")})}}
+                    HelpTitle("Gesamtbudget: $budget MiB","Obergrenze je Durchlauf. Bei unbekannter Größe wird das volle Einzellimit reserviert.")
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){listOf(256,768,1536).forEach{v->FilterChip(budget==v,{budget=v;prefs.autoCheckBudgetMiB.put(v)},label={Text("$v MiB")})}}
+                } }
+                item { GlassPanel {
+                    HelpTitle("Hintergrundsuche","Android führt geplante Prüfungen bei passenden Netz- und Systembedingungen aus; die Uhrzeit ist nicht exakt garantiert.")
+                    SettingSwitch("Täglich nach Updates suchen","Keine automatische Installation.",{prefs.enableAlarm.get()},{prefs.enableAlarm.put(it);val wm=WorkManager.getInstance(context);if(it){UpdatesWorker.launch(wm);if(Build.VERSION.SDK_INT>=33)permission.launch(android.Manifest.permission.POST_NOTIFICATIONS)}else UpdatesWorker.cancel(wm)})
+                    SettingSwitch("Hintergrundsuche nur ungetaktet","Sucht nur ohne getaktete Verbindung.",{prefs.wifiOnly.get()},{prefs.wifiOnly.put(it);if(prefs.enableAlarm.get())UpdatesWorker.launch(WorkManager.getInstance(context))})
+                } }
+                item { SettingsSection("Gerät und ROM") }
+                item { GlassPanel {
+                    HelpTitle("Region und Testprofil",HelpText.PROFILE)
+                    val overview=RegionOverview(rom?.region ?: Region.UNKNOWN,region)
+                    Text("Aktive Regionsübersicht",style=MaterialTheme.typography.titleSmall)
+                    SecondaryText("Geräte-ROM: ${rom?.label ?: "Wird ausgelesen …"}")
+                    SecondaryText("Vergleichsregion: ${if(region=="AUTO")"Automatisch · ${overview.comparison}" else region}")
+                    SecondaryText("Wirksame Prüfregion: ${overview.effective.name}")
+                    if(overview.mismatch)SecondaryText("Die Vergleichsregion weicht von der Geräte-ROM ab. Die Installation prüft weiterhin die echte ROM.")
+                    FlowRow(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("AUTO","EU","GLO","IN","CN","OTHER").forEach{v->FilterChip(region==v,{region=v;prefs.manualRegion.put(v)},label={Text(if(v=="AUTO")"Automatisch" else v)})}}
+                    val preset=TestDeviceProfiles.presets.find{it.model==model}
+                    OutlinedButton(onClick={presetMenu=true},modifier=Modifier.fillMaxWidth()){Text(preset?.name ?: if(model.isBlank())"Testgerät auswählen" else "Eigene Modellangabe")}
+                    OutlinedTextField(model,{model=it.take(80)},label={Text("Simuliertes Gerätemodell")},supportingText={Text("Modellnummer oder Testname, z. B. CPH2745")},isError=!TestDeviceProfiles.valid(model),modifier=Modifier.fillMaxWidth(),singleLine=true)
+                    Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(onClick={useModel(model)},modifier=Modifier.weight(1f)){Text("Testprofil anwenden")};HelpButton("Gerätesimulation",HelpText.PROFILE)}
+                    TextButton(onClick={region="AUTO";prefs.manualRegion.put("AUTO");useModel("")}){Text("Echtes Geräteprofil verwenden")}
+                    if(profileMessage.isNotBlank())SecondaryText(profileMessage)
+                } }
+                item { SettingsSection("Quellen und Verbindung") }
+                item { GlassPanel {
+                    Text("Updatequellen",style=MaterialTheme.typography.titleSmall)
+                    SettingSwitch("APKMirror","API-Abfrage und manuelle Webseite; keine Downloadfreigabe.",{prefs.useApkMirror.get()},{prefs.useApkMirror.put(it);onFiltersChanged()})
+                    SettingSwitch("GitHub","Zugeordnete Entwickler-Releases.",{prefs.useGitHub.get()},{prefs.useGitHub.put(it);onFiltersChanged()})
+                    SettingSwitch("GitLab","Zugeordnete Entwickler-Releases.",{prefs.useGitLab.get()},{prefs.useGitLab.put(it);onFiltersChanged()})
+                    SettingSwitch("F-Droid","Open-Source-Katalog; Signatur kann abweichen.",{prefs.useFdroid.get()},{prefs.useFdroid.put(it);onFiltersChanged()})
+                    SettingSwitch("IzzyOnDroid","Open-Source-Repository.",{prefs.useIzzy.get()},{prefs.useIzzy.put(it);onFiltersChanged()})
+                    SettingSwitch("APKPure","Anbieterkatalog; jede Datei separat prüfen.",{prefs.useApkPure.get()},{prefs.useApkPure.put(it);onFiltersChanged()})
+                    SettingSwitch("Aptoide","Anbieterkatalog; jede Datei separat prüfen.",{prefs.useAptoide.get()},{prefs.useAptoide.put(it);onFiltersChanged()})
+                    SettingSwitch("Google Play","Liefert je nach App eine Basis-APK mit zusätzlichen Split-Paketen.",{prefs.usePlay.get()},{prefs.usePlay.put(it);onFiltersChanged()})
+                } }
+                item { GlassPanel {
+                    HelpTitle("Quellenstatus","DNS: Anbieteradresse konnte nicht aufgelöst werden. HTTP: Ein Server hat geantwortet. Ein Netzwerkfehler ist kein Nachweis für eine unpassende APK.")
+                    health.forEach{entry->Text(entry.name,style=MaterialTheme.typography.labelLarge);SecondaryText(if(entry.running)"Wird abgefragt …" else entry.problem ?: "Kein Fehler gemeldet");entry.problem?.let{SecondaryText(NetworkDiagnostics.hints(it))}}
+                    OutlinedButton(onClick={testing=true;scope.launch{try{diagnostic=NetworkDiagnostics.test(context)}finally{testing=false}}},enabled=!testing){Text(if(testing)"Verbindung wird geprüft …" else "APKMirror erneut testen")}
+                    if(diagnostic.isNotBlank())SecondaryText(diagnostic)
+                    TextButton(onClick={runCatching{uri.openUri("https://www.apkmirror.com/")}}){Text("APKMirror-Webseite öffnen")}
+                } }
+                item { SettingsSection("Downloads und Installation") }
+                item { GlassPanel {
+                    SecondaryText(folderText)
+                    Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(onClick={folder.launch(null)},modifier=Modifier.weight(1f)){Text("APK-Ordner auswählen")};HelpButton("APK-Ordner auswählen","Android kann Stammordner sperren. Wähle einen Unterordner; bereits gespeicherte APKs werden nicht verschoben.")}
+                    TextButton(onClick={prefs.downloadTree.put("");folderText="Download/Liquid-APK-Store"}){Text("Standardordner verwenden")}
+                    SettingSwitch("APKs nach Installation behalten","Aus: erst nach bestätigtem Erfolg löschen. Bei Fehler oder Abbruch behalten.",{prefs.keepDownloadedApks.get()},{prefs.keepDownloadedApks.put(it)})
+                    HelpTitle("Installer",HelpText.EXTERNAL)
+                    OutlinedButton(onClick={installerMenu=true},modifier=Modifier.fillMaxWidth()){Text(if(installer=="SYSTEM")"Android PackageInstaller" else choices.find{it.first==installer}?.second ?: "Gewählter Installer nicht verfügbar")}
+                } }
+                item { SettingsSection("Verlauf und Speicher") }
+                item { GlassPanel {
+                    Text("Updateverlauf",style=MaterialTheme.typography.titleSmall)
+                    OutlinedButton(onClick=onHistory){Text("Updateverlauf öffnen")}
+                    TextButton(onClick={clearHistory=true},enabled=entries.isNotEmpty()){Text("Updateverlauf löschen")}
+                    HelpTitle("Ausgeblendete Versionen",HelpText.RESTORE,showHelp=true)
+                    SecondaryText("Ausgeblendete Versionsfunde wieder in die Updateprüfung aufnehmen.")
+                    OutlinedButton(onClick={restore=true}){Text("Versionen wieder einblenden")}
+                } }
+                item { GlassPanel {
+                    HelpTitle("Cache", "Entfernt Netzwerk- und Bildcache sowie private APK-Prüfdateien. Einstellungen, Diagnoseprotokolle, öffentliche Downloads und ausstehende externe Installationen bleiben erhalten. Aktive Prüfungen und Installationen müssen zuerst abgeschlossen sein.",showHelp=true)
+                    val http=koinInject<okhttp3.Cache>()
+                    OutlinedButton(onClick={clearing=true;scope.launch {try{val bytes=AppCache.clear(context,http);onCacheCleared();cacheMessage="Cache geleert · zuvor mindestens ${bytes/1024} KiB."}catch(e:Exception){cacheMessage=e.message ?: "Cache konnte nicht geleert werden.";AppDiagnostics.error("cache.clear_failed",error=e)}finally{clearing=false}}},enabled=!clearing,modifier=Modifier.fillMaxWidth()){Text(if(clearing)"Cache wird geleert …" else "Cache leeren")}
+                    if(cacheMessage.isNotBlank())SecondaryText(cacheMessage)
+                } }
+                item { SettingsSection("Diagnose und Entwicklung") }
+                item { DiagnosticSettingsCard() }
+                item { SettingsSection("Projekt") }
+                item { GlassPanel {
+                    OutlinedButton(onClick={runCatching{uri.openUri(SupportLink.uri())}.onFailure{AppDiagnostics.error("support.open_failed",error=it)}},modifier=Modifier.fillMaxWidth()){Text("☕ Like my project? Buy me a coffee :)")}
+                    SecondaryText("Liquid-APK-Store ${BuildConfig.VERSION_NAME}")
+                    TextButton(onClick={legal=true}){Text("Lizenzen und Rechtliches")}
+                } }
+            }
+        }
+    }
+    if(languageMenu)GlassChoiceSheet("Sprache auswählen",languages.current(context),listOf(GlassChoice("SYSTEM","Systemsprache verwenden"),GlassChoice("de","Deutsch"),GlassChoice("en","Englisch")),{languageMenu=false}){languages.set(context,it)}
+    if(presetMenu)GlassChoiceSheet("Testgerät auswählen",TestDeviceProfiles.presets.find{it.model==model}?.model ?: "ACTUAL",listOf(GlassChoice("ACTUAL","Echtes Gerät · ${Build.MODEL}"))+TestDeviceProfiles.presets.map{GlassChoice(it.model,it.name,it.note)}, {presetMenu=false}){model=if(it=="ACTUAL")"" else it}
+    if(installerMenu)GlassChoiceSheet("Installer auswählen",installer,listOf(GlassChoice("SYSTEM","Android PackageInstaller · empfohlen","Unterstützt geprüfte Einzel-APKs und APK-Sets."))+choices.map{GlassChoice(it.first,it.second,"Externe Übergabe geprüfter Einzel-APKs.")},{installerMenu=false}){id->if(id=="SYSTEM"){installer=id;prefs.installerPackage.put(id)}else choices.find{it.first==id}?.let{confirmInstaller=it}}
+    if(restore)SettingsConfirm("Versionen wieder einblenden?",HelpText.RESTORE,{restore=false}){prefs.ignoredVersions.put(emptyList());prefs.ignoredReleases.put(emptyList());restore=false;onFiltersChanged()}
+    if(clearHistory)SettingsConfirm("Updateverlauf löschen?","Entfernt die gespeicherten Verlaufseinträge. Installierte Apps und APK-Dateien bleiben erhalten.",{clearHistory=false}){history.clear();clearHistory=false;AppDiagnostics.info("history.cleared")}
+    confirmInstaller?.let{choice->SettingsConfirm("${choice.second} verwenden?",HelpText.EXTERNAL,{confirmInstaller=null}){installer=choice.first;prefs.installerPackage.put(installer);confirmInstaller=null}}
+    if(legal)AlertDialog(onDismissRequest={legal=false},title={Text("Lizenzen und Rechtliches")},text={Text("Liquid-APK-Store steht unter GNU GPLv3. Enthält Code aus APKUpdater, Copyright rumboalla und Mitwirkende; Änderungen von Hyvan187. Vollständige Lizenz und passender Quellcode liegen dem Downloadpaket bei. Android-Roboter: von Google bereitgestelltes Werk gemäß CC BY 3.0; Liquid-Glass-Darstellung angepasst.")},confirmButton={TextButton(onClick={legal=false}){Text("Schließen")}})
 }
-@Composable private fun SettingSwitch(title:String,description:String,get:()->Boolean,set:(Boolean)->Unit){var checked by remember(title){mutableStateOf(get())};Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.bodyMedium);SecondaryText(description)};Switch(checked,{checked=it;set(it)});if(HelpTopics.technical(title))HelpButton(title,if(title=="Google Play")description+" Für die vorhandene Play-Integration wird der Aurora-Anmeldedienst verwendet. Geräteprofil-Daten werden für den Katalogzugriff übertragen; ein Testmodell wird nur nach deiner Auswahl gesendet." else description)}}
+
+@Composable private fun SettingsSection(title:String) { Text(title,style=MaterialTheme.typography.titleMedium,modifier=Modifier.padding(top=8.dp)) }
+@Composable private fun SettingsConfirm(title:String,body:String,dismiss:()->Unit,confirm:()->Unit) { AlertDialog(onDismissRequest=dismiss,title={Text(title)},text={Text(body)},confirmButton={TextButton(onClick=confirm){Text("Bestätigen")}},dismissButton={TextButton(onClick=dismiss){Text("Abbrechen")}}) }
+@Composable private fun SettingSwitch(title:String,description:String,get:()->Boolean,set:(Boolean)->Unit) {
+    var checked by remember(title){mutableStateOf(get())}
+    Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+        Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.bodyMedium);SecondaryText(description)}
+        Switch(checked,{checked=it;set(it)})
+        if(HelpTopics.technical(title))HelpButton(title,if(title=="Google Play")description+" Die Aurora-Anmeldung überträgt das Geräteprofil; ein Modell-Testwert gilt nur für diese Anmeldung." else description)
+    }
+}

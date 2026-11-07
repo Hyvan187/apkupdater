@@ -18,6 +18,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.koinInject
 import kotlin.math.*
@@ -25,10 +27,13 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun AppearanceScreen(onBack:()->Unit) {
  val store=koinInject<AppearanceStore>();val a by store.state.collectAsStateWithLifecycle();var picking by remember{mutableStateOf<String?>(null)}
- Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=20.dp)) {
+ DisposableEffect(store) { onDispose { store.commitPreview() } }
+ CompositionLocalProvider(LocalEffectLevel provides a.quality.coerceAtMost(1)) {
+ Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=LocalDeviceLayout.current.horizontalPadding)) {
   ScreenHeader("Erscheinungsbild","FARBEN, GLAS UND BEWEGUNG",onBack=onBack)
   LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-   item{GlassPanel{HelpTitle("Empfohlenes Liquid Glass","Setzt nur Qualität, Glasdeckkraft, Unschärfe und Brechung auf ausgewogene Werte. Deine Farben bleiben erhalten.");SecondaryText("Standard · 46 % Glasdeckkraft · Unschärfe und Brechung an");OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.recommendedGlass()}){Text("Empfohlene Glaswerte anwenden")}}}
+   item{GlassPanel(effectLevel=a.quality){HelpTitle("Empfohlenes Liquid Glass","Setzt nur Qualität, Glastransparenz, Unschärfe und Brechung auf ausgewogene Werte. Deine Farben bleiben erhalten.");SecondaryText("Standard · 54 % Glastransparenz · Unschärfe und Brechung an");OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.recommendedGlass()}){Text("Empfohlene Glaswerte anwenden")}}}
+   item{GlassPanel{GlassTransparencyControl(store,a)}}
    item{GlassPanel{
     HelpTitle("Design","System folgt Android. Hell und Dunkel bleiben fest ausgewählt. OLED erzwingt einen schwarzen Hintergrund.")
     FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("System","Hell","Dunkel").forEachIndexed{i,t->val v=listOf(0,2,1)[i];FilterChip(a.theme==v,{store.update{it.copy(theme=v)}},label={Text(t)})}}
@@ -43,25 +48,27 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
     AppearanceToggle("Hintergrundunschärfe","Weichzeichnet den hinter Glas liegenden Inhalt.",a.blur){v->store.update{it.copy(blur=v)}}
     AppearanceToggle("Flüssiges Glas","Lichtbrechung ab Android 13 bei Standard oder Hoch.",a.refraction){v->store.update{it.copy(refraction=v)}}
     AppearanceToggle("Stärkere Navigationsunschärfe","Die schwebende Leiste erhält mehr Unschärfe.",a.progressiveBlur){v->store.update{it.copy(progressiveBlur=v)}}
-    ValueSlider("Effektqualität: ${listOf("Aus","Reduziert","Standard","Hoch")[a.quality]}",a.quality.toFloat(),2f,{v->store.update{it.copy(quality=v.toInt())}},0f..3f,2,"Standard ist ausgewogen. Hoch kostet mehr Grafikleistung; Aus nutzt feste Flächen.")
-    ValueSlider("Glasdeckkraft: ${(a.opacity*100).toInt()} %",a.opacity,.46f,{v->store.update{it.copy(opacity=v)}},.15f.. .95f,body="Niedrig zeigt mehr Hintergrund. Höher verbessert die Lesbarkeit. Standard: 46 %.")
+    ValueSlider("Effektqualität: ${listOf("Aus","Reduziert","Standard","Hoch")[a.quality]}",a.quality.toFloat(),2f,{v->store.preview{it.copy(quality=v.toInt())}},0f..3f,2,"Standard ist ausgewogen. Hoch kostet mehr Grafikleistung; Aus deaktiviert Unschärfe und Brechung. Die Transparenz bleibt einstellbar.",finished={store.commitPreview()})
    }}
    item{GlassPanel{
     HelpTitle("Hintergrundanimation","Optionale Effekte hinter den Bildschirmen. Sie pausieren außerhalb der aktiven App, bei reduziertem Bewegungssystem oder Energiesparmodus. OLED bleibt als Grundfarbe schwarz.")
+    val motionStatus by MotionRuntime.state.collectAsStateWithLifecycle()
+    SecondaryText("${motionStatus.mode.label} · ${motionStatus.reason}")
     FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)){MotionMode.entries.forEach{m->FilterChip(a.motion==m.ordinal,{store.update{it.copy(motion=m.ordinal)}},label={Text(m.label)})}}
     AppearanceToggle("Parallax-Effekt","Sanfte Verschiebung beim Neigen; nur bei aktivem Bildschirm.",a.parallax){v->store.update{it.copy(parallax=v)}}
-    AppearanceToggle("Saisonale Designs","Lokale Winter- und Jahreswechsel-Effekte; keine Standortabfrage.",a.seasonal){v->store.update{it.copy(seasonal=v)}}
-    ValueSlider("Geschwindigkeit: ${(a.speed*100).toInt()} %",a.speed,.5f,{v->store.update{it.copy(speed=v)}},.1f..1f,body="Langsame Bewegung ist ruhiger; Standard: 50 %.")
-    ValueSlider("Effektdichte: ${(a.density*100).toInt()} %",a.density,.35f,{v->store.update{it.copy(density=v)}},.1f..1f,body="Anzahl der sichtbaren Elemente. Weniger spart Grafikarbeit; Standard: 35 %.")
+    AppearanceToggle("Saisonale Designs","Bei Zufällig sind saisonale Effekte möglich. Eine fest ausgewählte Animation bleibt aktiv.",a.seasonal){v->store.update{it.copy(seasonal=v)}}
+    ValueSlider("Geschwindigkeit: ${(a.speed*100).toInt()} %",a.speed,.5f,{v->store.preview{it.copy(speed=v)}},.1f..1f,body="Langsame Bewegung ist ruhiger; Standard: 50 %.",finished={store.commitPreview()})
+    ValueSlider("Effektdichte: ${(a.density*100).toInt()} %",a.density,.35f,{v->store.preview{it.copy(density=v)}},.1f..1f,body="Anzahl der sichtbaren Elemente. Weniger spart Grafikarbeit; Standard: 35 %.",finished={store.commitPreview()})
    }}
    item{GlassPanel{
     HelpTitle("Schrift","Es werden verfügbare Systemschriften verwendet. Die Textgröße wird mit Androids Schriftgröße kombiniert.")
     var menu by remember{mutableStateOf(false)};OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={menu=true}){Text(listOf("Systemschrift","Sans Serif","Serif","Monospace")[a.font.coerceIn(0,3)])}
-    DropdownMenu(menu,{menu=false}){listOf("Systemschrift","Sans Serif","Serif","Monospace").forEachIndexed{i,t->DropdownMenuItem(text={Text(t)},onClick={store.update{it.copy(font=i)};menu=false})}}
-    ValueSlider("Zusätzliche Textgröße: ${(a.textScale*100).toInt()} %",a.textScale,1f,{v->store.update{it.copy(textScale=v)}},.85f..1.3f,body="100 % entspricht der Android-Schriftgröße ohne zusätzlichen Faktor.")
+    if(menu)GlassChoiceSheet("Schrift",a.font.toString(),listOf("Systemschrift","Sans Serif","Serif","Monospace").mapIndexed{i,t->GlassChoice(i.toString(),t)},{menu=false}){id->store.update{it.copy(font=id.toInt())}}
+    ValueSlider("Zusätzliche Textgröße: ${(a.textScale*100).toInt()} %",a.textScale,1f,{v->store.preview{it.copy(textScale=v)}},.85f..1.3f,body="100 % entspricht der Android-Schriftgröße ohne zusätzlichen Faktor.",finished={store.commitPreview()})
    }}
    item{Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.reset()},modifier=Modifier.weight(1f)){Text("Alle Darstellungswerte auf Standard zurücksetzen")};HelpButton("Darstellung zurücksetzen","Stellt das dunkle violett-blaue Standarddesign wieder her. Updatequellen, Downloads und Favoriten bleiben erhalten.")}}
   }
+ }
  }
  picking?.let{target->ColorPickerDialog(if(target=="accent")"Buttonfarbe" else "Hintergrundfarbe",if(target=="accent")a.accent else a.background,if(target=="accent")a.accentAlpha else a.backgroundAlpha,{picking=null}){color,alpha->store.update{if(target=="accent")it.copy(accent=color,accentAlpha=alpha,customAccent=true,dynamic=false) else it.copy(background=color,backgroundAlpha=alpha,customBackground=true)};picking=null}}
 }
@@ -85,4 +92,20 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
   ValueSlider("Deckkraft: ${(alpha*100).toInt()} %",alpha,1f,{alpha=it},0f..1f,body="100 % ist deckend. Niedrigere Werte mischen mit dem Hintergrund.")
   Box(Modifier.fillMaxWidth().height(28.dp).background(Color((parsed?:initial).toInt()).copy(alpha=alpha),CircleShape))
  }},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={parsed?.let{onSave(it,alpha)}},enabled=parsed!=null){Text("Übernehmen")}},dismissButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick=onDismiss){Text("Abbrechen")}})
+}
+
+@Composable fun GlassTransparencyControl(store: AppearanceStore, appearance: Appearance) {
+    val language = LocalDisplayLanguage.current
+    val percent = kotlin.math.round((1f - appearance.opacity) * 100).toInt()
+    Text("Glastransparenz: $percent %", style = MaterialTheme.typography.titleSmall)
+    SecondaryText("Für Karten, Menüs, Dialoge und Navigation. Höher zeigt mehr Hintergrund; Text und Symbole bleiben deckend. Unschärfe bleibt separat einstellbar.")
+    Slider(value = 1f - appearance.opacity,
+        onValueChange = { transparency -> store.preview { it.copy(opacity = 1f - transparency) } },
+        onValueChangeFinished = { store.commitPreview() },
+        modifier = Modifier.semantics { contentDescription = UiEnglish.translate("Glastransparenz", language) }, valueRange = 0f..1f)
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        SecondaryText("0 % · deckend")
+        SecondaryText("100 % · transparent")
+    }
+    TextButton(onClick = { store.update { it.copy(opacity = .46f) } }) { Text("Standard: 54 %") }
 }

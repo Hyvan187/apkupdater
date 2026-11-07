@@ -80,25 +80,23 @@ abstract class InstallViewModel(
         cancelInstall(id)
     }
 
-    protected suspend fun downloadAndInstall(id: Int, packageName: String, link: Link) = runCatching {
-        installLog.emitProgress(AppInstallProgress(id, 0L))
-        when (link) {
-            Link.Empty -> { Log.e("InstallViewModel", "downloadAndInstall: Unsupported.")}
-            is Link.Play -> {
-                val files = link.getInstallFiles()
-                installLog.emitProgress(AppInstallProgress(id, 0L, files.sumOf { it.size }))
-                installer.install(id, packageName, files.map { downloader.downloadStream(it.url)!! })
-            }
-            is Link.Url -> {
-                installLog.emitProgress(AppInstallProgress(id, 0L, link.size))
-                installer.install(id, packageName, downloader.downloadStream(link.link)!!)
-            }
-            is Link.Xapk -> installer.installXapk(id, packageName, downloader.downloadStream(link.link)!!)
+    protected suspend fun downloadAndInstall(id: Int, packageName: String, link: Link) {
+        var file: java.io.File? = null
+        val lease = com.apkupdater.glass.AppCache.begin()
+        try {
+            installLog.emitProgress(AppInstallProgress(id, 0L))
+            file = downloader.download(link)
+            installer.install(id, packageName, file.inputStream())
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.apkupdater.diagnostics.AppDiagnostics.error("install.download_failed", mapOf("package" to packageName), e)
+            snackBar.snackBar(viewModelScope, TextSnack(e.message ?: "Installation verweigert"))
+        } finally {
+            file?.delete()
+            lease.close()
+            cancelInstall(id)
         }
-    }.getOrElse {
-        Log.e("InstallViewModel", "Error in downloadAndInstall.", it)
-        snackBar.snackBar(viewModelScope, TextSnack(it.message ?: "Installation verweigert"))
-        cancelInstall(id)
     }
 
     protected abstract fun sendInstallSnack(log: AppInstallStatus)

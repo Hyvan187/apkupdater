@@ -11,6 +11,16 @@ class Prefs(
 	prefs: KryptoPrefs,
 	isAndroidTv: Boolean
 ): KryptoContext(prefs) {
+    fun migrateDefaults() {
+        if (sourceDefaultsSchema.get() == 0) {
+            useApkMirror.put(true); usePlay.put(true); useGitHub.put(true); useGitLab.put(true)
+            useFdroid.put(true); useIzzy.put(true); useApkPure.put(true); useAptoide.put(true)
+            autoVerifyLimitMiB.put(128); sourceDefaultsSchema.put(1)
+        }
+        // Retired: no setting may re-enable implicit APK downloads.
+        if (autoVerify.get()) autoVerify.put(false)
+        if (explicitDownloadsSchema.get() < 1) explicitDownloadsSchema.put(1)
+    }
 	val appLanguage = string("store.language","SYSTEM",true)
     val favorites = json("store.favorites",emptyList<String>(),true)
     val updateHistory = json("store.history",emptyList<com.apkupdater.glass.InstallHistory>(),true)
@@ -44,7 +54,8 @@ class Prefs(
     val glassOpacity = int("liquid.opacity", 46, true)
     val fontChoice = int("liquid.font", 0, true)
     val textScale = int("liquid.textScale", 100, true)
-    val autoVerify = boolean("liquid.autoVerify", true, true)
+    val explicitDownloadsSchema = int("downloads.explicitOnlySchema",0,true)
+    val autoVerify = boolean("liquid.autoVerify", false, true)
     val autoVerifyWifiOnly = boolean("liquid.autoWifi", true, true)
     val autoVerifyLimitMiB = int("liquid.autoLimit", 64, true)
     val preferredSources = json("liquid.preferredSources", emptyMap<String,String>(), true)

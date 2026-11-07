@@ -30,11 +30,12 @@ fun AppTheme(darkTheme: Boolean, dynamicColor: Boolean = false, content: @Compos
     val scheme = base.copy(primary = accent, onPrimary = if(accent.luminance() > .4f) Color(0xff10131c) else Color.White,
         primaryContainer = lerp(base.surface, accent, .2f), background = background)
     val family = when(a.font) { 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; else -> FontFamily.Default }
+    fun scaled(style: androidx.compose.ui.text.TextStyle) = style.copy(fontFamily = family, fontSize = style.fontSize * a.textScale, lineHeight = style.lineHeight * a.textScale)
     val typography = Typography().let { t -> t.copy(
-        headlineLarge = t.headlineLarge.copy(fontFamily = family), headlineMedium = t.headlineMedium.copy(fontFamily = family), headlineSmall = t.headlineSmall.copy(fontFamily = family),
-        titleLarge = t.titleLarge.copy(fontFamily = family), titleMedium = t.titleMedium.copy(fontFamily = family), titleSmall = t.titleSmall.copy(fontFamily = family),
-        bodyLarge = t.bodyLarge.copy(fontFamily = family), bodyMedium = t.bodyMedium.copy(fontFamily = family), bodySmall = t.bodySmall.copy(fontFamily = family),
-        labelLarge = t.labelLarge.copy(fontFamily = family), labelMedium = t.labelMedium.copy(fontFamily = family), labelSmall = t.labelSmall.copy(fontFamily = family)) }
+        headlineLarge = scaled(t.headlineLarge), headlineMedium = scaled(t.headlineMedium), headlineSmall = scaled(t.headlineSmall),
+        titleLarge = scaled(t.titleLarge), titleMedium = scaled(t.titleMedium), titleSmall = scaled(t.titleSmall),
+        bodyLarge = scaled(t.bodyLarge), bodyMedium = scaled(t.bodyMedium), bodySmall = scaled(t.bodySmall),
+        labelLarge = scaled(t.labelLarge), labelMedium = scaled(t.labelMedium), labelSmall = scaled(t.labelSmall)) }
     val view = LocalView.current
     if(!view.isInEditMode) SideEffect {
         val activity = view.context as Activity

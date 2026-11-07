@@ -20,11 +20,11 @@ fun architectureLabel(abis: Set<String>?): String = when {
     else -> abis.joinToString(" / ") { when(it) { "arm64-v8a", "arm64" -> "ARM64 (ARMv8)"; "armeabi-v7a" -> "ARMv7"; "x86_64" -> "x86-64"; else -> it } }
 }
 object AutoCheckPolicy {
-    private fun size(link: Link): Long = when(link) { is Link.Url -> link.size; is Link.Xapk -> 0L; else -> 0L }
+    private fun size(link: Link): Long = when(link) { is Link.Url -> link.size; is Link.Xapk -> 0L; is Link.Play -> 0L; else -> 0L }
     const val MAX_APPS = 12
     fun networkAllowed(enabled: Boolean, wifiOnly: Boolean, connected: Boolean, metered: Boolean) = enabled && connected && (!wifiOnly || !metered)
     fun plan(updates: List<AppUpdate>, preferred: Map<String,String> = emptyMap(), maxBytes: Long, maxApps: Int = MAX_APPS, budgetBytes: Long = Long.MAX_VALUE, retryErrors: Boolean = false): List<AppUpdate> = updates.appGroups().mapNotNull { group ->
-        group.candidates.filter { !group.candidates.any { candidate -> candidate.verdict.installAllowed } && it.verdict.status == Compatibility.UNKNOWN && (retryErrors || it.verificationError == null) && it.source != ApkMirrorSource && (it.link is Link.Url || it.link is Link.Xapk) && (size(it.link) <= 0 || size(it.link) <= maxBytes) }
+        group.candidates.filter { !group.candidates.any { candidate -> candidate.verdict.installAllowed } && it.verdict.status == Compatibility.UNKNOWN && (retryErrors || it.verificationError == null) && it.source != ApkMirrorSource && (it.link is Link.Url || it.link is Link.Xapk || it.link is Link.Play) && (size(it.link) <= 0 || size(it.link) <= maxBytes) }
             .sortedWith(compareBy<AppUpdate> { if(it.source.name == preferred[group.packageName]) 0 else 1 }.thenBy { sourceRank(it.source.name) }.thenByDescending { it.versionCode }).firstOrNull()
     }.let { found -> var reserved=0L;found.filter { u -> val size=size(u.link).takeIf{it>0} ?: maxBytes.coerceAtMost(512L*1024*1024); val fits=size<=budgetBytes-reserved;if(fits)reserved+=size;fits }.take(maxApps.coerceAtLeast(0)) }
 }

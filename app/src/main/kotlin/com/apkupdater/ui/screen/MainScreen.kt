@@ -44,7 +44,16 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     val historyScope=rememberCoroutineScope()
     val context=androidx.compose.ui.platform.LocalContext.current
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
-    DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver { _,event -> if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME)historyScope.launch(kotlinx.coroutines.Dispatchers.IO){history.reconcile(context)} };lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer)}}
+    DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver { _,event -> if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME)historyScope.launch(kotlinx.coroutines.Dispatchers.IO){history.reconcile(context);updates.reconcileInstalledUpdates()} };lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer)}}
+    DisposableEffect(context) {
+        val filter=android.content.IntentFilter().apply { addAction(Intent.ACTION_PACKAGE_ADDED);addAction(Intent.ACTION_PACKAGE_REPLACED);addAction(Intent.ACTION_PACKAGE_REMOVED);addDataScheme("package") }
+        val receiver=object:android.content.BroadcastReceiver(){override fun onReceive(c:android.content.Context,intent:Intent){
+            if(intent.action==Intent.ACTION_PACKAGE_REMOVED && intent.getBooleanExtra(Intent.EXTRA_REPLACING,false))return
+            if(intent.action in setOf(Intent.ACTION_PACKAGE_ADDED,Intent.ACTION_PACKAGE_REPLACED,Intent.ACTION_PACKAGE_REMOVED))historyScope.launch(kotlinx.coroutines.Dispatchers.IO){updates.reconcileInstalledUpdates(intent.data?.schemeSpecificPart);history.reconcile(context);apps.refresh(false)}
+        }}
+        androidx.core.content.ContextCompat.registerReceiver(context,receiver,filter,androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose { context.unregisterReceiver(receiver) }
+    }
     val nav = rememberNavController()
     val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "overview"
     val appearance = koinInject<AppearanceStore>().state.collectAsStateWithLifecycle().value
@@ -52,7 +61,6 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     val configuration=androidx.compose.ui.platform.LocalConfiguration.current
     val configuredLanguage=if(android.os.Build.VERSION.SDK_INT>=24)configuration.locales[0].language else @Suppress("DEPRECATION")configuration.locale.language
     val displayLanguage=if(android.os.Build.VERSION.SDK_INT>=33 || language=="SYSTEM")configuredLanguage else language
-    val density = androidx.compose.ui.platform.LocalDensity.current
     val snack = remember { SnackbarHostState() }
     val snacks = koinInject<SnackBar>()
     LaunchedEffect(Unit) { snacks.flow().collectLatest { snack.showSnackbar(it) } }
@@ -64,7 +72,8 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
         activity?.addOnNewIntentListener(listener)
         onDispose { activity?.removeOnNewIntentListener(listener) }
     }
-    CompositionLocalProvider(LocalDisplayLanguage provides if(displayLanguage=="de") "de" else "en",LocalAppearance provides appearance, androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * appearance.textScale)) {
+    DeviceLayoutProvider {
+    CompositionLocalProvider(LocalDisplayLanguage provides if(displayLanguage=="de") "de" else "en",LocalAppearance provides appearance,LocalBackgroundFrameRate provides if(route in listOf("appearance","settings"))24 else if(appearance.quality>=3)45 else 30) {
     AppTheme(if(appearance.theme == 0) androidx.compose.foundation.isSystemInDarkTheme() else appearance.theme == 1, appearance.dynamic) {
         CompositionLocalProvider(LocalEffectLevel provides appearance.quality) {
             GlassScene {
@@ -78,7 +87,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
                             composable("updates") { GlassUpdatesScreen(updates, onSettings = { go("settings") }) }
                             composable("apps") { SystemAppsScreen(onSettings = { go("settings") }) }
                             composable("search") { GlassSearchScreen(search, onBack = { go("overview") }) }
-                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh() },onHistory={nav.navigate("history")}) }
+                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh() },onHistory={nav.navigate("history")},onCacheCleared={updates.invalidateVerificationCache()}) }
                             composable("history") { HistoryScreen(onBack={nav.popBackStack()}) }
                             composable("appearance") { AppearanceScreen(onBack = { nav.popBackStack() }) }
                         }
@@ -89,6 +98,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
             }
         }
     }
+}
 }
 }
 

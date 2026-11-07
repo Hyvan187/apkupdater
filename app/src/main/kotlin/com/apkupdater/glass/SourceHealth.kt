@@ -38,14 +38,17 @@ object SourceHealth {
     }
     fun failed(name: String, error: Throwable) {
         if(error is CancellationException && error !is TimeoutCancellationException) return
+        com.apkupdater.diagnostics.AppDiagnostics.error("source.failure", mapOf("source" to name, "classification" to describe(error)), error)
         put(SourceState(name, false, describe(error)))
     }
-    fun <T> observe(name: String, initial: T, source: Flow<T>): Flow<T> = flow {
+    fun <T> observe(name: String, initial: T, source: Flow<T>, progressId: Long? = null): Flow<T> = flow {
+        val started = System.nanoTime()
+        com.apkupdater.diagnostics.AppDiagnostics.debug("source.start", mapOf("source" to name))
         put(SourceState(name, true)); emit(initial)
         try { withTimeout(90_000) { source.collect { emit(it) } } }
         catch(e: TimeoutCancellationException) { failed(name, e) }
         catch(e: CancellationException) { throw e }
         catch(e: Exception) { failed(name, e) }
-        finally { state.update { list -> list.map { if(it.name == name) it.copy(running = false) else it } } }
+        finally { ScanProgress.sourceFinished(progressId,name,state.value.any { it.name==name && it.problem!=null }); com.apkupdater.diagnostics.AppDiagnostics.info("source.finished", mapOf("source" to name, "elapsedMs" to (System.nanoTime()-started)/1_000_000)); state.update { list -> list.map { if(it.name == name) it.copy(running = false) else it } } }
     }
 }
