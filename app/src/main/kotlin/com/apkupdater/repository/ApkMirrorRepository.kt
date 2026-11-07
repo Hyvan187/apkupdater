@@ -45,10 +45,13 @@ class ApkMirrorRepository(
     private val api = Build.VERSION.SDK_INT
 
     suspend fun updates(apps: List<AppInstalled>) = flow {
-        apps.chunked(100)
-            .map { appExists(it.getPackageNames()) }
-            .combine { all -> emit(parseUpdates(all.flatMap { it }, apps)) }
-            .collect()
+        val found=mutableListOf<AppUpdate>()
+        emit(emptyList())
+        for(chunk in apps.chunked(100)) {
+            appExists(chunk.getPackageNames()).collect { data -> found+=parseUpdates(data,apps);emit(found.toList()) }
+            val problem=com.apkupdater.glass.SourceHealth.flow.value.firstOrNull{it.name=="ApkMirror"}?.problem.orEmpty()
+            if(listOf("HTTP 401","HTTP 403","HTTP 404","HTTP 429").any{problem.startsWith(it)})break
+        }
     }
 
     suspend fun search(text: String) = flow {
@@ -83,7 +86,13 @@ class ApkMirrorRepository(
     }
 
     private fun appExists(apps: List<String>) = flow {
-        emit(service.appExists(AppExistsRequest(apps, buildIgnoreList())).data)
+        var last: Exception?=null
+        for(attempt in 0..1){
+            try{emit(service.appExists(AppExistsRequest(apps,buildIgnoreList())).data);return@flow}
+            catch(e:kotlinx.coroutines.CancellationException){throw e}
+            catch(e:Exception){last=e;if(attempt==0 && (e is java.net.UnknownHostException || e is java.net.SocketTimeoutException))kotlinx.coroutines.delay(700) else throw e}
+        }
+        throw requireNotNull(last)
     }.catch {
         if (it is kotlinx.coroutines.CancellationException) throw it
         com.apkupdater.glass.SourceHealth.failed("ApkMirror", it)

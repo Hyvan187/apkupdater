@@ -28,6 +28,8 @@ fun UpdateCard(update: AppUpdate, verify: () -> Unit, install: () -> Unit, ignor
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) -> Unit, install: (AppUpdate) -> Unit, ignore: (AppUpdate) -> Unit, prefer: (AppUpdate) -> Unit, external: (() -> Unit)? = null) {
+    val favorites=org.koin.compose.koinInject<FavoriteStore>()
+    val flags by favorites.state.collectAsState()
     var chosenKey by remember(group.packageName) { mutableStateOf<String?>(null) }
     val update = group.candidates.find { it.artifactKey == chosenKey } ?: group.best(preferred)
     var expanded by remember { mutableStateOf(false) }
@@ -45,11 +47,14 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                 SecondaryText("${update.oldVersion.ifBlank { "?" }} → ${update.version}")
                 Text(if(busy) "Prüfung läuft …" else if(blocked) "Abgelehnt" else if(update.verdict.installAllowed) "Geprüft · bereit" else "Prüfung offen", style = MaterialTheme.typography.labelSmall, color = color)
             }
+            TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={favorites.toggle(update.packageName)}){Text(if(update.packageName in flags)"★" else "☆")}
             Icon(if(expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, "Details", Modifier.size(20.dp))
         }
         Spacer(Modifier.height(10.dp))
         SecondaryText("${architectureLabel(update.abis)} · ${group.sources().size} ${if(group.sources().size == 1) "Quelle" else "Quellen"}")
         if(blocked) SecondaryText(update.verdict.summary)
+        val risk=RiskPolicy.risk(update)
+        Row(verticalAlignment=Alignment.CenterVertically){Text("Risiko: ${risk.level}",Modifier.weight(1f),style=MaterialTheme.typography.labelSmall);HelpButton("Risikoeinstufung",risk.detail+" Quelle: ${update.source.name}. Eine bekannte Quelle allein bestätigt weder Signatur noch Unbedenklichkeit.");HelpButton(if(blocked)"Blockiert" else "Prüfung",if(blocked)HelpText.BLOCKED else HelpText.CHECK)}
         update.verificationError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         if(expanded) {
             Spacer(Modifier.height(12.dp))
@@ -57,6 +62,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             FactRow("Architektur", architectureLabel(update.abis))
             FactRow("Kategorie", if(group.system) "System-App" else "Allgemeine App")
             FactRow("Quelle", update.source.name)
+            update.updateOwner?.let{FactRow("Update-Verwaltung",it)}
             FactRow("Signatur", when(update.verdict.evidence.find { it.property == "Signatur" }?.status) { Compatibility.COMPATIBLE -> "Passt zur Installation"; Compatibility.INCOMPATIBLE -> "Passt nicht"; else -> "Noch offen" })
             update.verifiedAt?.let { FactRow("Geprüft", DateFormat.getTimeInstance(DateFormat.SHORT).format(Date(it))) }
             TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { technical = true }) { Text("Technische Details") }
@@ -67,6 +73,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             if(update.verdict.installAllowed) Button(onClick = { install(update) }, modifier = Modifier.fillMaxWidth()) { Text("Installieren") }
             OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { picker = true }, modifier = Modifier.fillMaxWidth()) { Text(if(update.verdict.installAllowed) "Andere Quelle / erneut prüfen" else "Quelle wählen und prüfen") }
         }
+        if(expanded) HelpButton("Version ausblenden","Blendet diese Versionsbezeichnung dieser App quellenübergreifend aus. Unter Einstellungen lassen sich ausgeblendete Versionen wieder einblenden.")
         if(expanded) TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { ignore(update) }) { Text("Diese Version ausblenden") }
     }
     if(picker) {
@@ -74,7 +81,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
         var variants by remember { mutableStateOf<String?>(null) }
         ModalBottomSheet(onDismissRequest = { picker = false }) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).navigationBarsPadding()) {
-                Text("Quelle auswählen", style = MaterialTheme.typography.titleLarge)
+                HelpTitle("Quelle auswählen","Wähle Anbieter und Variante. Geprüft wird genau diese Datei; andere Quellen übernehmen ihre Freigabe nicht. APKMirror öffnet die Webseite.")
                 SecondaryText("${update.name} · Anbieter behalten eigene Varianten und Prüfergebnisse.")
                 LazyColumn(Modifier.heightIn(max = 390.dp)) {
                     items(group.sources(preferred), key = { it.source.name }) { option ->
@@ -111,6 +118,8 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
     }
     if(technical) AlertDialog(onDismissRequest = { technical = false }, title = { Text("Technische Details") }, text = {
         Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {
+            val profilePrefs=org.koin.compose.koinInject<com.apkupdater.prefs.Prefs>()
+            if(ProfilePolicy.simulationActive(profilePrefs))SecondaryText("Vergleichsprofil: Modell ${profilePrefs.simulatedModel.get().ifBlank{android.os.Build.MODEL}} · Region ${profilePrefs.manualRegion.get()}. APK-Region nicht durch diese Auswahl belegt. Die Installationsprüfung verwendet das wirkliche Gerät.")
             SecondaryText(update.packageName); SecondaryText("Versionscode: ${update.oldVersionCode} → ${update.versionCode}")
             update.verdict.evidence.forEach { Text(it.property, style = MaterialTheme.typography.labelMedium); SecondaryText(it.detail) }
             update.sha256?.let { SecondaryText("SHA-256: $it") }

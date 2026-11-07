@@ -20,6 +20,7 @@ data class AppUpdate(
 	val id: Int = "${source.name}.$packageName.$versionCode.$version.$link".hashCode(),
     val verdict: com.apkupdater.glass.Verdict = com.apkupdater.glass.Verdict(com.apkupdater.glass.Compatibility.UNKNOWN, emptyList()),
     val sha256: String? = null,
+    val updateOwner: String? = null,
     val additionalSources: List<String> = emptyList(),
     val prerelease: Boolean = false,
     val system: Boolean = false,

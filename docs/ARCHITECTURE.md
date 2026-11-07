@@ -55,3 +55,17 @@ ReleasePolicy combines recognizable version tokens with provider prerelease flag
 DownloadArchive uses MediaStore.Downloads on API 29+ and persisted document-tree permissions below 29. Writes finish before IS_PENDING is cleared. A global lock protects hash-keyed archive records. SessionInstaller never substitutes public bytes for its verified private input. Cleanup runs only after commit returns success and checks the current keep preference. Automatic inspection files are not published.
 
 Incremental Kotlin compilation is disabled in this build baseline because repeated incremental rebuilds produced duplicate declaration diagnostics; clean full compilation is used for validation. This affects build speed, not app runtime.
+
+## Version 0.5
+
+`HistoryStore` records PackageInstaller success and separately describes observed external-handoff version outcomes. Pending reconciliation and file hashing run on IO, with a serialized store and bounded staging. Restricted FileProvider paths expose only staged checked files to the chosen handler. Android confirmation and actual-device preflight remain mandatory. A pending matching version is an observation, not proof of external execution provenance.
+
+`FavoriteStore`, `AppLanguageStore` and `AppearanceStore` expose StateFlow. Contextual help and per-slider reset are shared controls. `UiEnglish` translates core controls/explanations through the app's selected locale; some diagnostics/help remain in their source language. Android 13+ LocaleManager owns native application locales, declared as de/en in LocaleConfig; older versions use the persisted app-local selector.
+
+`MotionBackground` has bounded element counts and optional sensor input, using lifecycle, reduced-motion and power-saving gates. Default is off. OLED changes the base and static glow behavior; no energy measurement is implied. Color opacity blends in-app surfaces rather than enabling cross-app window transparency.
+
+`ApkLimits` constrains decompressed manifest bytes; ManifestReader constrains cumulative decoded strings. APK ZIP preflight occurs before PackageManager parsing. Automatic requests use per-file/count/aggregate reservation budgets. Manual batch work can cover all eligible direct files while the private inspection cache is bounded; evicted bytes must be inspected again before installing.
+
+Current-network DNS respects system/VPN policy, and APKMirror retries only transient DNS/timeouts once. Denials and rate limits stop further batches. ACCESS_NETWORK_STATE is declared for connectivity checks. No DNS service replacement or CAPTCHA bypass is implemented.
+
+Manual region is a comparison hint. A chosen model is sent only in explicit Play authentication metadata. Actual Build API/ABI/firmware evidence always controls installation. The model option neither changes other applications' identities nor establishes APK ROM provenance.

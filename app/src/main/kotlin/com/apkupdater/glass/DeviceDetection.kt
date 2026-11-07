@@ -33,10 +33,10 @@ class DeviceDetection(private val context: Context, private val prefs: Prefs) {
         finally { reader.shutdownNow() }
     }
     fun region() = rom().region
-    fun profile() = DeviceProfile(Build.VERSION.SDK_INT, Build.SUPPORTED_ABIS.toSet(), region())
+    fun profile() = ProfilePolicy.actualProfile(DeviceProfile(Build.VERSION.SDK_INT, Build.SUPPORTED_ABIS.toSet(), region()),prefs.manualRegion.get(),prefs.simulatedModel.get())
     fun isSystem(pkg: String) = runCatching { context.packageManager.getApplicationInfo(pkg, 0).flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0 }.getOrDefault(false)
     fun isRomSensitive(pkg: String) = rules.families.filter { it.id != "pixel" }.any { r -> r.prefixes.any { pkg.startsWith(it) } }
-    fun description() = "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}"
+    fun description() = "${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE}" + if(ProfilePolicy.simulationActive(prefs)) "\nTestprofil: ${prefs.simulatedModel.get().ifBlank{Build.MODEL}} · Region ${prefs.manualRegion.get()} (kein Installationsnachweis)" else ""
     companion object {
         @Volatile private var cache: RomResult? = null
         @Volatile private var process: Process? = null

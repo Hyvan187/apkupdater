@@ -24,8 +24,9 @@ class DownloadArchive(private val context: Context,private val prefs: Prefs) {
   val key=hash(file);val resolver=context.contentResolver
   prefs.downloadArchive.get()[key]?.let { saved -> val uri=Uri.parse(saved);if(runCatching{resolver.openFileDescriptor(uri,"r")?.use{true}==true}.getOrDefault(false))return@synchronized uri }
   val name=DownloadNames.name(pkg,version,key)
-  val uri=if(Build.VERSION.SDK_INT>=29) resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,ContentValues().apply {
-   put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,"application/vnd.android.package-archive");put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/Liquid-APK-Updater");put(MediaStore.MediaColumns.IS_PENDING,1)
+  val usesTree=prefs.downloadTree.get().isNotBlank()
+  val uri=if(Build.VERSION.SDK_INT>=29 && !usesTree) resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI,ContentValues().apply {
+   put(MediaStore.MediaColumns.DISPLAY_NAME,name);put(MediaStore.MediaColumns.MIME_TYPE,"application/vnd.android.package-archive");put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS+"/Liquid-APK-Store");put(MediaStore.MediaColumns.IS_PENDING,1)
   }) else {
    val tree=prefs.downloadTree.get().takeIf{it.isNotBlank()} ?: error("Bitte zuerst einen Downloadordner in den Einstellungen auswählen.")
    val root=Uri.parse(tree);DocumentsContract.createDocument(resolver,DocumentsContract.buildDocumentUriUsingTree(root,DocumentsContract.getTreeDocumentId(root)),"application/vnd.android.package-archive",name)
@@ -33,14 +34,14 @@ class DownloadArchive(private val context: Context,private val prefs: Prefs) {
   requireNotNull(uri){"Downloadordner nicht verfügbar."}
   try {
    requireNotNull(resolver.openOutputStream(uri)).use { out -> file.inputStream().use{it.copyTo(out)} }
-   if(Build.VERSION.SDK_INT>=29)resolver.update(uri,ContentValues().apply{put(MediaStore.MediaColumns.IS_PENDING,0)},null,null)
+   if(Build.VERSION.SDK_INT>=29 && !usesTree)resolver.update(uri,ContentValues().apply{put(MediaStore.MediaColumns.IS_PENDING,0)},null,null)
    prefs.downloadArchive.put(prefs.downloadArchive.get()+(key to uri.toString()));uri
-  } catch(e: Exception){runCatching{if(Build.VERSION.SDK_INT>=29)resolver.delete(uri,null,null) else DocumentsContract.deleteDocument(resolver,uri)};throw e}
+  } catch(e: Exception){runCatching{if(!DocumentsContract.isDocumentUri(context,uri))resolver.delete(uri,null,null) else DocumentsContract.deleteDocument(resolver,uri)};throw e}
  }
  fun installed(file: File) = synchronized(lock) {
   if(!DownloadNames.deleteAfterSuccess(true,prefs.keepDownloadedApks.get()))return@synchronized
   val key=hash(file);val saved=prefs.downloadArchive.get()[key] ?: return@synchronized;val uri=Uri.parse(saved)
-  val removed=runCatching{if(Build.VERSION.SDK_INT>=29)context.contentResolver.delete(uri,null,null)>0 else DocumentsContract.deleteDocument(context.contentResolver,uri)}.getOrDefault(false)
+  val removed=runCatching{if(!DocumentsContract.isDocumentUri(context,uri))context.contentResolver.delete(uri,null,null)>0 else DocumentsContract.deleteDocument(context.contentResolver,uri)}.getOrDefault(false)
   if(removed)prefs.downloadArchive.put(prefs.downloadArchive.get()-key)
  }
 }

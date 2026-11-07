@@ -88,8 +88,7 @@ class NativeDeviceInfoProvider(context: Context) : ContextWrapper(context) {
             setProperty("SimOperator", "38")
         }
 
-        if (isHuawei())
-            stripHuaweiProperties(properties)
+        // Device model substitution is now explicit in PlayRepository, never automatic.
 
         return properties
     }

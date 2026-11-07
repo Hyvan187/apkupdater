@@ -18,14 +18,15 @@ import com.apkupdater.util.isDark
 @Composable
 fun AppTheme(darkTheme: Boolean, dynamicColor: Boolean = false, content: @Composable () -> Unit) {
     val a = LocalAppearance.current
-    val effectiveDark = if(a.customBackground) Color(a.background.toInt()).luminance() < .3f else darkTheme
+    val effectiveDark = if(a.oled) true else if(a.customBackground) Color(a.background.toInt()).luminance() < .3f else darkTheme
     val base = when {
         dynamicColor && Build.VERSION.SDK_INT >= 31 -> if(effectiveDark) dynamicDarkColorScheme(LocalContext.current) else dynamicLightColorScheme(LocalContext.current)
         effectiveDark -> darkColorScheme(primary = Color(0xffc8b9ff), onPrimary = Color(0xff25164a), secondary = Color(0xff8cdae2), background = Color(0xff080b13), onBackground = Color(0xfff4f3fb), surface = Color(0xff121724), onSurface = Color(0xfff4f3fb), onSurfaceVariant = Color(0xffb9bfce), outline = Color(0xff4c5266))
         else -> lightColorScheme(primary = Color(0xff5f43ae), background = Color(0xffedf0f7), onBackground = Color(0xff172033), surface = Color.White, onSurface = Color(0xff172033), onSurfaceVariant = Color(0xff50596d))
     }
-    val accent = if(a.customAccent) Color(a.accent.toInt()) else base.primary
-    val background = if(a.customBackground) Color(a.background.toInt()) else base.background
+    val accentRaw = if(a.customAccent) Color(a.accent.toInt()) else base.primary
+    val accent=lerp(base.surface,accentRaw,a.accentAlpha)
+    val background = if(a.oled) Color.Black else if(a.customBackground) lerp(base.background,Color(a.background.toInt()),a.backgroundAlpha) else base.background
     val scheme = base.copy(primary = accent, onPrimary = if(accent.luminance() > .4f) Color(0xff10131c) else Color.White,
         primaryContainer = lerp(base.surface, accent, .2f), background = background)
     val family = when(a.font) { 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; else -> FontFamily.Default }

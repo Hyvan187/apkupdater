@@ -50,13 +50,14 @@ fun GlassScene(content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalSceneBackdrop provides backdrop, LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         Box(Modifier.fillMaxSize()) {
             Canvas(Modifier.fillMaxSize().captureGlass(backdrop)) {
-                drawRect(if(appearance.customBackground) Color(appearance.background.toInt()) else if (dark) Color(0xff080b13) else Color(0xffedf0f7))
+                drawRect(if(appearance.oled) Color.Black else if(appearance.customBackground) lerp(if(dark) Color(0xff080b13) else Color(0xffedf0f7),Color(appearance.background.toInt()),appearance.backgroundAlpha) else if (dark) Color(0xff080b13) else Color(0xffedf0f7))
                 val points = listOf(Offset(.95f * size.width, .16f * size.height), Offset(-.2f * size.width, .6f * size.height), Offset(.85f * size.width, .98f * size.height))
                 val colors = if(appearance.customBackground) listOf(accent, accent, accent) else listOf(Color(0xff6d4bd1), Color(0xff166986), Color(0xff9b7733))
-                points.zip(colors).forEach { (center, color) ->
+                if(!appearance.oled) points.zip(colors).forEach { (center, color) ->
                     drawCircle(Brush.radialGradient(listOf(color.copy(if(dark) .27f else .12f), Color.Transparent), center, size.width * .95f), size.width * .95f, center)
                 }
             }
+            MotionBackground(appearance)
             content()
         }
     }

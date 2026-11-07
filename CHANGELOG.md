@@ -1,3 +1,14 @@
+# 0.5.0-store
+
+- Rename product to Liquid-APK-Store, replace robot/update icon and move credits to separate legal notices.
+- Fix missing network-state permission, add current-network DNS, bounded provider retry and actionable diagnostics/web fallback.
+- Add contextual explanations, per-slider defaults, HSV wheel/opacity, OLED and optional lifecycle-bound animation modes.
+- Add favorites, installation history, external checked-APK handoff and folder selection on modern Android.
+- Expand manual batch checks, configurable automatic resource budgets and bounded private cache.
+- Add explicit region/model test preferences without weakening actual-device safety.
+- Add native app-language selection (German/English/system; partial English descriptions) and owner donation link.
+- Bound APK structure/manifest decoding before package analysis; retain signature, downgrade and split guards.
+
 # 0.4.0-liquid
 
 - Repair appearance navigation, duplicate entry text and system-bar-safe scrolling.

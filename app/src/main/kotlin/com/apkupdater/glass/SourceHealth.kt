@@ -26,6 +26,7 @@ object SourceHealth {
             401 -> "Anmeldung oder Zugriffsschlüssel erforderlich"; 403 -> "Zugriff vom Anbieter verweigert"; 404 -> "Adresse oder Datei nicht mehr vorhanden"; 408, 504 -> "Anbieter antwortet nicht rechtzeitig"; 429 -> "Zu viele Anfragen; später erneut versuchen"; in 500..599 -> "Server des Anbieters vorübergehend gestört"; else -> "Anbieter hat die Anfrage abgelehnt"
         }
         return when {
+            error is InspectionException -> error.message ?: "APK-Prüfung nicht möglich"
             chain.any { it is UnknownHostException } -> "DNS-Fehler · Anbieteradresse nicht auflösbar"
             chain.any { it is SocketTimeoutException || it is TimeoutCancellationException } -> "Zeitüberschreitung · Anbieter antwortet nicht"
             chain.any { it is SSLException } -> "TLS-/Zertifikatsfehler · sichere Verbindung nicht möglich"

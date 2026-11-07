@@ -10,6 +10,7 @@ data class Appearance(
     val customAccent: Boolean = false, val customBackground: Boolean = false,
     val quality: Int = 2, val reduceMotion: Boolean = false,
     val blur: Boolean = true, val refraction: Boolean = true, val progressiveBlur: Boolean = false,
+    val oled: Boolean=false,val motion: Int=0,val speed: Float=.5f,val density: Float=.35f,val parallax: Boolean=false,val seasonal: Boolean=false,val accentAlpha: Float=1f,val backgroundAlpha: Float=1f,
     val opacity: Float = .46f, val font: Int = 0, val textScale: Float = 1f
 )
 object ColorInput {
@@ -18,6 +19,7 @@ object ColorInput {
 }
 class AppearanceStore(private val prefs: Prefs) {
     private val mutable = MutableStateFlow(Appearance(
+        oled=prefs.oledMode.get(),motion=prefs.backgroundMotion.get(),speed=prefs.motionSpeed.get()/100f,density=prefs.motionDensity.get()/100f,parallax=prefs.parallax.get(),seasonal=prefs.seasonal.get(),accentAlpha=prefs.accentOpacity.get()/100f,backgroundAlpha=prefs.backgroundOpacity.get()/100f,
         theme = prefs.theme.get(), dynamic = prefs.dynamicColors.get(), accent = prefs.accentColor.get(), background = prefs.backgroundColor.get(),
         customAccent = prefs.customAccent.get(), customBackground = prefs.customBackground.get(), quality = prefs.effectLevel.get().coerceIn(0,3),
         reduceMotion = prefs.reduceMotion.get(), blur = prefs.blurEnabled.get(), refraction = prefs.refractionEnabled.get(), progressiveBlur = prefs.progressiveBlur.get(),
@@ -26,6 +28,7 @@ class AppearanceStore(private val prefs: Prefs) {
     val state: StateFlow<Appearance> = mutable
     fun update(change: (Appearance) -> Appearance) {
         val v = change(mutable.value)
+        prefs.oledMode.put(v.oled);prefs.backgroundMotion.put(v.motion);prefs.motionSpeed.put((v.speed*100).toInt());prefs.motionDensity.put((v.density*100).toInt());prefs.parallax.put(v.parallax);prefs.seasonal.put(v.seasonal);prefs.accentOpacity.put((v.accentAlpha*100).toInt());prefs.backgroundOpacity.put((v.backgroundAlpha*100).toInt())
         prefs.theme.put(v.theme); prefs.dynamicColors.put(v.dynamic); prefs.accentColor.put(v.accent); prefs.backgroundColor.put(v.background)
         prefs.customAccent.put(v.customAccent); prefs.customBackground.put(v.customBackground); prefs.effectLevel.put(v.quality)
         prefs.reduceMotion.put(v.reduceMotion); prefs.blurEnabled.put(v.blur); prefs.refractionEnabled.put(v.refraction); prefs.progressiveBlur.put(v.progressiveBlur)

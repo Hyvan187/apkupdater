@@ -36,7 +36,9 @@ class PlayRepository(
 
     private fun refreshAuth(): AuthData {
         Log.i("PlayRepository", "Refreshing token.")
-        val properties = NativeDeviceInfoProvider(context).getNativeDeviceProperties()
+        val properties = NativeDeviceInfoProvider(context).getNativeDeviceProperties().apply {
+            prefs.simulatedModel.get().takeIf{it.isNotBlank()}?.let { setProperty("Build.MODEL",it);setProperty("UserReadableName","Liquid-APK-Store Testprofil: $it") }
+        }
         val playResponse = playHttpClient.postAuth(AUTH_URL, gson.toJson(properties).toByteArray())
         if (playResponse.isSuccessful) {
             val authData = gson.fromJson(String(playResponse.responseBytes), AuthData::class.java)

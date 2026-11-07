@@ -12,6 +12,7 @@ object ManifestReader {
         fun u16(p: Int) = b.getShort(p).toInt() and 65535
         require(u16(0) == 3 && b.getInt(4) == bytes.size)
         var strings = emptyList<String>()
+        var decodedBytes=0L
         val tags = mutableListOf<Tag>()
         var p = u16(2)
         while (p < bytes.size) {
@@ -39,6 +40,8 @@ object ManifestReader {
                     if (utf8) len = length()
                     val byteCount = if (utf8) len.toLong() else len * 2L
                     require(byteCount >= 0 && q + byteCount <= p + size)
+                    decodedBytes+=byteCount
+                    if(byteCount>65536 || decodedBytes>16L*1024*1024)throw InspectionException("Die Manifest-Texte überschreiten das sichere Prüflimit.")
                     return String(bytes, q, byteCount.toInt(), if (utf8) Charsets.UTF_8 else Charsets.UTF_16LE)
                 }
                 strings = (0 until count).map { str(start + b.getInt(p + header + it * 4)) }

@@ -34,6 +34,8 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
     var query by remember { mutableStateOf("") }
     val selection = koinInject<AppSelection>()
     val category by selection.scope.collectAsStateWithLifecycle()
+    val favoriteStore=koinInject<FavoriteStore>()
+    val favorites by favoriteStore.state.collectAsStateWithLifecycle()
     var mode by remember { mutableIntStateOf(0) }
     var ignored by remember { mutableStateOf(prefs.ignoredApps.get().toSet()) }
     LaunchedEffect(Unit) {
@@ -55,6 +57,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
         (app.name.contains(query, true) || app.pkg.contains(query, true)) && CategoryPolicy.matches(category, app.system || app.updated, app.pkg) && when(mode) {
             1 -> !app.enabled
             2 -> app.pkg in ignored
+            3 -> app.pkg in favorites
             else -> true
         }
     }
@@ -63,7 +66,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
         OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("App oder Paket suchen") }, modifier = Modifier.fillMaxWidth())
         ScopeChoices(category, selection::select)
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("Alle Zustände", "Deaktiviert", "Ignoriert").forEachIndexed { i, label ->
+            listOf("Alle Zustände", "Deaktiviert", "Ignoriert", "Favoriten").forEachIndexed { i, label ->
                 FilterChip(selected = mode == i, onClick = { mode = i }, label = { Text(label) })
             }
         }
@@ -80,6 +83,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
                             SecondaryText("${app.version} · ${if(app.system || app.updated) "System" else "App"}${if(!app.enabled) " · deaktiviert" else ""}")
                         }
                     }
+                    Row { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={favoriteStore.toggle(app.pkg)}){Text(if(app.pkg in favorites)"★ Favorit entfernen" else "☆ Als Favorit markieren")};HelpButton("Favoriten","Markiert die App in dieser Anwendung. Unter Favoriten findest du sie schneller. Prüfung und installierte App werden dadurch nicht verändert.") }
                     if (expanded) {
                         SecondaryText(app.pkg)
                         Text("Installationsquelle: ${app.source.ifEmpty { "nicht ausgewiesen" }}")
@@ -90,7 +94,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
                                 ignored = if (enabled) ignored - app.pkg else ignored + app.pkg
                                 prefs.ignoredApps.put(ignored.toList())
                             })
-                            Text("Updates prüfen", Modifier.padding(12.dp))
+                            Text("Updates prüfen", Modifier.padding(12.dp));HelpButton("App ignorieren","Aus deaktiviert die Updateabfrage für dieses Paket. Die installierte App wird nicht deaktiviert oder deinstalliert.")
                         }
                     }
                 }

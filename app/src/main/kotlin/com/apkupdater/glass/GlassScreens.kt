@@ -104,7 +104,8 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
         }
     }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item { ScreenHeader("Alles im Blick.", "LIQUID-APK-UPDATER", onSettings) }
+        item { ScreenHeader("Alles im Blick.", "LIQUID-APK-STORE", onSettings) }
+        if(LocalAppearance.current.seasonal) item {val d=java.util.Calendar.getInstance();val greeting=MotionPolicy.greeting(d.get(java.util.Calendar.MONTH)+1,d.get(java.util.Calendar.DAY_OF_MONTH));if(greeting.isNotBlank())SecondaryText(greeting)}
         item { GlassPanel {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(.13f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
@@ -129,7 +130,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
             Metric("Blockiert", blocked, MaterialTheme.colorScheme.error, Modifier.weight(1f), onUpdates)
         } }
         if(health.any { it.problem != null }) item { StateMessage("Quellen teilweise nicht erreichbar", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
-        item { Text("WERKZEUGE", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        item { HelpButton("Lokale APK-Prüfung",HelpText.CHECK+" Die Dateiauswahl analysiert nur deine Datei; es findet keine Installation statt.");Text("WERKZEUGE", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         item { GlassPanel(Modifier.clickable { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream")) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.primary)
@@ -161,23 +162,30 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
     val handler = LocalUriHandler.current
     val status = listOf(Compatibility.COMPATIBLE, Compatibility.UNKNOWN, Compatibility.INCOMPATIBLE)[selected]
     val groups = all.appGroups()
-    val visible = groups.filter { it.status == status && (it.candidates.any { c -> c.name.contains(query, true) } || it.packageName.contains(query, true)) }.sortedBy { it.best().name.lowercase() }
+    val favoriteStore=koinInject<FavoriteStore>()
+    val favorites by favoriteStore.state.collectAsStateWithLifecycle()
+    var onlyFavorites by remember{mutableStateOf(false)}
+    val visible = groups.filter { (!onlyFavorites || it.packageName in favorites) && it.status == status && (it.candidates.any { c -> c.name.contains(query, true) } || it.packageName.contains(query, true)) }.sortedBy { it.best().name.lowercase() }
     LaunchedEffect(groups.map { it.packageName to it.status }) { if(groups.none { it.status == Compatibility.COMPATIBLE } && groups.any { it.status == Compatibility.UNKNOWN }) selected = 1 }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { ScreenHeader("Updates", "GEPRÜFT STATT NUR NEUER", onSettings) }
         item { ScopeChoices(scopeFilter, selection::select) }
+        item { FilterChip(onlyFavorites,{onlyFavorites=!onlyFavorites},label={Text("Nur Favoriten")});HelpButton("Favoritenfilter","Zeigt nur Apps, die du mit dem Stern markiert hast.") }
+        item { HelpTitle("Prüfstatus",HelpText.BLOCKED+"\n\n"+HelpText.CHECK) }
+
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Bereit", "Prüfen", "Blockiert").forEachIndexed { i, label ->
                 val category = Compatibility.entries.let { listOf(Compatibility.COMPATIBLE, Compatibility.UNKNOWN, Compatibility.INCOMPATIBLE)[i] }
-                FilterChip(selected == i, { selected = i }, label = { Text("$label ${groups.count { it.status == category }}", style = MaterialTheme.typography.labelSmall) })
+                FilterChip(selected == i, { selected = i }, label = { Text("$label ${groups.count { (!onlyFavorites || it.packageName in favorites) && it.status == category }}", style = MaterialTheme.typography.labelSmall) })
             }
         } }
         item { OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), placeholder = { Text("Updates durchsuchen") }, leadingIcon = { Icon(Icons.Default.Search, null) }, shape = CircleShape, singleLine = true) }
+        if(all.any{it.isInstalling}) item {TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={viewModel.cancelVerification()}){Text("Sammelprüfung abbrechen")};HelpButton("Prüfung abbrechen","Stoppt die manuell gestartete Sammelprüfung nach Freigabe des laufenden Netzwerkaufrufs. Es wird nichts installiert. Bereits gespeicherte öffentliche APK-Kopien bleiben erhalten.")}
         if(working) item { LinearProgressIndicator(Modifier.fillMaxWidth()); SecondaryText("Die aktivierten Quellen werden abgefragt …") }
         if(health.any { it.problem != null }) item { StateMessage("Quellenfehler", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
         if(state is UpdatesUiState.Error) item { StateMessage("Suche fehlgeschlagen", "Bitte Verbindung und aktivierte Quellen prüfen.") }
         if(visible.isEmpty() && !working) item { StateMessage(when(selected) { 0 -> "Keine freigegebenen Updates"; 1 -> "Nichts zur Prüfung offen"; else -> "Keine blockierten Varianten" }, when(selected) { 0 -> "Nur tatsächlich geprüfte APKs erscheinen hier. Weitere Funde findest du unter Prüfen."; 1 -> "Starte eine neue Suche oder prüfe die Quellen in den Einstellungen."; else -> "Ältere Systemzweige und nachweislich unpassende APKs erscheinen separat in diesem Bereich." }) }
-        if(selected == 1 && visible.isNotEmpty()) item { OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { viewModel.verifyAll() }, shape = CircleShape, modifier = Modifier.fillMaxWidth()) { Text("Direkt verfügbare APKs prüfen") }; SecondaryText("Prüft bis zu sechs Dateien je Durchlauf. Herstellerpakete bleiben bei ungeklärter Herkunft gesperrt.") }
+        if(selected == 1 && visible.isNotEmpty()) item { OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { viewModel.verifyAll() }, shape = CircleShape, modifier = Modifier.fillMaxWidth()) { Text("Alle verfügbaren APKs prüfen") };HelpButton("Alle APKs prüfen",HelpText.CHECK+" Pro App wird eine unterstützte Quelle verwendet. Bereits geprüfte und blockierte Dateien werden übersprungen. Es wird nacheinander geprüft; Webquellen bleiben manuell."); SecondaryText("Lädt je App eine unterstützte APK und prüft sie ohne Installation. Webdownloads bleiben manuell.") }
         items(visible, key = { it.packageName }) { group -> UpdateGroupCard(group, viewModel.preferred(group.packageName), { viewModel.verify(it) }, { viewModel.install(it, handler) }, viewModel::ignoreRelease, viewModel::prefer) }
     }
 }

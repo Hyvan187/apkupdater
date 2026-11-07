@@ -32,7 +32,7 @@ class GlassTestApp : App() {
     }
 }
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [37], application = GlassTestApp::class, qualifiers = "w412dp-h915dp-xhdpi")
+@Config(sdk = [37], application = GlassTestApp::class, qualifiers = "de-w412dp-h915dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class GlassUiTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
@@ -76,7 +76,7 @@ class GlassUiTest {
         screenshot("04-search")
     }
     @Test
-    @Config(qualifiers = "w320dp-h720dp-xhdpi")
+    @Config(qualifiers = "de-w320dp-h720dp-xhdpi")
     fun compactNavigationKeepsAllMainActionsVisible() {
         compose.onNodeWithText("Start").assertIsDisplayed()
         compose.onNodeWithText("Updates").assertIsDisplayed()
@@ -87,8 +87,8 @@ class GlassUiTest {
     @Test
     fun lightThemeRendersReadableDashboard() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onNode(hasScrollAction()).performScrollToNode(hasContentDescription("Erscheinungsbild öffnen"))
-        compose.onNodeWithContentDescription("Erscheinungsbild öffnen").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Design anpassen"))
+        compose.onNodeWithText("Design anpassen").performClick()
         compose.onNodeWithText("Hell").assertIsDisplayed()
         compose.onNodeWithText("Hell").performClick()
         screenshot("08-appearance-light")
@@ -161,7 +161,7 @@ class GlassUiTest {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Erscheinungsbild"))
         compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
-        compose.onNodeWithContentDescription("Erscheinungsbild öffnen").performClick()
+        compose.onNodeWithText("Design anpassen").performClick()
         compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
         val store=GlobalContext.get().get<AppearanceStore>()
         compose.runOnIdle { store.update{it.copy(quality=0,opacity=.9f,blur=false,accent=0xff123456,customAccent=true)} }
@@ -172,7 +172,7 @@ class GlassUiTest {
         compose.onNodeWithText("Alle Darstellungswerte auf Standard zurücksetzen").performClick()
         compose.runOnIdle {org.junit.Assert.assertEquals(Appearance(),store.state.value)}
     }
-    @Test @Config(qualifiers="w320dp-h720dp-xhdpi") fun googleScopeFitsCompactScreen() {
+    @Test @Config(qualifiers="de-w320dp-h720dp-xhdpi") fun googleScopeFitsCompactScreen() {
         compose.onNodeWithText("Apps").performClick()
         compose.onNodeWithText("Google-System-Apps").assertIsDisplayed().performClick()
         compose.runOnIdle {org.junit.Assert.assertEquals(AppScope.GOOGLE_SYSTEM,GlobalContext.get().get<AppSelection>().scope.value)}
@@ -195,6 +195,47 @@ class GlassUiTest {
         compose.onNodeWithText("Beta Fixture").assertIsDisplayed()
         compose.runOnIdle { filters.change(beta=true) }
         compose.onNodeWithText("Beta Fixture").assertDoesNotExist()
+    }
+
+    @Test fun helpExplainsBlockedWithoutInstallingAnything() {
+        compose.onNodeWithText("Updates").performClick()
+        compose.onNodeWithContentDescription("Hilfe: Prüfstatus").performClick()
+        compose.onNodeWithText(HelpText.BLOCKED+"\n\n"+HelpText.CHECK).assertIsDisplayed()
+        compose.onNodeWithText("Verstanden").performClick()
+    }
+    @Test fun appearanceOffersAllAnimationModesAndOled() {
+        compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNodeWithText("Design anpassen").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("OLED-Optimierung"))
+        compose.onNodeWithText("OLED-Optimierung").assertIsDisplayed()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Lavalampe"))
+        compose.onNodeWithText("Lavalampe").assertIsDisplayed()
+        compose.onNodeWithText("Keine").assertIsDisplayed()
+        screenshot("13-animation-options")
+    }
+    @Test fun colorWheelHasCodeAndOpacityControl() {
+        compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNodeWithText("Design anpassen").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Button- und Akzentfarbe"))
+        compose.onNodeWithText("Button- und Akzentfarbe").performClick()
+        compose.onNodeWithText("HEX-Farbe").assertIsDisplayed()
+        compose.onNodeWithText("Deckkraft: 100 %").assertIsDisplayed()
+        compose.onNodeWithText("Abbrechen").performClick()
+    }
+    @Test fun donationAndLegalAreSeparateFromProductPresentation() {
+        compose.onNodeWithContentDescription("Einstellungen").performClick()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("☕ Like my project? Buy me a coffee :)"))
+        compose.onNodeWithText("☕ Like my project? Buy me a coffee :)").assertIsDisplayed()
+        compose.onNodeWithText("APKUpdater",substring=true).assertDoesNotExist()
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Lizenzen und Rechtliches"))
+        compose.onNodeWithText("Lizenzen und Rechtliches").performClick()
+        compose.onNodeWithText("Schließen").performClick()
+    }
+
+    @Test fun englishCoreControlsRenderWithExplicitAppLocale() {
+        compose.runOnUiThread {compose.activity.setContent { androidx.compose.runtime.CompositionLocalProvider(LocalDisplayLanguage provides "en") { com.apkupdater.ui.theme.AppTheme(true) {GlassScene { androidx.compose.foundation.layout.Column {Text("Einstellungen");Text("Alle verfügbaren APKs prüfen");HelpButton("Check",HelpText.CHECK)} } } } }}
+        compose.onNodeWithText("Settings").assertIsDisplayed()
+        compose.onNodeWithText("Check all available APKs").assertIsDisplayed()
     }
 
 }

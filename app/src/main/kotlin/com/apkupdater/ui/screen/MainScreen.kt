@@ -23,12 +23,14 @@ import androidx.core.util.Consumer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.*
 import com.apkupdater.glass.*
+import com.apkupdater.glass.Text
 import com.apkupdater.prefs.Prefs
 import com.apkupdater.ui.theme.AppTheme
 import com.apkupdater.util.SnackBar
 import com.apkupdater.util.Themer
 import com.apkupdater.viewmodel.*
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -38,9 +40,18 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     val apps: AppsViewModel = koinViewModel()
     val search: SearchViewModel = koinViewModel()
     val prefs = koinInject<Prefs>()
+    val history=koinInject<HistoryStore>()
+    val historyScope=rememberCoroutineScope()
+    val context=androidx.compose.ui.platform.LocalContext.current
+    val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver { _,event -> if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME)historyScope.launch(kotlinx.coroutines.Dispatchers.IO){history.reconcile(context)} };lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer)}}
     val nav = rememberNavController()
     val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "overview"
     val appearance = koinInject<AppearanceStore>().state.collectAsStateWithLifecycle().value
+    val language by koinInject<AppLanguageStore>().state.collectAsStateWithLifecycle()
+    val configuration=androidx.compose.ui.platform.LocalConfiguration.current
+    val configuredLanguage=if(android.os.Build.VERSION.SDK_INT>=24)configuration.locales[0].language else @Suppress("DEPRECATION")configuration.locale.language
+    val displayLanguage=if(android.os.Build.VERSION.SDK_INT>=33 || language=="SYSTEM")configuredLanguage else language
     val density = androidx.compose.ui.platform.LocalDensity.current
     val snack = remember { SnackbarHostState() }
     val snacks = koinInject<SnackBar>()
@@ -53,7 +64,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
         activity?.addOnNewIntentListener(listener)
         onDispose { activity?.removeOnNewIntentListener(listener) }
     }
-    CompositionLocalProvider(LocalAppearance provides appearance, androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * appearance.textScale)) {
+    CompositionLocalProvider(LocalDisplayLanguage provides if(displayLanguage=="de") "de" else "en",LocalAppearance provides appearance, androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, density.fontScale * appearance.textScale)) {
     AppTheme(if(appearance.theme == 0) androidx.compose.foundation.isSystemInDarkTheme() else appearance.theme == 1, appearance.dynamic) {
         CompositionLocalProvider(LocalEffectLevel provides appearance.quality) {
             GlassScene {
@@ -67,11 +78,12 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
                             composable("updates") { GlassUpdatesScreen(updates, onSettings = { go("settings") }) }
                             composable("apps") { SystemAppsScreen(onSettings = { go("settings") }) }
                             composable("search") { GlassSearchScreen(search, onBack = { go("overview") }) }
-                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh() }) }
+                            composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh() },onHistory={nav.navigate("history")}) }
+                            composable("history") { HistoryScreen(onBack={nav.popBackStack()}) }
                             composable("appearance") { AppearanceScreen(onBack = { nav.popBackStack() }) }
                         }
                     }
-                    if(route !in listOf("settings", "search", "appearance")) FloatingGlassNavigation(route, contentBackdrop, Modifier.align(Alignment.BottomCenter), ::go)
+                    if(route !in listOf("settings", "search", "appearance", "history")) FloatingGlassNavigation(route, contentBackdrop, Modifier.align(Alignment.BottomCenter), ::go)
                     SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 100.dp, start = 16.dp, end = 16.dp))
                 }
             }
@@ -98,7 +110,7 @@ private fun FloatingGlassNavigation(route: String, backdrop: GlassBackdrop, modi
 @Composable
 private fun NavPillItem(label: String, icon: ImageVector, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier.clip(CircleShape).background(if(selected) MaterialTheme.colorScheme.onSurface.copy(.13f) else Color.Transparent).clickable(onClick = onClick).padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, label, Modifier.size(23.dp), tint = if(selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(icon, UiEnglish.translate(label,LocalDisplayLanguage.current), Modifier.size(23.dp), tint = if(selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
         Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal, color = if(selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

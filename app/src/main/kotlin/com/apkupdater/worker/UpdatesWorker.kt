@@ -73,7 +73,7 @@ class UpdatesWorker(
         val ready = candidates.filter { it.verdict.installAllowed }.map { it.packageName }.toMutableSet()
         if(AutomaticChecks.allowed(applicationContext, prefs.autoVerify.get(), prefs.autoVerifyWifiOnly.get())) {
             val limit = prefs.autoVerifyLimitMiB.get() * 1024L * 1024
-            for(candidate in AutoCheckPolicy.plan(candidates, prefs.preferredSources.get(), limit)) {
+            for(candidate in AutoCheckPolicy.plan(candidates, prefs.preferredSources.get(), limit,prefs.autoCheckCount.get(),prefs.autoCheckBudgetMiB.get()*1024L*1024)) {
                 currentCoroutineContext().ensureActive()
                 var file: java.io.File? = null
                 try {

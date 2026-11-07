@@ -15,8 +15,22 @@ class ApkAnalyzer(private val context: Context, private val detection: DeviceDet
             verdict.evidence.joinToString("\n") { "${it.property}: ${it.status} · ${it.detail}" } +
             "\nUpdate-Owner: ${owner ?: "keiner oder nicht auslesbar"}\nSHA-256: $sha256\nZertifikate:\n${signers.joinToString("\n")}\nAndroid entscheidet abschließend. Keine Funktionsgarantie."
     }
+    fun analyze(file: File, expectedPackage: String? = null): Report = try { analyzeInternal(file,expectedPackage) }
+        catch(e: java.util.zip.ZipException){throw InspectionException("Die Datei ist keine lesbare APK.")}
+        catch(e: IndexOutOfBoundsException){throw InspectionException("Das APK-Manifest ist beschädigt oder nicht unterstützt.")}
+        catch(e: IllegalArgumentException){throw InspectionException((e.message ?: "APK-Struktur nicht unterstützt").replace(file.absolutePath,"APK-Datei").take(180))}
     @Suppress("DEPRECATION")
-    fun analyze(file: File, expectedPackage: String? = null): Report {
+    private fun analyzeInternal(file: File, expectedPackage: String? = null): Report {
+        require(file.length() in 1..(512L*1024*1024)){"APK überschreitet das Dateiprüflimit."}
+        val (abis, tags) = ZipFile(file).use { zip ->
+            val entries=zip.entries().asSequence().take(100001).toList()
+            require(entries.size<=100000){"Zu viele Paketbestandteile."}
+            require(entries.count{it.name=="AndroidManifest.xml"}==1){"Android-Manifest fehlt oder ist doppelt vorhanden."}
+            val arches=entries.filter{it.name.startsWith("lib/") && it.name.endsWith(".so") && it.name.count{c->c=='/'}>=2}.map{it.name.split('/')[1]}.toSet()
+            val entry=requireNotNull(zip.getEntry("AndroidManifest.xml"))
+            require(entry.size in 1..ApkLimits.MANIFEST_BYTES.toLong()) {"Manifest zu groß oder ungültig."}
+            arches to zip.getInputStream(entry).use{ManifestReader.read(ApkLimits.readBounded(it))}
+        }
         val pm = context.packageManager
         val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
         val apk = if (Build.VERSION.SDK_INT >= 33) pm.getPackageArchiveInfo(file.path, PackageManager.PackageInfoFlags.of(flags.toLong())) else pm.getPackageArchiveInfo(file.path, flags)
@@ -35,13 +49,6 @@ class ApkAnalyzer(private val context: Context, private val detection: DeviceDet
             // Never approve a rotation merely because an old signer occurs in a history.
             result.signingCertificateLineage != null -> Compatibility.UNKNOWN
             else -> Compatibility.INCOMPATIBLE
-        }
-        val (abis, tags) = ZipFile(file).use { zip ->
-            val entries = zip.entries().toList()
-            val arches = entries.filter { it.name.startsWith("lib/") && it.name.endsWith(".so") }.map { it.name.split('/')[1] }.toSet()
-            val entry = requireNotNull(zip.getEntry("AndroidManifest.xml"))
-            require(entry.size in 1..(8 * 1024 * 1024)) { "Manifest zu groß" }
-            arches to zip.getInputStream(entry).use { ManifestReader.read(it.readBytes()) }
         }
         val manifest = tags.first { it.name == "manifest" }
         val needsSplits = tags.any { it.name == "uses-split" || it.attrs["isSplitRequired"] == "true" } || manifest.attrs["split"]?.isNotEmpty() == true

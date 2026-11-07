@@ -24,12 +24,12 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** A single guarded path. Every install is re-inspected from the actual downloaded bytes. */
-class SessionInstaller(private val context: Context, private val installLog: InstallLog, private val prefs: Prefs) {
+class SessionInstaller(private val context: Context, private val installLog: InstallLog, private val prefs: Prefs, private val history: com.apkupdater.glass.HistoryStore) {
     companion object { const val INSTALL_ACTION = "com.hyvan187.apkupdater.INSTALL" }
     private val mutex = Mutex()
     fun inspect(file: File, packageName: String) = ApkAnalyzer(context, DeviceDetection(context, prefs)).analyze(file, packageName)
-    suspend fun install(id: Int, packageName: String, stream: InputStream) = install(id, packageName, listOf(stream))
-    suspend fun install(id: Int, packageName: String, streams: List<InputStream>) = mutex.withLock {
+    suspend fun install(id: Int, packageName: String, stream: InputStream, source: String="Direktdownload") = install(id, packageName, listOf(stream),source)
+    suspend fun install(id: Int, packageName: String, streams: List<InputStream>, source: String="Direktdownload") = mutex.withLock {
         val dir = File(context.cacheDir, "preflight-${randomUUID()}").apply { mkdirs() }
         try {
             require(streams.size == 1) { "Split-Sets sind bis zur vollständigen Abhängigkeitsprüfung gesperrt." }
@@ -46,14 +46,25 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
                     }
                 }
             }
+            val before=runCatching{context.packageManager.getPackageInfo(packageName,0)}.getOrNull()
+            val beforeCode=before?.let{if(Build.VERSION.SDK_INT>=28)it.longVersionCode else @Suppress("DEPRECATION")it.versionCode.toLong()} ?: -1L
+            val beforeName=before?.versionName.orEmpty()
+            val appName=before?.applicationInfo?.let{runCatching{context.packageManager.getApplicationLabel(it).toString()}.getOrNull()} ?: packageName
             val report = inspect(file, packageName)
             require(com.apkupdater.glass.ReleasePolicy.allowed(report.candidate.versionName,prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get())) { "Vorabversion durch deine Filter ausgeblendet." }
             require(report.verdict.installAllowed) {
                 report.verdict.evidence.filter { it.status != Compatibility.COMPATIBLE }.joinToString("; ") { "${it.property}: ${it.detail}" }
             }
             com.apkupdater.glass.DownloadArchive(context,prefs).publish(file,packageName,report.candidate.versionName)
-            commit(id, packageName, file)
-            com.apkupdater.glass.DownloadArchive(context,prefs).installed(file)
+            val chosen=prefs.installerPackage.get()
+            if(chosen!="SYSTEM") {
+                val staged=com.apkupdater.glass.InstallerChoices.handoff(context,file,packageName,chosen)
+                history.pending(com.apkupdater.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),staged.absolutePath))
+            } else {
+                commit(id, packageName, file)
+                history.record(com.apkupdater.glass.InstallHistory(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,"Android PackageInstaller",System.currentTimeMillis(),true))
+                com.apkupdater.glass.DownloadArchive(context,prefs).installed(file)
+            }
         } finally {
             streams.forEach { runCatching { it.close() } }
             dir.deleteRecursively()
@@ -117,6 +128,11 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
     }
     fun finish() = Unit
     fun checkPermission(): Boolean {
+        if(prefs.installerPackage.get()!="SYSTEM") {
+            val available=com.apkupdater.glass.InstallerChoices.available(context).any{it.first==prefs.installerPackage.get()}
+            if(!available)android.os.Handler(android.os.Looper.getMainLooper()).post{android.widget.Toast.makeText(context,"Gewählter Installer nicht verfügbar. Bitte Einstellungen prüfen.",android.widget.Toast.LENGTH_LONG).show()}
+            return available
+        }
         if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
             context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return false
