@@ -1,0 +1,9 @@
+package org.uniapk.upgrader.data.gitlab
+
+
+data class GitLabRelease(
+    val tag_name: String,
+    val description: String,
+    val assets: GitLabAssets,
+    val author: GitLabAuthor
+)

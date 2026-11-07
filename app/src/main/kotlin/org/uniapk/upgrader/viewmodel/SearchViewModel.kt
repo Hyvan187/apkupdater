@@ -1,0 +1,105 @@
+package org.uniapk.upgrader.viewmodel
+
+import androidx.lifecycle.viewModelScope
+import org.uniapk.upgrader.R
+import org.uniapk.upgrader.data.snack.TextSnack
+import org.uniapk.upgrader.data.ui.AppInstallStatus
+import org.uniapk.upgrader.data.ui.AppUpdate
+import org.uniapk.upgrader.data.ui.SearchUiState
+import org.uniapk.upgrader.data.ui.removeId
+import org.uniapk.upgrader.data.ui.setIsInstalling
+import org.uniapk.upgrader.data.ui.setProgress
+import org.uniapk.upgrader.prefs.Prefs
+import org.uniapk.upgrader.repository.SearchRepository
+import org.uniapk.upgrader.util.Badger
+import org.uniapk.upgrader.util.Downloader
+import org.uniapk.upgrader.util.InstallLog
+import org.uniapk.upgrader.util.SessionInstaller
+import org.uniapk.upgrader.util.SnackBar
+import org.uniapk.upgrader.util.Stringer
+import org.uniapk.upgrader.util.launchWithMutex
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+
+
+class SearchViewModel(
+    private val searchRepository: SearchRepository,
+    private val installer: SessionInstaller,
+    private val badger: Badger,
+    downloader: Downloader,
+    prefs: Prefs,
+    private val snackBar: SnackBar,
+    private val stringer: Stringer,
+    installLog: InstallLog
+) : InstallViewModel(downloader, installer, prefs, snackBar, stringer, installLog) {
+
+    private val mutex = Mutex()
+    private val state = MutableStateFlow<SearchUiState>(SearchUiState.Success(emptyList()))
+    private var job: Job? = null
+
+    init {
+        subscribeToInstallStatus()
+        subscribeToInstallProgress { progress ->
+            state.value = SearchUiState.Success(state.value.mutableUpdates().setProgress(progress))
+        }
+    }
+
+    fun state(): StateFlow<SearchUiState> = state
+
+    fun search(text: String) {
+        job?.cancel()
+        job = searchJob(text.trim().take(200))
+    }
+
+    private fun searchJob(text: String) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+        state.value = SearchUiState.Loading
+        badger.changeSearchBadge("")
+        searchRepository.search(text).collect {
+            it.onSuccess { apps ->
+                state.value = SearchUiState.Success(apps)
+                badger.changeSearchBadge(apps.size.toString())
+            }.onFailure {
+                badger.changeSearchBadge("!")
+                state.value = SearchUiState.Error
+            }
+        }
+    }
+
+    override fun cancelInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+        state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(id, false))
+        installer.finish()
+    }
+
+    override fun finishInstall(id: Int) = viewModelScope.launchWithMutex(mutex, Dispatchers.IO) {
+        val updates = state.value.mutableUpdates().removeId(id)
+        state.value = SearchUiState.Success(updates)
+        badger.changeSearchBadge(updates.size.toString())
+        installer.finish()
+    }
+
+    override fun downloadAndRootInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+        state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+        downloadAndRootInstall(update.id, update.link)
+    }
+
+    override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
+        if(installer.checkPermission()) {
+            state.value = SearchUiState.Success(state.value.mutableUpdates().setIsInstalling(update.id, true))
+            downloadAndInstall(update.id, update.packageName, update.link)
+        }
+    }
+
+    override fun sendInstallSnack(log: AppInstallStatus) {
+        if (log.snack) {
+            state.value.updates().find { log.id == it.id }?.let { app ->
+                val message = if (log.success) R.string.install_success else R.string.install_failure
+                snackBar.snackBar(viewModelScope, TextSnack(stringer.get(message, app.name)))
+            }
+        }
+    }
+
+}

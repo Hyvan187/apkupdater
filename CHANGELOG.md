@@ -1,3 +1,15 @@
+# 0.7.0-rc1
+
+- Rename to Universal APK Upgrader / UniAPK with neutral package and source namespace.
+- Separate product/region profiles with documented public identifiers and unavailable-assignment guards; expand firmware/CSC detection.
+- Add off-by-default, folder-gated automatic downloads and ephemeral batch inspection.
+- Add package-preparation process dialog, real byte progress and direct installation action; expose Android installer status.
+- Reconcile equal visible versions, add release-note display and per-version hidden list.
+- Add optional host-scoped API credentials and APKMirror web fallback without a shared embedded key.
+- Add live cache measurement, bounded image/network caches and age/size maintenance.
+- Unify diagnosis capture/export scope, minimize general exports, confirm detailed data and configure file-count rotation.
+- Add CPU-task budgets, five colorful animations with selection menu and adaptive-icon safe insets.
+
 # 0.6.0-rc3
 
 - Review both supplied diagnostic formats; improve causal information, request/operation correlation, outcomes, timestamp and source-build metadata, cancellation/exit classification, safe short-export bounds and redaction.
@@ -34,7 +46,7 @@
 
 # 0.5.0-store
 
-- Rename product to Liquid-APK-Store, replace robot/update icon and move credits to separate legal notices.
+- Rename product to Universal APK Upgrader, replace robot/update icon and move credits to separate legal notices.
 - Fix missing network-state permission, add current-network DNS, bounded provider retry and actionable diagnostics/web fallback.
 - Add contextual explanations, per-slider defaults, HSV wheel/opacity, OLED and optional lifecycle-bound animation modes.
 - Add favorites, installation history, external checked-APK handoff and folder selection on modern Android.
@@ -52,7 +64,7 @@
 
 # 0.3.0-liquid
 
-- Rename to Liquid-APK-Updater; new dark glass launcher icon.
+- Rename to Universal APK Upgrader; new dark glass launcher icon.
 - Add live persisted appearance controls, independent HEX/HSV colors, typography, motion and glass settings.
 - Group updates by package and offer provider/variant selection without transferring evidence between files.
 - Use shared General/System categories, including updated-system flags; migrate obsolete OPlus scope.
@@ -78,7 +90,7 @@
 
 ## 0.1.0-glass-dev — 2026-11-06
 
-- Fork identity com.hyvan187.apkupdater and Android 17 build target.
+- Fork identity org.uniapk.upgrader and Android 17 build target.
 - Conservative evidence-based compatibility engine and explicit unknown state.
 - Persistent manual ROM region; no locale-based region inference.
 - Local APK cryptographic/manifest/ABI analyzer and separate candidate verification action.

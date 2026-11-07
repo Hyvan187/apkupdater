@@ -18,14 +18,14 @@
 -keep,allowoptimization,allowshrinking,allowobfuscation class <3>
 
 # Models
--keep class com.apkupdater.data.** { *; }
+-keep class org.uniapk.upgrader.data.** { *; }
 
 # These types are persisted or decoded with Gson; retain field names across releases.
--keep class com.apkupdater.glass.RuleSet { *; }
--keep class com.apkupdater.glass.FamilyRule { *; }
--keep class com.apkupdater.glass.InstallHistory { *; }
--keep class com.apkupdater.glass.PendingInstall { *; }
+-keep class org.uniapk.upgrader.glass.RuleSet { *; }
+-keep class org.uniapk.upgrader.glass.FamilyRule { *; }
+-keep class org.uniapk.upgrader.glass.InstallHistory { *; }
+-keep class org.uniapk.upgrader.glass.PendingInstall { *; }
 -keep class com.aurora.gplayapi.data.models.** { *; }
 
 # Keep the decoder opaque to constant folding, while allowing its name to be obfuscated.
--keep,allowobfuscation class com.apkupdater.glass.SupportLink { *; }
+-keep,allowobfuscation class org.uniapk.upgrader.glass.SupportLink { *; }

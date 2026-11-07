@@ -16,16 +16,16 @@ kotlin {
 }
 
 android {
-    namespace = "com.apkupdater"
+    namespace = "org.uniapk.upgrader"
     compileSdk = 37
 
     val buildNumber = System.getenv("BUILD_NUMBER").orEmpty()
     defaultConfig {
-        applicationId = "com.hyvan187.apkupdater"
+        applicationId = "org.uniapk.upgrader"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1008
-        versionName = "0.6.0-rc3"
+        versionCode = 1009
+        versionName = "0.7.0-rc1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         val fingerprint = MessageDigest.getInstance("SHA-256")

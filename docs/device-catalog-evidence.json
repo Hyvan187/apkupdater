@@ -1,0 +1,103 @@
+{
+  "source": "https://storage.googleapis.com/play_public/supported_devices.csv",
+  "checked": "2026-11-07",
+  "columns": [
+    "Retail Branding",
+    "Marketing Name",
+    "Device",
+    "Model"
+  ],
+  "selectedProducts": [
+    [
+      "Google",
+      "Pixel 11",
+      "cubs",
+      "Pixel 11"
+    ],
+    [
+      "Google",
+      "Pixel 11 Pro",
+      "grizzly",
+      "Pixel 11 Pro"
+    ],
+    [
+      "Google",
+      "Pixel 11 Pro XL",
+      "kodiak",
+      "Pixel 11 Pro XL"
+    ],
+    [
+      "Google",
+      "Pixel 9",
+      "tokay",
+      "Pixel 9"
+    ],
+    [
+      "OnePlus",
+      "OnePlus 15",
+      "OP60FFL1",
+      "PLK110"
+    ],
+    [
+      "OnePlus",
+      "OnePlus 15",
+      "OP611FL1",
+      "CPH2745"
+    ],
+    [
+      "OnePlus",
+      "OnePlus 15",
+      "OP611FL1",
+      "CPH2747"
+    ],
+    [
+      "Oppo",
+      "Find X10",
+      "OP659BL1",
+      "PMW110"
+    ],
+    [
+      "Oppo",
+      "Find X10",
+      "OP6659L1",
+      "CPH2911"
+    ],
+    [
+      "Oppo",
+      "Find X10 Pro Max",
+      "OP659FL1",
+      "PMX110"
+    ],
+    [
+      "Oppo",
+      "Find X10 Pro Max",
+      "OP665DL1",
+      "CPH2913"
+    ],
+    [
+      "Samsung",
+      "Galaxy S23",
+      "dm1q",
+      "SM-S911B"
+    ],
+    [
+      "Samsung",
+      "Galaxy S26",
+      "m1s",
+      "SM-S942B"
+    ],
+    [
+      "Samsung",
+      "Galaxy S26 Ultra",
+      "m3q",
+      "SM-S948B"
+    ],
+    [
+      "Samsung",
+      "Galaxy S26+",
+      "m2s",
+      "SM-S947B"
+    ]
+  ],
+  "note": "Public manufacturer/model/device catalog. Regional assignments require the separate manufacturer sources referenced in TestDeviceProfiles. Missing assignments remain disabled."
+}

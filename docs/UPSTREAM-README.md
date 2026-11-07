@@ -19,7 +19,7 @@ The 3.x branch is a full rewrite using modern technologies like **Jetpack Compos
 * **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
 
 # Download
-* [Stable Release (3.0.3)](https://github.com/rumboalla/apkupdater/releases/download/3.0.3/com.apkupdater-release.apk)
+* [Stable Release (3.0.3)](https://github.com/rumboalla/apkupdater/releases/download/3.0.3/org.uniapk.upgrader-release.apk)
 * [CI Pre-release Builds](https://github.com/rumboalla/apkupdater/releases?q=CI&expanded=true)
 * [Older releases](https://github.com/rumboalla/apkupdater/releases)
 
