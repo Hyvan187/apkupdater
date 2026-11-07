@@ -42,9 +42,14 @@ Host APK tests inject PackageManager archive metadata because the framework mmap
 
 ## RC3 release validation
 
-The 183 tests above passed on the current RC3 implementation. Final release lint, signing/alignment/ABI checks and the corresponding current-commit GitHub Android-17 smoke result are recorded with the distributed RC3 artifacts. Historical RC2 counts, byte sizes and timing must not be treated as RC3 results.
+- All 183 current host tests passed: zero failures, errors or skips.
+- Release lint completed with zero errors and 292 disclosed warnings (including historical translation/resource/style warnings). Full reports are distributed; no new blanket suppression or baseline was added.
+- Four optimized, non-debuggable release APKs passed signature v1/v2/v3 checks with the retained certificate SHA-256 `6d3055d0260d6afba37c6f8505b2e556e47d56d8363c0399fc43a5f0e11e28d6`, package/version/SDK and branding checks, actual native-ABI inspection, 16-KiB ZIP and ELF LOAD alignment, installer/launcher icon-reference equality and plaintext support-destination checks.
+- Exact byte sizes: ARM64 3,759,211; ARMv7 3,756,377; x86_64 3,759,872; universal 3,809,551. Their hashes are different. Matching rounded 3.6-MiB labels reflect the small native payload rather than duplicated APK files.
+- GitHub run [42397252659](https://github.com/Hyvan187/apkupdater/actions/runs/42397252659), implementation commit `bd7e60927065261e982fb4ff0f550ae642c72cc0`, passed both build (host tests/lint/debug APK) and native Android-17 smoke jobs. The emulator installed the debug APK, started the Activity with `Status: ok`, and confirmed a running process after the wait without the checked application fatal-exception marker. Evidence includes job logs, screenshot and logcat. This is startup validation, not an end-to-end installer or performance measurement.
+- The final documentation-only commit does not change application sources or build fingerprint `388d96eb7d692255dbd085eb9e4855c10558648b317c2f38ac608bccd904eb72`. Its exact commit/tree are recorded in the delivery manifest. CI debug signing is separate from the retained release signer.
 
-SDK bootstrap and namespace-preserving normalization were independently verified in GitHub run 42395989264: build and Android-17 smoke jobs passed on the retained RC2 application baseline. The RC3 application commit requires its own run.
+SDK bootstrap and namespace-preserving normalization were also independently verified in GitHub run 42395989264 on the retained RC2 application baseline. The RC3 result above is its own current-implementation run.
 
 ## Remaining device acceptance
 
@@ -55,4 +60,4 @@ SDK bootstrap and namespace-preserving normalization were independently verified
 - Complete translation and accessibility/tablet matrix. German/English/system language selection exists; some technical explanations remain German.
 - OBB expansion files and ambiguous variant archives remain intentionally unsupported. Unknown provenance/dependencies never become a compatibility approval through a simulated device.
 
-The supplied APKs are release builds. RC2 remains a release candidate until real-device acceptance; no native-device pass or remote CI pass is claimed by these host results.
+The supplied APKs are release builds. RC3 remains a release candidate until physical-device acceptance; host results alone do not establish a native-device or remote CI pass.
