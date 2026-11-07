@@ -1,42 +1,41 @@
-# Validation — Liquid-APK-Store 0.5.0
+# Validation — Liquid-APK-Store 0.6.0-rc1
 
-Confirmed local Gradle result on 7 November 2026: BUILD SUCCESSFUL. JDK 21, Android SDK 37, Gradle 9.4, AGP 9.1.1; production bytecode Java 17.
+7 November 2026: local Gradle release build completed successfully with JDK 21, Gradle 9.4.0, AGP 9.1.1 and Android SDK 37. The production bytecode targets Java 17.
 
-113 tests; 0 failures, 0 errors, 0 skipped. Android-Lint: 0 errors, 280 warnings. Warnings remain in the distributed full report; no lint baseline was added to conceal errors.
+124 automated host tests passed: 0 failures, 0 errors, 0 skipped. Release lint: 0 errors/fatal findings and 283 warnings. No baseline conceals these warnings. The complete lint report accompanies the release archive.
 
 | Suite | Tests |
 |---|---:|
 | ExampleUnitTest | 1 |
 | ApkLimitsTest | 3 |
+| ApkSetInspectorTest | 7 |
 | AppLanguagesTest | 3 |
 | ArtifactMergeTest | 4 |
 | CompatibilityEngineTest | 15 |
 | DownloadArchiveTest | 6 |
-| GlassUiTest | 14 |
+| GlassUiTest | 16 |
 | LiquidRegressionTest | 16 |
 | RegressionTest | 16 |
 | ReleasePolicyTest | 9 |
+| SecureMigrationTest | 2 |
 | SourceHealthTest | 2 |
 | StoreFeaturesTest | 24 |
 
-## Evidence and scope
+## Verification scope
 
-- Fourteen native API-37 Robolectric/Compose tests cover launch/navigation, compact layout, light theme, source selection, downgrade blocking, persisted appearance/category selection, recommended/full reset, cached-beta exclusion, help, animation/OLED controls, color picker/opacity, donation/legal separation and English core controls.
-- Source/policy tests cover count/file/aggregate budgets, all-candidate manual selection, retry policy, favorite persistence, confirmed and unmatched external history, risk from system/prerelease/update ownership, real-device profile invariants, reduced-motion/lifecycle gates, manifest bounds and declared connectivity permission.
-- Six archive tests use a controlled ContentProvider and real file streams. These test the app implementation, not an OEM file manager.
-- LocaleManager tests set English and reset to the system default on the API-37 host runtime. Only German/English are declared; this is not arbitrary-language translation coverage.
+- API-37 Robolectric/Compose navigation, appearance, persistence, source picking, selective technical info icons and landscape layout. Screenshots were visually inspected. These are host tests, not a physical OnePlus test.
+- Seven APK-set tests use actual signed, code-free APK bytes, binary manifests and the actual APK signature verifier. Only PackageManager archive metadata is injected to avoid Android-specific mmap/JDK internals on the host. They cover valid sets, explicit required features, missing features, mixed signers, version/package mismatches and multiple bases.
+- Two preference-migration tests cover durable value transfer, plaintext-file removal and idempotence using an injected storage target. Actual Android Keystore execution is assessed separately.
+- The release APK verifies with v1/v2/v3 signatures. Package com.hyvan187.apkupdater, version 1006 / 0.6.0-rc1, min/target SDK 23/37. No application-debuggable flag.
+- The APK contains ARMv7, ARM64, x86 and x86_64 native libraries in one universal package. ZIP alignment passes the 16 KiB check. All native LOAD segments have 0x4000 alignment.
+- The retained certificate SHA-256 is 6d3055d0260d6afba37c6f8505b2e556e47d56d8363c0399fc43a5f0e11e28d6, matching prior 0.2–0.5 APKs. Certificate naming is retained for update continuity; the delivered application is the non-debuggable release variant.
 
-## APK identity
+## Acceptance gaps
 
-Package com.hyvan187.apkupdater; version 1005 / 0.5.0-store; min SDK 23, compile/target SDK 37. The distributed APK must verify with retained development certificate SHA-256 6d3055d0260d6afba37c6f8505b2e556e47d56d8363c0399fc43a5f0e11e28d6, matching 0.2–0.4. Actual APK hash and final commit accompany the ZIP.
-
-## Explicitly unverified or constrained
-
-- No physical OnePlus 15/IN installation, live OEM PackageInstaller/ownership flow, external installer app, SAF provider, folder permissions or notification delivery was executed here.
-- No CPU/GPU/FPS/energy measurements, full tablet/landscape or accessibility matrix. OLED and animation settings are implemented, not benchmark guarantees.
-- The supplied APKMirror DNS problem cannot be declared repaired on the user device. In this restricted host, direct DNS lookup was unavailable and a proxied API GET returned HTTP 403. This does not establish the phone’s network fault or actual authenticated API status. Current-network DNS, bounded retry and diagnostics are implemented; access restrictions are not bypassed.
-- App language is German or English or follows the system; unsupported system languages fall back to English. Some help/diagnostic/legal descriptions remain German. Android does not automatically translate unsupported languages.
-- Simulated model affects only explicit Play authentication metadata, not other apps or true installation facts. Manual region is a comparison hint, not verified APK provenance.
-- External handoff history observes a matching installed version. It cannot prove which external actor executed installation. Public-copy deletion waits for confirmed state and the keep preference.
-- Signature checks cannot prove runtime behavior or absence of malicious behavior. Unknown ROM/dependency information stays unknown. Unsupported split/APKM/XAPK installations remain blocked.
-- Remote GitHub Actions/emulator completion is not claimed by this local build report.
+- Direct unauthenticated APKMirror API access returned HTTP 401 in a live probe. Old shared credentials were removed. API access is not declared repaired; browser fallback remains available.
+- Physical OnePlus 15 / IN-ROM detection, actual OEM update compatibility and ROM provenance are not verified here. Missing provenance continues to block approval.
+- Full live-provider coverage, every install/cancel/storage-provider flow, measured glass FPS/energy, broad accessibility and physical Android-version coverage remain unverified.
+- German/English/system language selection remains available; full translation of all messages and arbitrary languages is incomplete.
+- A software Android-10/API-29 emulator booted, but installation of the prior development APK timed out after 90 seconds. No native release startup or Android Keystore pass is claimed. The additional emulator attempt did not yield a valid application test. This remains an acceptance gap.
+- Variant archives, ambiguous or missing split requirements, OBB files and external-installer archive handoffs remain intentionally unsupported.
+- This release candidate does not satisfy the complete requested production acceptance checklist.
