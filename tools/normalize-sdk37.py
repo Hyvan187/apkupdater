@@ -5,7 +5,7 @@ Run after sdkmanager 'platforms;android-37.0'.
 """
 import os
 from pathlib import Path
-import xml.etree.ElementTree as ET
+import re
 
 sdk = Path(os.environ.get("ANDROID_HOME") or os.environ["ANDROID_SDK_ROOT"])
 platform = sdk / "platforms/android-37.0"
@@ -17,8 +17,8 @@ properties = platform / "source.properties"
 properties.write_text(properties.read_text().replace("AndroidVersion.ApiLevel=37.0", "AndroidVersion.ApiLevel=37"))
 metadata = platform / "package.xml"
 if metadata.exists():
-    tree = ET.parse(metadata)
-    for item in tree.iter():
-        if item.tag.rsplit("}", 1)[-1] == "api-level" and item.text == "37.0":
-            item.text = "37"
-    tree.write(metadata, encoding="utf-8", xml_declaration=True)
+    # Preserve prefixes referenced inside xsi:type values; ElementTree does not
+    # track those QName values and can otherwise drop their namespace bindings.
+    text = metadata.read_text()
+    text = re.sub(r"(<(?:[A-Za-z0-9_]+:)?api-level>)37\.0(</(?:[A-Za-z0-9_]+:)?api-level>)", r"\g<1>37\g<2>", text)
+    metadata.write_text(text)
