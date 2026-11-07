@@ -70,6 +70,7 @@ fun StateMessage(title: String, message: String, icon: androidx.compose.ui.graph
 @Composable
 fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSettings: () -> Unit = {}) {
     val context = LocalContext.current
+    val seasonalEnabled=LocalAppearance.current.seasonal
     val prefs = koinInject<Prefs>()
     val detection = remember { DeviceDetection(context, prefs) }
     val rom by produceState<RomResult?>(null) { value = withContext(Dispatchers.IO) { detection.rom() } }
@@ -105,7 +106,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
     }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { ScreenHeader("Alles im Blick.", "LIQUID-APK-STORE", onSettings) }
-        if(LocalAppearance.current.seasonal) item {val d=java.util.Calendar.getInstance();val greeting=MotionPolicy.greeting(d.get(java.util.Calendar.MONTH)+1,d.get(java.util.Calendar.DAY_OF_MONTH));if(greeting.isNotBlank())SecondaryText(greeting)}
+        if(seasonalEnabled) item {val d=java.util.Calendar.getInstance();val greeting=MotionPolicy.greeting(d.get(java.util.Calendar.MONTH)+1,d.get(java.util.Calendar.DAY_OF_MONTH));if(greeting.isNotBlank())SecondaryText(greeting)}
         item { GlassPanel {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(44.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(.13f)), contentAlignment = Alignment.Center) { Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary) }
