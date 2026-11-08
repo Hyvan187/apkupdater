@@ -1,0 +1,40 @@
+{
+  "purpose": "Detailed launcher material variants from the existing original UniAPK mark",
+  "method": "Built-in image generation, original-reference edits; project foregrounds copied without post-processing",
+  "materials": [
+    "Original",
+    "Black smoked obsidian glass with silver highlights",
+    "White glossy glass with cool shading",
+    "Milk-white opal glass with diffused highlights",
+    "Transparent crystal glass with cyan/violet refraction"
+  ],
+  "invariants": "Same front-facing robot, two circular update arrows, proportions, smooth thickness and safe adaptive inset. Transparent PNG foregrounds. No baked tile or text.",
+  "cleanupPrompt": "Keep the physical icon geometry and material. Remove background glow and stray pixels outside the physical silhouette. Preserve transparent alpha and inner glass highlights.",
+  "assets": [
+    {
+      "file": "app/src/main/res/drawable-nodpi/uniapk_mark.png",
+      "sha256": "5372254cf38d66b1837824c8dbb8b3c07f7bb7798b000f060a439032b46d2165",
+      "bytes": 1045550
+    },
+    {
+      "file": "app/src/main/res/drawable-nodpi/uniapk_mark_black.png",
+      "sha256": "557ed464f687fd5792449377b57a9a666bdb2be6e729288abb3dfd3606bc3327",
+      "bytes": 1102822
+    },
+    {
+      "file": "app/src/main/res/drawable-nodpi/uniapk_mark_milk.png",
+      "sha256": "ef0874817a6f01938674bc39f7b1deadf6c12f2da5db4dd09a66dbc30797eca8",
+      "bytes": 1015182
+    },
+    {
+      "file": "app/src/main/res/drawable-nodpi/uniapk_mark_transparent.png",
+      "sha256": "dcf06388b3c4568c5df7c5e21bbae7c9b4bfaeaeac879563966eebb6b1684644",
+      "bytes": 1184670
+    },
+    {
+      "file": "app/src/main/res/drawable-nodpi/uniapk_mark_white.png",
+      "sha256": "69e75b72199488d8ee2e6fe36c1320bfcccca2091340781aec339277f7e06a11",
+      "bytes": 1021426
+    }
+  ]
+}

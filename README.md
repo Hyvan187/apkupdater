@@ -1,12 +1,12 @@
-# Universal APK Upgrader · UniAPK 0.7.0-rc3
+# Universal APK Upgrader · UniAPK 0.7.0-rc4
 
-Aktuelle Änderungen und Grenzen: [RC3-CHANGES-DE.md](docs/RC3-CHANGES-DE.md). Tatsächliche Prüfergebnisse: [TEST-RESULTS.md](docs/TEST-RESULTS.md).
+Aktuelle Änderungen und Grenzen: [RC4-CHANGES-DE.md](docs/RC4-CHANGES-DE.md). Tatsächliche Prüfergebnisse: [TEST-RESULTS.md](docs/TEST-RESULTS.md).
 
-# Universal APK Upgrader (UniAPK) 0.7.0-rc2
+## Application
 
-Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version code 1010, min/compile/target API 23/37/37. This new neutral package installs alongside the earlier application; it cannot read another package's private settings or history.
+Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version 0.7.0-rc4, version code 1012, min/compile/target API 23/37/37. RC4 updates RC1/RC2/RC3 with the same package and signer, preserving their settings. The older Liquid-APK-Store package remains separate.
 
-## RC2 usability changes
+## Earlier RC2 usability changes
 
 A permission checklist opens once on first setup or the first RC2 launch and remains available in settings. Unknown-app installation access, optional notifications and an explicit APK directory are checked on return from Android. No all-files, location, contacts, camera or microphone access is requested. A selected folder shows its name/path and current provider write support, rather than merely a generic selection label.
 

@@ -1,3 +1,11 @@
+# 0.7.0-rc4 (1012)
+
+- Einstellungen auf vier Bereiche und zwei Ebenen reduziert; konfigurierbarer Schnellzugriff, Startansicht und eingebettete Berechtigungen.
+- Konkrete Builds überspringen, höhere Builds wieder anbieten; Wiederherstellung und durchgängige Download-/Installationssperren.
+- Eine frei anpassbare Basisfarbpalette für die gesamte Oberfläche, ruhige Glasflächen und vereinheitlichte Kontraste.
+- Vier detaillierte dreidimensionale App-Symbole passend zum Original.
+- Fließende Wellenanzeige und abgestimmte Navigation, Dialoge, Aufklappbewegungen, Dock- und Farbwechsel mit zentraler Bewegungsregel.
+
 # 0.7.0-rc3
 
 Favoriten und Ignorierlisten, formatabhängige Installer-Auswahl, Play-Herkunftshinweise, Themenkarten, vier Designs, Farbpaletten, Kompaktmodus, automatische Leistungssteuerung, Dock-Stile und Launcher-Symbole. Polarlichter überarbeitet, Leuchtwürmchen ergänzt und vorbereitete APKs auf der Startseite dargestellt. Details und Diagnoseauswertung: docs/RC3-CHANGES-DE.md.
