@@ -151,7 +151,7 @@ class GlassUiTest {
                 UpdateGroupCard(UpdateGroup(play.packageName,listOf(play)),null,{selected=it},{},{},{})
             } } }
         } }
-        compose.onNodeWithContentDescription("Hilfe: Technische Risiken").performClick()
+        compose.onNodeWithContentDescription("Hilfe: Risikoeinschätzung").performClick()
         compose.onNodeWithText("Verstanden").performClick()
         compose.onNodeWithText("Play fixture").performClick()
         compose.onNodeWithText("Technische Details").performClick()
