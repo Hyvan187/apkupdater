@@ -29,6 +29,8 @@ import org.uniapk.upgrader.ui.activity.MainActivity
 import org.uniapk.upgrader.ui.theme.AppTheme
 import java.io.File
 
+class RC4UpdatesStartApp:GlassTestApp(){override fun onCreate(){super.onCreate();GlobalContext.get().get<Prefs>().startView.put("updates")}}
+
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[37],application=GlassTestApp::class,qualifiers="de-w363dp-h792dp-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -39,6 +41,8 @@ class RC4UiTest {
  private fun scroll(text:String)=compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText(text))
  private fun screenshot(name:String){compose.waitForIdle();compose.runOnUiThread{val v=compose.activity.window.decorView;val b=Bitmap.createBitmap(v.width,v.height,Bitmap.Config.ARGB_8888);var status=-1;android.view.PixelCopy.request(compose.activity.window,b,{status=it},android.os.Handler(android.os.Looper.getMainLooper()));assertEquals(android.view.PixelCopy.SUCCESS,status);val f=File("build/reports/glass-screenshots/$name.png");f.parentFile!!.mkdirs();f.outputStream().use{b.compress(Bitmap.CompressFormat.PNG,100,it)};b.recycle()}}
  private fun fixture(code:Long=200)=AppUpdate("RC4 fixture","org.example.rc4","2.0","1.0",code,100,GitHubSource,link=Link.Url("https://example.org/app.apk"))
+ @Test @Config(application=RC4UpdatesStartApp::class) fun configuredStartViewActuallyOpensUpdates(){compose.onNodeWithText("Funde 0").assertIsDisplayed();compose.onNodeWithText("Übersicht").assertDoesNotExist()}
+ @Test fun sceneObservesReducedSystemAnimationSetting(){val c=compose.activity;android.provider.Settings.Global.putFloat(c.contentResolver,android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,0f);content{MotionEnvironment{Text(if(motionAllowed())"Motion active" else "Motion paused")}};compose.onNodeWithText("Motion paused").assertIsDisplayed();android.provider.Settings.Global.putFloat(c.contentResolver,android.provider.Settings.Global.ANIMATOR_DURATION_SCALE,1f)}
  @Test fun settingsHaveFourGroupsAndQuickAccessIsInsideGeneral(){compose.onNodeWithContentDescription("Einstellungen").performClick();compose.onNodeWithText("Schnellzugriff").assertDoesNotExist();for(c in SettingsCategory.entries){scroll(c.title);compose.onNodeWithText(c.title).assertIsDisplayed()};screenshot("40-settings-glass");scroll("Allgemein");compose.onNodeWithText("Allgemein").performClick();scroll("Schnellzugriff");compose.onNodeWithText("Schnellzugriff").assertIsDisplayed();scroll("Berechtigungen");compose.onNodeWithText("Installationsfreigabe verwalten").assertIsDisplayed();compose.onNodeWithContentDescription("Zurück").performClick();compose.onNodeWithText("Einstellungen").assertIsDisplayed()}
  @Test fun startViewAndConfigurableShortcutsPersist(){content{GlassSettingsScreen({}, {})};compose.onNodeWithText("Allgemein").performClick();scroll("Startansicht");compose.onNodeWithText("Startübersicht").performClick();compose.onNodeWithText("Updates").performClick();compose.runOnIdle{assertEquals("updates",GlobalContext.get().get<Prefs>().startView.get())};scroll("Schnellzugriff");compose.onAllNodes(isToggleable()).onFirst().performClick();compose.runOnIdle{assertFalse("stable" in GlobalContext.get().get<Prefs>().quickAccess.get())};screenshot("41-general-shortcuts")}
  @Test fun sourceDialogCanSkipWithoutResolvingOrDownloadingAnything(){val u=fixture();var resolved=0;var checked=0;var skipped:AppUpdate?=null;val p=u.copy(link=Link.Play{resolved++;error("No file resolution when skipping")},source=PlaySource)

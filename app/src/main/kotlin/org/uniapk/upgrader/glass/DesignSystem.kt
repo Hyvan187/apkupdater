@@ -18,18 +18,25 @@ object UniMotion {
     fun duration(allowed:Boolean)=if(allowed)STANDARD else 0
     fun <T> spec(allowed:Boolean)=tween<T>(duration(allowed),easing=FastOutSlowInEasing)
 }
-@Composable fun motionAllowed():Boolean {
+private val LocalMotionAllowed=staticCompositionLocalOf{true}
+@Composable fun motionAllowed()=LocalMotionAllowed.current&&!LocalAppearance.current.reduceMotion
+
+/** One system observer for the scene, rather than one listener per glass card. */
+@Composable fun MotionEnvironment(content:@Composable ()->Unit){
     val context=LocalContext.current;val lifecycle=LocalLifecycleOwner.current.lifecycle
+    val state by lifecycle.currentStateFlow.collectAsState()
+    val power=remember(context){context.getSystemService(Context.POWER_SERVICE) as PowerManager}
     var revision by remember{mutableIntStateOf(0)}
-    DisposableEffect(lifecycle){val o=LifecycleEventObserver{_,e->if(e==Lifecycle.Event.ON_RESUME)revision++};lifecycle.addObserver(o);onDispose{lifecycle.removeObserver(o)}}
-    val appearance=LocalAppearance.current
-    val cpu by ComputeBudget.state.collectAsState()
-    return remember(appearance.reduceMotion,revision,cpu){
-        !appearance.reduceMotion&&cpu>1&&runCatching{
-            Settings.Global.getFloat(context.contentResolver,Settings.Global.ANIMATOR_DURATION_SCALE,1f)>0f&&
-                !(context.getSystemService(Context.POWER_SERVICE) as PowerManager).isPowerSaveMode
-        }.getOrDefault(false)
+    DisposableEffect(context){
+        val receiver=object:android.content.BroadcastReceiver(){override fun onReceive(c:Context,i:android.content.Intent){revision++}}
+        androidx.core.content.ContextCompat.registerReceiver(context,receiver,android.content.IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED),androidx.core.content.ContextCompat.RECEIVER_NOT_EXPORTED)
+        val observer=object:android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())){override fun onChange(selfChange:Boolean){revision++}}
+        context.contentResolver.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE),false,observer)
+        onDispose{context.unregisterReceiver(receiver);context.contentResolver.unregisterContentObserver(observer)}
     }
+    val systemAllowed=remember(revision,state){runCatching{!power.isPowerSaveMode&&Settings.Global.getFloat(context.contentResolver,Settings.Global.ANIMATOR_DURATION_SCALE,1f)>0f}.getOrDefault(false)}
+    val cpu by ComputeBudget.state.collectAsState()
+    CompositionLocalProvider(LocalMotionAllowed provides (systemAllowed&&cpu>1&&state.isAtLeast(Lifecycle.State.RESUMED)&&!LocalAppearance.current.reduceMotion)){content()}
 }
 
 enum class SettingsCategory(val title:String,val summary:String){

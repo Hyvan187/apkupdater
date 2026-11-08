@@ -197,11 +197,11 @@ class GlassUiTest {
     @Test fun appearanceColorPersistsAndCategorySelectionIsShared() {
         val koin = GlobalContext.get()
         val store = koin.get<AppearanceStore>()
-        compose.runOnIdle { store.update { it.copy(accent = 0xff55bbff, background = 0xff121020, customAccent = true, customBackground = true) } }
+        compose.runOnIdle { store.update { it.copy(paletteSeed = 0xff55bbff, customPalette = true) } }
         compose.runOnIdle {
             val loaded = AppearanceStore(koin.get<Prefs>()).state.value
-            org.junit.Assert.assertEquals(0xff55bbff, loaded.accent)
-            org.junit.Assert.assertEquals(0xff121020, loaded.background)
+            org.junit.Assert.assertEquals(0xff55bbff, loaded.paletteSeed)
+            org.junit.Assert.assertTrue(loaded.customPalette)
         }
         compose.onNodeWithContentDescription("Einstellungen").performClick()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updates & Versionen"));compose.onNodeWithText("Updates & Versionen").performClick();compose.onNodeWithText("Allgemeine").performClick()
@@ -220,9 +220,9 @@ class GlassUiTest {
         compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Erscheinungsbild"));compose.onNodeWithText("Erscheinungsbild").performClick()
         compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
         val store=GlobalContext.get().get<AppearanceStore>()
-        compose.runOnIdle { store.update{it.copy(quality=0,opacity=.9f,blur=false,accent=0xff123456,customAccent=true)} }
+        compose.runOnIdle { store.update{it.copy(quality=0,opacity=.9f,blur=false,paletteSeed=0xff123456,customPalette=true)} }
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Empfohlene Glaswerte anwenden"));compose.onNodeWithText("Empfohlene Glaswerte anwenden").performClick()
-        compose.runOnIdle {org.junit.Assert.assertEquals(2,store.state.value.quality);org.junit.Assert.assertTrue(store.state.value.blur);org.junit.Assert.assertEquals(.46f,store.state.value.opacity);org.junit.Assert.assertTrue(store.state.value.customAccent)}
+        compose.runOnIdle {org.junit.Assert.assertEquals(2,store.state.value.quality);org.junit.Assert.assertTrue(store.state.value.blur);org.junit.Assert.assertEquals(.46f,store.state.value.opacity);org.junit.Assert.assertTrue(store.state.value.customPalette)}
         screenshot("11-recommended-appearance")
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Alle Darstellungswerte auf Standard zurücksetzen"))
         compose.onNodeWithText("Alle Darstellungswerte auf Standard zurücksetzen").performClick()

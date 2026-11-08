@@ -81,6 +81,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     }
     DeviceLayoutProvider {
     CompositionLocalProvider(LocalDisplayLanguage provides if(displayLanguage=="de") "de" else "en",LocalAppearance provides appearance,LocalBackgroundFrameRate provides if(route in listOf("appearance","settings"))24 else if(appearance.quality>=3)45 else 30) {
+    MotionEnvironment {
     AppTheme(if(appearance.theme == 0) androidx.compose.foundation.isSystemInDarkTheme() else appearance.theme in listOf(1,3), appearance.dynamic) {
         CompositionLocalProvider(LocalEffectLevel provides appearance.quality) {
             val moving=motionAllowed()
@@ -112,6 +113,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
             }
         }
     }
+}
 }
 }
 }

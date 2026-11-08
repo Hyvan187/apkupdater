@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -72,7 +73,7 @@ enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Lon
   Row(Modifier.heightIn(min=if(LocalAppearance.current.compact)58.dp else 72.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){
    Icon(icon,null,Modifier.size(44.dp).background(MaterialTheme.colorScheme.primary.copy(alpha=.1f),RoundedCornerShape(15.dp)).padding(10.dp),tint=MaterialTheme.colorScheme.primary)
    Column(Modifier.weight(1f)){Text(category.title,style=MaterialTheme.typography.titleMedium);Spacer(Modifier.height(4.dp));SecondaryText(category.summary)}
-   Icon(Icons.Default.KeyboardArrowRight,null,Modifier.size(22.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
+   Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight,null,Modifier.size(22.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
   }
  }
 }

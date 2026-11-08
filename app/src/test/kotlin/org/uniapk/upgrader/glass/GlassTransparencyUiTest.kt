@@ -98,7 +98,7 @@ class GlassTransparencyUiTest {
         val update = org.uniapk.upgrader.data.ui.AppUpdate("Transparency fixture", "com.example.transparency", "2", "1", 2, 1,
             org.uniapk.upgrader.data.ui.ApkPureSource, link = org.uniapk.upgrader.data.ui.Link.Url("https://example.org/test.apk"))
         compose.runOnIdle { store.update { it.copy(opacity = 1f, quality = 0, blur = false,
-            customBackground = true, background = 0xffe83080, backgroundAlpha = 1f) } }
+            customPalette = true, paletteSeed = 0xffe83080) } }
         compose.runOnUiThread { compose.activity.setContent {
             val appearance by store.state.collectAsState()
             CompositionLocalProvider(LocalAppearance provides appearance) {

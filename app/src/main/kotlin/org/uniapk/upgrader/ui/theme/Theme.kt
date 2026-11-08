@@ -1,5 +1,6 @@
 package org.uniapk.upgrader.ui.theme
 
+import androidx.compose.animation.animateColorAsState
 import android.app.Activity
 import android.os.Build
 import androidx.compose.material3.*
@@ -21,7 +22,9 @@ fun AppTheme(darkTheme: Boolean, dynamicColor: Boolean = false, content: @Compos
     val a = LocalAppearance.current
     val effectiveDark = a.oled || darkTheme
     val dusk=a.theme==3&&!a.oled
-    val seed=org.uniapk.upgrader.glass.PaletteModel.seed(a)
+    val rawSeed=org.uniapk.upgrader.glass.PaletteModel.seed(a)
+    // Palette changes flow through the same roles; theme brightness changes start a fresh palette.
+    val seed=key(effectiveDark,dusk,a.oled,a.dynamic){animateColorAsState(rawSeed,org.uniapk.upgrader.glass.UniMotion.spec(org.uniapk.upgrader.glass.motionAllowed()),label="base-palette").value}
     val localScheme=remember(seed,effectiveDark,dusk,a.oled){org.uniapk.upgrader.glass.PaletteModel.scheme(seed,effectiveDark,dusk,a.oled)}
     val scheme=if(dynamicColor&&Build.VERSION.SDK_INT>=31){
         val system=if(effectiveDark)dynamicDarkColorScheme(LocalContext.current) else dynamicLightColorScheme(LocalContext.current)

@@ -19,14 +19,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
 @Composable fun DockNavigation(route:String,backdrop:GlassBackdrop?,modifier:Modifier=Modifier,navigate:(String)->Unit){
+ val moving=motionAllowed()
  val a=LocalAppearance.current;val style=DockStyle.entries[a.dockStyle];val fraction=DockSize.entries[a.dockSize].fraction
  Box(modifier.fillMaxWidth(),contentAlignment=Alignment.Center){
   GlassPanel(Modifier.fillMaxWidth(fraction).widthIn(max=540.dp),backdrop=backdrop,compact=true,pill=style in listOf(DockStyle.PILL,DockStyle.LABELED)){
    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(2.dp),verticalAlignment=Alignment.CenterVertically){
     val routes=listOf("overview","updates","apps","search");val labels=listOf("Start","Updates","Apps","Suche");val icons=listOf(Icons.Default.Home,Icons.Default.Refresh,Icons.AutoMirrored.Filled.List,Icons.Default.Search)
     routes.forEachIndexed{i,target->val selected=target==route
-     val color by animateColorAsState(if(selected)MaterialTheme.colorScheme.primary.copy(alpha=.23f)else Color.Transparent,label="dock-color")
-     val corner by animateDpAsState(if(selected)18.dp else 50.dp,animationSpec=tween(if(a.reduceMotion)0 else 220),label="dock-shape")
+     val color by animateColorAsState(if(selected)MaterialTheme.colorScheme.primary.copy(alpha=.23f)else Color.Transparent,animationSpec=UniMotion.spec(moving),label="dock-color")
+     val corner by animateDpAsState(if(selected)18.dp else 50.dp,animationSpec=UniMotion.spec(moving),label="dock-shape")
      val shape=when(style){DockStyle.CLASSIC->RoundedCornerShape(10.dp);DockStyle.EXPRESSIVE->RoundedCornerShape(topStart=if(selected)24.dp else 10.dp,topEnd=8.dp,bottomEnd=24.dp,bottomStart=8.dp);DockStyle.SHAPE_SHIFT->RoundedCornerShape(corner);else->CircleShape}
      Column(Modifier.weight(1f).heightIn(min=48.dp).clip(shape).background(color).clickable(role=androidx.compose.ui.semantics.Role.Tab){navigate(target)}.semantics{this.selected=selected;contentDescription=if(target=="search")"Apps suchen" else labels[i]}.padding(vertical=if(a.compact)5.dp else 8.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
       Icon(icons[i],null,Modifier.size(if(style==DockStyle.EXPRESSIVE&&selected)27.dp else 23.dp),tint=if(selected)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)

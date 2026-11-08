@@ -109,7 +109,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                             RadioButton(selected.source == option.source, { if(allowed) selected = option }, enabled = allowed)
                             Column(Modifier.weight(1f)) {
                                 Text(option.source.name, style = MaterialTheme.typography.titleSmall)
-                                SecondaryText("${option.version} · ${architectureLabel(option.abis)}")
+                                SecondaryText("${option.version}${if(option.versionCode>0)" · Build ${option.versionCode}" else ""} · ${architectureLabel(option.abis)}")
                                 SecondaryText(if(option.verdict.status == Compatibility.INCOMPATIBLE) "Gesperrt: ${option.verdict.summary}" else if((option.link !is Link.Url && option.link !is Link.Xapk && option.link !is Link.Play)) "Paketformat derzeit nicht prüfbar" else if(option.source == ApkMirrorSource) "Webseite · Download und lokale Prüfung nötig" else if(option.verdict.installAllowed) "APK geprüft" else if(option.link is Link.Play) "Play-Paketset · Basis und Splits werden gemeinsam geprüft" else "Direkter Download · wird geprüft")
                             }
                         }
@@ -119,7 +119,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                             if(variants == option.source.name) alternatives.forEach { variant ->
                                 Row(Modifier.fillMaxWidth().clickable(enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && (variant.link is Link.Url || variant.link is Link.Xapk || variant.link is Link.Play)) { selected = variant }, verticalAlignment = Alignment.CenterVertically) {
                                     RadioButton(selected.artifactKey == variant.artifactKey, { selected = variant }, enabled = variant.verdict.status != Compatibility.INCOMPATIBLE && (variant.link is Link.Url || variant.link is Link.Xapk || variant.link is Link.Play))
-                                    SecondaryText("${variant.version} · ${architectureLabel(variant.abis)}${if(variant.verdict.status == Compatibility.INCOMPATIBLE) " · gesperrt" else ""}")
+                                    SecondaryText("${variant.version}${if(variant.versionCode>0)" · Build ${variant.versionCode}" else ""} · ${architectureLabel(variant.abis)}${if(variant.verdict.status == Compatibility.INCOMPATIBLE) " · gesperrt" else ""}")
                                 }
                             }
                         }

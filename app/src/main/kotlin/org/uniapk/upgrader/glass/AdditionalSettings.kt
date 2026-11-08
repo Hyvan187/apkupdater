@@ -32,7 +32,7 @@ import org.koin.compose.koinInject
         Text("Ausgeblendete Versionen",style=MaterialTheme.typography.titleMedium)
         if(entries.isEmpty()&&legacy.isEmpty())SecondaryText("Keine Versionen ausgeblendet.")
         LazyColumn(Modifier.weight(1f,fill=false).heightIn(max=420.dp)) {
-            items(entries.distinct(),key={it}){key->val pkg=key.packageName;val name=remember(pkg){runCatching{context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg,0)).toString()}.getOrDefault(pkg)}
+            items(entries.distinct(),key={"${it.packageName}|${it.code}|${it.version}"}){key->val pkg=key.packageName;val name=remember(pkg){runCatching{context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg,0)).toString()}.getOrDefault(pkg)}
                 Column(Modifier.fillMaxWidth().padding(vertical=spacing(8))){Text(name);SecondaryText("$pkg · ${key.version}${if(key.code>0)" · Build ${key.code}" else " · ohne Build-Code"}");TextButton(onClick={SkippedVersions.restore(key,prefs);entries=SkippedVersions.entries(prefs);onChanged()}){Text("Wieder einblenden")}}
             }
             items(legacy,key={it}){id->Row{Text("Älterer Eintrag: $id",Modifier.weight(1f));TextButton(onClick={legacy=legacy-id;prefs.ignoredVersions.put(legacy);onChanged()}){Text("Einblenden")}}}
