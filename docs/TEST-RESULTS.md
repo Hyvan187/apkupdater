@@ -1,33 +1,37 @@
-# UniAPK 0.7.0-rc4: abschließender Prüfstand
+# UniAPK 0.7.0-rc5: abschließender Prüfstand
 
-App-Fingerabdruck: `d90cfbd391fc2c291cfb65d5ceb273071037557c10ea3bbb0a191b488b1019bf`. App-Implementierung: `bf013e9a13125478d427a4ea75e46a03c9deafd9`, Branch `glass/uniapk-0.7.0-rc4`. Dokumentationsänderungen verändern den App-Fingerabdruck nicht. Quellbaum, abschließender Dokumentations-Commit und sämtliche Dateiprüfsummen stehen im Release unter reports/SOURCE-MANIFEST.json.
+App-Fingerabdruck: `b432c0e0422a5bf3bcb08aa73df3457428909d9048e732e32b5d716c17ebc45d`. App-Implementierung: `bd0a88e1f0f5455b46411428477f6a002a32bd45`, Branch `glass/uniapk-0.7.0-rc5`. Dokumentation und Änderungen der Aufnahmehilfe für Tests verändern diesen Fingerabdruck nicht. Quellbaum, abschließender Commit und Dateiprüfsummen stehen im Release unter reports/SOURCE-MANIFEST.json.
 
 | Prüfung | Tatsächliches Ergebnis |
 |---|---|
-| Vollständige lokale Regression | 313 Tests, 0 fehlgeschlagen, 0 Fehler, 0 übersprungen |
-| Ergänzung gegenüber RC3 | 25 zusätzliche Policy-/UI-Prüfungen; bestehende Funktions- und Schutzprüfungen erhalten |
-| Release-Lint | 0 Fehler / Fatals, 288 Warnungen. Zwei zusätzliche Hinweise empfehlen lediglich die KTX-Schreibweise für URI-Konvertierungen. |
-| Release-Bau | Vier optimierte signierte APKs, 0.7.0-rc4 / 1012, nicht debuggable |
-| Signaturkontinuität | Gleiches Zertifikat wie RC1/RC2/RC3; v1/v2/v3 überprüft |
-| Tatsächliche Architekturen | ARM64, ARM32, x86_64 separat; Universal mit diesen und x86 |
+| Vollständige lokale Regression | 349 Tests, 0 fehlgeschlagen, 0 Fehler, 0 übersprungen |
+| Ergänzung gegenüber RC4 | 36 zusätzliche Prüfungen für Konfiguration, Diagnose, Verschlüsselung, Validierung, Rücknahme und Backup-Oberfläche |
+| Release-Lint | 0 Fehler / Fatals, 292 Warnungen; vorhandene technische Hinweise bleiben im vollständigen Bericht sichtbar |
+| Release-Bau | Vier optimierte signierte APKs, 0.7.0-rc5 / 1013, nicht debuggable |
+| Signaturkontinuität | Gleiches Zertifikat wie RC1 bis RC4; v1/v2/v3 überprüft |
+| Tatsächliche Architekturen | ARM64, ARM32 und x86_64 separat; Universal zusätzlich mit x86 |
 | Ausrichtung | ZIP-Ausrichtung und native ELF-LOAD-Segmente jeweils auf 16-KiB-Tauglichkeit geprüft |
-| Launcher | Fünf kompilierte Aliasdefinitionen, Original allein standardmäßig aktiviert, passende Zielaktivität, fünf unterschiedliche Icon-Ressourcen und UniAPK-Labelressource geprüft |
-| Icons / Masken | Fünf detaillierte Symbole mit rundem, abgerundetem und eckigem Ausschnitt nativ gerendert; Motiv und Größen visuell kontrolliert |
-| Menü / Design | Vier Bereiche; Allgemein mit Startansicht/Schnellzugriff/Berechtigungen; Quellen und Installer bleiben erreichbar. Light, Dusk, Dark, OLED und Basisfarben mit nativen Hostansichten geprüft. |
-| Versionslogik | Konkreter Code quellenübergreifend übersprungen; höherer Code mit identischem Versionsnamen erlaubt; unbekannte Codes, ältere Einträge, Wiederherstellung und dauerhafter App-Ausschluss geprüft |
-| Farbkontraste | Alle vier Designs, schwarze/weiße/gesättigte/graue Basisfarben sowie Vorlagen; Text- und Aktionsrollen mindestens 4,5:1 geprüft |
-| Bewegung / Fortschritt | Tatsächlich zeitlich veränderte Wellengeometrie, bekannte/unbestimmte Fortschrittssemantik, reduzierte Systemanimationen, abgestimmte Menü-/Dock-/Dialogbewegung; keine erfundenen Prozentwerte |
-| Sichtprüfung | 37 PNGs von nativen Android-17-Hostansichten im Release, einschließlich Icons und aller vier Designs |
+| Einstellungen | Alle nicht statischen Preference-Felder sind als Einstellung oder interner Zustand klassifiziert; 87 gesicherte Preference-Felder plus drei Diagnoseoptionen |
+| Diagnose | Aktueller Zustand auch bei deaktivierter Aufzeichnung; Änderungsbeobachter, Zeitpunkte, persönliche Listen und deren Begrenzung, sichere Standard-/Detailausgabe, strukturierte Datentypen und Geheimnisbereinigung geprüft |
+| Fehlerdaten | Softwareversionen bleiben lesbar; tatsächliche Adressen bleiben maskiert. Backup-Fehler behalten Aufrufstellen ohne ungeprüfte Fehlermeldungsinhalte. |
+| Verschlüsselung | Passwortfehler, manipulierte Daten/Header, Größen- und Kostenbegrenzung, frische Zufallswerte, veröffentlichter PBKDF2-SHA256-Testvektor, Unicode-Gleichheit der Implementierungen und tatsächlicher API-23-Fallback geprüft |
+| Wiederherstellung | Vollständige Einstellungen einschließlich Zugängen und Listen; Vorschau; ausdrückliche Zustimmung für erweiterte Diagnose; Werte-/Strukturprüfung vor Schreibvorgängen; Rücknahme nach injiziertem Schreibfehler und Wiederanlauf mit Journal geprüft |
+| Oberfläche | Backup unter Erweitert / System auf der zweiten Ebene erreichbar; Passwortabgleich, verschlüsselte Dateiausgabe, Vorschau und tatsächliche Übernahme in Preferences und laufende Darstellung geprüft |
+| Bestandsschutz | Bestehende Versions-, Quellen-, Download-, Installer-, Cache-, Menü-, Kontrast-, Icon- und Bewegungsprüfungen weiterhin Bestandteil der vollständigen Regression |
 | Quellstand | Unabhängiger Byte-Abgleich des App-Fingerabdrucks mit allen vier DEX-Paketen und Git-Blob-Prüfsummen sämtlicher ausgelieferter Quelldateien |
 
-Der abschließende Gradle-Lauf endete erfolgreich nach 6 Minuten 14 Sekunden. Der Client-Mitschnitt ist unvollständig; validation-completion.log enthält die tatsächliche Abschlussausgabe desselben Gradle-Daemons. JUnit-XML, Lint-Ergebnisse und die unabhängige APK-Verifikation sind vollständig vorhanden.
+Der abschließende vollständige Gradle-Lauf endete erfolgreich nach 6 Minuten 51 Sekunden. validation-final-2.log und validation-completion.log enthalten die tatsächliche Abschlussausgabe. JUnit-XML, Lint-Ergebnisse, Zuordnung der optimierten Klassen und unabhängige APK-Verifikation liegen vollständig im Release.
 
-Die zusätzliche GitHub-Prüfung für denselben Implementierungs-Commit wurde gestartet (Run 42494227461). Ihr bei der Paketierung beobachteter Status steht in reports/ci-summary.json; ein noch laufender Job wird nicht als bestanden gewertet. Die oben genannten lokalen Prüfungen sind davon unabhängig abgeschlossen.
+Die fünf Backup-Oberflächentests wurden für die abschließenden Aufnahmen zusätzlich separat ausgeführt. Die Aufnahmehilfe erfasst den sichtbaren Compose-Bereich, bei geöffnetem Dialog dessen eigene Oberfläche; dies ändert keinen App-Code. Der zusätzliche Lauf und seine Ergebnisse liegen unter reports/validation-backup-ui.log und reports/backup-ui-junit. Insgesamt enthält reports/screenshots-host 41 native Hostansichten einschließlich der neuen Backup-Oberfläche und Dialoge.
+
+Die zusätzliche GitHub-Prüfung für den App-Implementierungs-Commit wurde gestartet (Run 42501539835). Der bei der Paketierung tatsächlich beobachtete Status steht in reports/ci-summary.json. Ein laufender Job gilt nicht als bestanden. Die oben genannten lokalen Prüfungen sind davon unabhängig abgeschlossen.
 
 ## Verbleibende Abnahme und Grenzen
 
-Keine physische Geräteabnahme auf OnePlus 15 oder Samsung S23 durchgeführt. Reale OEM-Bildrate, Akkuwirkung, Launcher-Aktualisierung und Fremdinstaller sind gemäß RELEASE-CHECKLIST-DE.md zu prüfen. Native Hostansichten sind keine Messung eines physischen Telefons und keine vollständig gestartete Android-OS-Emulation.
+Keine physische Geräteabnahme auf OnePlus 15 oder Samsung S23 durchgeführt. Passwortableitungsdauer auf Mittelklassegeräten, reale Dokumentanbieter, Ordnerfreigaben nach Gerätewechsel, Launcher- und Sprachwechsel sowie erneute Hintergrundplanung sind auf einem Telefon gemäß RELEASE-CHECKLIST-DE.md zu prüfen. Native Hostansichten sind keine Messung eines physischen Telefons und keine vollständig gestartete Android-OS-Emulation.
 
-Ohne Build-Code kann eine übersprungene Version nur anhand ihres Namens erkannt werden. Für alte Einträge wird keine unbekannte Build-Nummer erfunden. Transparenz kann vom Launcher begrenzt werden. Fremde Play-Lizenz- und Herkunftsprüfungen kann UniAPK nicht allgemein abschalten. Das CPU-Budget ist keine harte Kernbindung aller Android-Threads.
+Das Backup umfasst Einstellungen und selbst gepflegte Listen, keine APK-Dateien, Diagnoseereignisse, Installationsverläufe oder kurzlebigen Anmeldesitzungen. Android-Berechtigungen können nicht übertragen werden. Ohne Passwort ist keine Wiederherstellung möglich. Eine unabhängige kryptografische Sicherheitszertifizierung wird nicht behauptet. Diagnoseberichte sind app-eigen und können fremdes System- oder App-Verhalten nur insoweit erklären, wie es der App zugänglich ist.
 
-Der aktuelle Umfang und die Migration der fünf Phasen stehen in RC4-CHANGES-DE.md; der vorherige Prüfbericht bleibt unter TEST-RESULTS-RC3.md erhalten.
+Bisherige Grenzen bleiben bestehen: Unbekannte Build-Nummern werden nicht erfunden; Launcher können Transparenz begrenzen; fremde Play-Lizenzprüfungen lassen sich nicht allgemein abschalten; das CPU-Budget ist keine harte Kernbindung aller Android-Threads.
+
+Der neue Umfang steht in RC5-CHANGES-DE.md. Der vorherige Prüfbericht bleibt unter TEST-RESULTS-RC4.md erhalten.

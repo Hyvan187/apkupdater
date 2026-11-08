@@ -10,7 +10,7 @@ Automatische `settings.snapshot`-Ereignisse erfassen den Zustand beim Start, vor
 
 Allgemeine Diagnose enthält sichere App-Optionen sowie Anzahlen persönlicher Listen. Erweiterte Diagnose ergänzt nach Zustimmung die selbst gepflegten Favoriten, Ausschluss- und Versionslisten, Profile und beteiligte Paketnamen. Sie kann Rückschlüsse auf die App-Nutzung erlauben. Die Hinweise bei Auswahl und Export sind entsprechend erweitert.
 
-Eigene API-Zugänge erscheinen in beiden Diagnosearten ausschließlich als eingerichtet/nicht eingerichtet. Passwörter, API-Schlüssel, Authentifizierungssitzungen, Backup-Inhalte, Ordner-URIs und private Dateipfade werden nicht in die Diagnose übernommen. Die Kurzdiagnose entfernt persönliche Daten auch aus zuvor ausführlich aufgezeichneten strukturierten Ereignissen. Ein Registry-Abgleich im Test verhindert, dass neue Preference-Felder unbemerkt weder als Einstellung noch als interner Zustand klassifiziert werden.
+Eigene API-Zugänge erscheinen in beiden Diagnosearten ausschließlich als eingerichtet/nicht eingerichtet. Passwörter, API-Schlüssel, Authentifizierungssitzungen, Backup-Inhalte, Ordner-URIs und private Dateipfade werden nicht in die Diagnose übernommen. Die Kurzdiagnose entfernt persönliche Daten auch aus zuvor ausführlich aufgezeichneten strukturierten Ereignissen. Numerische Softwareversionen bleiben lesbar, auch wenn sie wie eine IP-Adresse aussehen; tatsächliche Adressen in Fehlermeldungen werden weiter maskiert. Backup-Fehler behalten die Aufrufstellen, ohne ungeprüfte Datei- oder Passwortinhalte zu protokollieren. Ein Registry-Abgleich im Test verhindert, dass neue Preference-Felder unbemerkt weder als Einstellung noch als interner Zustand klassifiziert werden.
 
 ## Backup und Wiederherstellung
 

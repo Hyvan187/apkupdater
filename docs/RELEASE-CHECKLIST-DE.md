@@ -1,6 +1,6 @@
-# RC4-Geräteabnahme
+# RC5-Geräteabnahme
 
-Für OnePlus 15 und Samsung S23: arm64-v8a.apk. Paketkennung und Signatur bleiben gegenüber UniAPK RC1, RC2 und RC3 unverändert. Ein gewöhnliches Update behält die App-Daten.
+Für OnePlus 15 und Samsung S23: arm64-v8a.apk. Paketkennung und Signatur bleiben gegenüber den bisherigen UniAPK-Versionen RC1 bis RC4 unverändert. Ein gewöhnliches Update behält die App-Daten.
 
 1. Einstellungen öffnen: Allgemein, Erscheinungsbild, Updates & Versionen und Erweitert / System. Die Optionen sind jeweils direkt auf der zweiten Ebene erreichbar; Zurück führt zur Einstellungsübersicht.
 2. Unter Allgemein Startansicht und Schnellzugriff ändern. App neu starten und die gewählte Startansicht sowie die Schalter auf der Startübersicht kontrollieren.
@@ -10,5 +10,10 @@ Für OnePlus 15 und Samsung S23: arm64-v8a.apk. Paketkennung und Signatur bleibe
 6. Suche und ausdrücklich gewählten Download starten. Welle, echte Prozentwerte bei bekannter Größe und unbestimmten Fortschritt unterscheiden. Systemanimationen, Energiesparen und reduzierte Animationen prüfen. OEM-Bildrate und Akkuwirkung müssen auf dem Telefon beurteilt werden.
 7. Eine APK vorbereiten, für später schließen, direkt auf Start installieren oder die Datei mit Bestätigung löschen. Tatsächlicher Versionswechsel muss Funde/Bereit bereinigen und im Verlauf erscheinen.
 8. Unter Updates & Versionen den Installer auf Bei jeder Installation fragen stellen. Android und tatsächlich installierte externe Installer mit ihrem unterstützten APK-/APKS-Format prüfen. Eine Übergabe allein darf nicht als Erfolg gelten. Bei bisheriger Play-Herkunft den echten Play-Weg wählen, wenn die fremde App ihn verlangt.
+
+9. Unter Erweitert / System ein Einstellungsbackup mit einem Passwort von mindestens zwölf Zeichen speichern. Darstellung, Quellen, Favoriten und Versionsfilter ändern. Das Backup öffnen, die Vorschau prüfen und erst anschließend wiederherstellen. Darstellung und Listen müssen wieder dem gesicherten Stand entsprechen, auch nach einem Neustart.
+10. Ein falsches Passwort beziehungsweise eine beschädigte Backupdatei verwenden. Es darf keine Einstellung geändert werden. Die bestehende App soll weiter bedienbar bleiben. Eine gewünschte Aktivierung erweiterter Diagnose muss vor der Wiederherstellung ausdrücklich bestätigt werden.
+11. Dasselbe Backup bei Bedarf auf einer zweiten UniAPK-Installation öffnen. Dort benötigte Android-Berechtigungen und den APK-Ordner neu freigeben; automatische Downloads dürfen vorher nicht starten. Den gespeicherten Fremdinstaller auf tatsächliche Verfügbarkeit prüfen. Das Passwort ist nicht zurücksetzbar.
+12. Allgemeine und erweiterte Diagnose exportieren, auch bei ausgeschalteter automatischer Aufzeichnung. settings.json muss den aktuellen Zustand einschließlich Erscheinungsbild zeigen; runtime.json muss Freigaben, Quellen, Speicher und Vorgänge beschreiben. API-Zugänge dürfen nur als eingerichtet/nicht eingerichtet erscheinen. Die allgemeine Diagnose enthält Anzahlen statt persönlicher App-Listen. Bei aktivierter Aufzeichnung eine Einstellung ändern und die settings.snapshot-Ereignisse samt Zeitpunkt kontrollieren.
 
 Neue Probleme mit der passenden Diagnose erfassen. Erweiterte Diagnose kann technische Geräte- und Paketdaten enthalten und verlangt Zustimmung. Persönliche Originale und Signierschlüssel gehören nicht in Quellcode oder Release. Die tatsächlichen lokalen Prüfungen und verbleibenden Grenzen stehen in TEST-RESULTS.md.

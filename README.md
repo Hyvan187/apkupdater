@@ -6,6 +6,12 @@ Aktuelle Änderungen und Grenzen: [RC5-CHANGES-DE.md](docs/RC5-CHANGES-DE.md). T
 
 Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version 0.7.0-rc5, version code 1013, min/compile/target API 23/37/37. RC5 updates RC1/RC2/RC3/RC4 with the same package and signer, preserving their settings. The older Liquid-APK-Store package remains separate.
 
+## RC5 settings diagnostics and backup
+
+Every diagnostic export includes current `settings.json` and `runtime.json`, even when automatic recording is disabled. Versioned configuration snapshots record saved changes and operation checkpoints. General exports replace personal app lists with counts; detailed exports include those lists only after consent. API credentials are represented only by configured/not configured flags. Numeric software versions stay readable; actual addresses, secrets and private paths remain redacted.
+
+Settings → Advanced / System contains password-encrypted `.uniapkbackup` export and restore. All 87 registered preference fields and the three diagnostic options are included, including appearance, sources, credentials and user-maintained lists. The file is validated before a confirmation preview; writes use an encrypted rollback journal, with interrupted restoration recovered at startup. AES-256-GCM and PBKDF2-HMAC-SHA256 (600,000 iterations) protect portable backups. Android permissions, APKs, caches, log events, installation history and short-lived login sessions are excluded. A backup password cannot be reset; folder access must be granted again on a new device.
+
 ## Earlier RC2 usability changes
 
 A permission checklist opens once on first setup or the first RC2 launch and remains available in settings. Unknown-app installation access, optional notifications and an explicit APK directory are checked on return from Android. No all-files, location, contacts, camera or microphone access is requested. A selected folder shows its name/path and current provider write support, rather than merely a generic selection label.
