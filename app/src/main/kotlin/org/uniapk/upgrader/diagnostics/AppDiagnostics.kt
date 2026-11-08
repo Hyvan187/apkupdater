@@ -32,8 +32,41 @@ object AppDiagnostics {
     private val dropped = java.util.concurrent.atomic.AtomicLong()
     private val droppedTotal = java.util.concurrent.atomic.AtomicLong()
 
+    @Volatile private var settingsPrefs:org.uniapk.upgrader.prefs.Prefs?=null
+    private var settingsListener:android.content.SharedPreferences.OnSharedPreferenceChangeListener?=null
+    private var lastSettings=""
+    private var settingsHandlerRef:android.os.Handler?=null
+    private val settingsHandler:android.os.Handler get()=synchronized(this){
+        val looper=android.os.Looper.getMainLooper()
+        if(settingsHandlerRef?.looper!==looper)settingsHandlerRef=android.os.Handler(looper)
+        requireNotNull(settingsHandlerRef)
+    }
+    private val settingsCheckpoint=Runnable{captureSettings("changed")}
+    fun observeSettings(prefs:org.uniapk.upgrader.prefs.Prefs){
+        settingsListener?.let{settingsPrefs?.storage?.sharedPreferences()?.unregisterOnSharedPreferenceChangeListener(it)}
+        settingsPrefs=prefs;lastSettings=""
+        settingsListener=android.content.SharedPreferences.OnSharedPreferenceChangeListener{_,_->settingsHandler.removeCallbacks(settingsCheckpoint);settingsHandler.postDelayed(settingsCheckpoint,600)}
+        prefs.storage.sharedPreferences().registerOnSharedPreferenceChangeListener(settingsListener)
+        captureSettings("startup",force=true)
+    }
+    fun captureSettings(reason:String,force:Boolean=false){
+        if(!state.value.enabled)return
+        val app=application ?: return;val prefs=settingsPrefs ?: return
+        if(prefs.restoreJournal.get().isNotBlank())return
+        val detailed=state.value.verbose
+        val snapshot=runCatching{DiagnosticSnapshot.settings(app,prefs,detailed,history=true)}.getOrElse{error("diagnostic.settings_unavailable",mapOf("failure" to it.javaClass.simpleName));return}
+        val identity=snapshot.deepCopy().apply{remove("capturedAt")}.toString()
+        synchronized(this){if(!force&&identity==lastSettings)return;lastSettings=identity}
+        val id=DiagnosticContext.nextId("configuration")
+        snapshot.getAsJsonObject("settings").entrySet().forEach{(section,values)->info("settings.snapshot",mapOf("configurationId" to id,"reason" to reason,"section" to section,"capturedAt" to snapshot["capturedAt"].asString,"values" to values))}
+        info("settings.snapshot",mapOf("configurationId" to id,"reason" to reason,"section" to "effectiveAppearance","capturedAt" to snapshot["capturedAt"].asString,"values" to snapshot["readableState"]))
+    }
+    fun flushConfiguration(){check(application?.getSharedPreferences("diagnostics.settings",Context.MODE_PRIVATE)?.edit()?.commit()!=false){"Diagnoseeinstellungen konnten nicht gespeichert werden."}}
+
     @Synchronized fun initialize(app: Application) {
         if (application === app && store != null) return
+        settingsListener?.let{settingsPrefs?.storage?.sharedPreferences()?.unregisterOnSharedPreferenceChangeListener(it)}
+        settingsHandlerRef?.removeCallbacks(settingsCheckpoint);settingsListener=null;settingsPrefs=null;lastSettings=""
         val first = application == null
         application = app
         store = DiagnosticStore(File(app.filesDir, "diagnostics"))
@@ -78,7 +111,7 @@ object AppDiagnostics {
         mutable.value = DiagnosticConfig(enabled, verbose,maxFiles.coerceIn(1,10))
         application?.getSharedPreferences("diagnostics.settings", Context.MODE_PRIVATE)?.edit()?.putBoolean("enabled", enabled)?.putBoolean("verbose", verbose)?.putInt("maxFiles",state.value.maxFiles)?.apply()
         writer.execute {store?.limitSegments(state.value.maxFiles)}
-        if (enabled) info("diagnostic.configuration", mapOf("verbose" to verbose))
+        if (enabled) {info("diagnostic.configuration", mapOf("verbose" to verbose));settingsHandler.removeCallbacks(settingsCheckpoint);settingsHandler.postDelayed(settingsCheckpoint,600)}
     }
     fun debug(event: String, fields: Map<String, Any?> = emptyMap()) = record(DiagnosticLevel.DEBUG, event, fields)
     fun info(event: String, fields: Map<String, Any?> = emptyMap()) = record(DiagnosticLevel.INFO, event, fields)
@@ -136,9 +169,13 @@ object AppDiagnostics {
     fun storageProblem() = ioFailed
     suspend fun clear() = withContext(Dispatchers.IO) { flush(); store?.clear(); ioFailed = false; dropped.set(0);droppedTotal.set(0) }
     suspend fun export(context: Context, uri: Uri, kind: DiagnosticExport) = withContext(Dispatchers.IO) {
+        captureSettings("export",force=true)
         info("diagnostic.export", mapOf("type" to kind.name)); flush()
+        val prefs=settingsPrefs ?: org.koin.core.context.GlobalContext.getOrNull()?.getOrNull<org.uniapk.upgrader.prefs.Prefs>()
+        val detailed=kind==DiagnosticExport.FULL&&state.value.verbose
+        val snapshots=if(prefs!=null)mapOf("settings.json" to DiagnosticSnapshot.settings(context,prefs,detailed),"runtime.json" to DiagnosticSnapshot.runtime(context,prefs,detailed)) else mapOf("settings.json" to com.google.gson.JsonObject().apply{addProperty("available",false);addProperty("reason","Settings not initialized")})
         val target = requireNotNull(store) { "Diagnose wurde noch nicht initialisiert." }
-        requireNotNull(context.contentResolver.openOutputStream(uri, "w")) { "Exportdatei kann nicht geöffnet werden." }.use { target.export(it, kind, metadata() + ("captureLevel" to if (state.value.verbose) "VERBOSE" else "STANDARD")) }
+        requireNotNull(context.contentResolver.openOutputStream(uri, "w")) { "Exportdatei kann nicht geöffnet werden." }.use { target.export(it, kind, metadata() + ("captureLevel" to if (state.value.verbose) "VERBOSE" else "STANDARD"),snapshots) }
     }
 }
 

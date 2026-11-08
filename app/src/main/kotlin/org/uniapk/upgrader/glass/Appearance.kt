@@ -76,6 +76,7 @@ class AppearanceStore(private val prefs: Prefs) {
         mutable.value = v
         persisted = v
     }
+    fun reload(){val next=AppearanceStore(prefs).state.value;mutable.value=next;persisted=next}
     fun recommendedGlass() = update { it.copy(quality=2,opacity=.46f,blur=true,refraction=true,progressiveBlur=false) }
     fun reset() { prefs.cpuTasks.put(0);ComputeBudget.set(0);update { Appearance() } }
 }

@@ -12,6 +12,7 @@ class IgnoredAppStore(private val prefs:Prefs) {
   val next=if(ignored)mutable.value+pkg else mutable.value-pkg
   prefs.ignoredApps.put(next.toList());mutable.value=next
  }
+ fun reload(){mutable.value=prefs.ignoredApps.get().toSet()}
  fun contains(pkg:String)=pkg in mutable.value
 }
 object AppExclusions {

@@ -23,6 +23,16 @@ object DiagnosticRedaction {
     private val emails = Regex("(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}")
     private val paths = Regex("/(?:data|storage|sdcard|mnt)/[^\\s\"]+")
     private val addresses = Regex("\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b")
+    fun json(value:com.google.gson.JsonElement,detailed:Boolean=true,depth:Int=0):com.google.gson.JsonElement {
+        if(depth>12)return com.google.gson.JsonPrimitive("[depth limit]")
+        return when {
+            value.isJsonNull->value
+            value.isJsonObject->com.google.gson.JsonObject().also{out->value.asJsonObject.entrySet().take(200).forEach{(key,v)->if(detailed||!DiagnosticPrivacy.personalKey(key))out.add(key,if(sensitiveKey(key))com.google.gson.JsonPrimitive("[redacted]") else json(v,detailed,depth+1))}}
+            value.isJsonArray->com.google.gson.JsonArray().also{out->value.asJsonArray.take(10000).forEach{out.add(json(it,detailed,depth+1))}}
+            value.asJsonPrimitive.isString->com.google.gson.JsonPrimitive(text(value.asString))
+            else->value.deepCopy()
+        }
+    }
     fun value(key: String, value: String): String = if (sensitive.matches(key)) "[redacted]" else text(value)
     fun sensitiveKey(key:String)=sensitive.matches(key)
     fun text(value: String): String = value.replace(headers, "[redacted header]")
@@ -74,6 +84,7 @@ class DiagnosticStore(
                 val name=key.take(60)
                 when {
                     DiagnosticRedaction.sensitiveKey(key)->addProperty(name,"[redacted]")
+                    value is com.google.gson.JsonElement->add(name,DiagnosticRedaction.json(value,detailed))
                     value is Boolean->addProperty(name,value)
                     value is Number && value.toDouble().isFinite()->addProperty(name,value)
                     else->addProperty(name,DiagnosticRedaction.value(key,value.toString()))
@@ -123,7 +134,7 @@ class DiagnosticStore(
             }.getOrNull() }.toList() }
         }
     }
-    fun export(output: OutputStream, kind: DiagnosticExport, metadata: Map<String, String>) {
+    fun export(output: OutputStream, kind: DiagnosticExport, metadata: Map<String, String>, snapshots:Map<String,JsonObject> = emptyMap()) {
         val records = snapshot().map{if(kind==DiagnosticExport.SHORT)DiagnosticPrivacy.generalRecord(it) else it}
         fun shortLine(e:JsonObject):String = "${e["timestamp"]?.asString ?: e["time"]?.asLong} ${e["level"]?.asString} ${e["event"]?.asString} ${e["fields"] ?: ""} ${e["errorCategory"]?.asString.orEmpty()} ${e["exception"]?.asString.orEmpty()} ${e["message"]?.asString.orEmpty()} ${e["causes"] ?: ""}".replace("\n","\\n").replace("\r","\\r")
         var remaining=256*1024
@@ -141,10 +152,15 @@ class DiagnosticStore(
                 selected.lastOrNull()?.let { addProperty("lastEventTime",it["time"].asLong) }
             }
             entry("metadata.json", meta.toString())
+            snapshots.forEach{(name,value)->require(name in setOf("settings.json","runtime.json"));entry(name,com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(value))}
             if (kind == DiagnosticExport.SHORT) {
                 entry("diagnostics-short.txt", selected.joinToString("\n",postfix="\n",transform=::shortLine))
             } else entry("diagnostics-full.jsonl", selected.joinToString("\n") { it.toString() } + "\n")
             entry("README.txt", """App-eigene Diagnose, Format 2.
+
+settings.json enthält die beim Export erfassten App-Einstellungen und lesbare Darstellungswerte. runtime.json ergänzt aktuelle Vorgänge, Quellenzustände, Berechtigungen, Speicher- und Leistungsbedingungen. Diese Dateien sind auch bei ausgeschalteter automatischer Aufzeichnung aktuell. settings.snapshot-Ereignisse halten frühere Konfigurationszustände vor Vorgängen und nach Änderungen fest; mehrere Abschnitte gehören über configurationId zusammen. Der Erfassungszeitpunkt steht jeweils dabei. Erweiterte Einstellungen können selbst gepflegte Paketlisten enthalten; automatische Verlaufsschnappschüsse kürzen lange Listen ausdrücklich.
+
+API-Zugangsdaten erscheinen ausschließlich als eingerichtet/nicht eingerichtet. Ordner-URIs und private Dateipfade werden nicht exportiert. Auch erweiterte Diagnosen enthalten weder Backup-Passwörter noch Backup-Inhalte. Die Diagnose ist kein wiederherstellbares Backup.
 
 Neue JSONL-Ereignisse enthalten UTC-Zeit, Schweregrad, Sitzung, Sequenz und Ablaufkennungen. Ältere Einträge aus Format 1 können enthalten sein. Die zufällige Sitzungskennung gilt pro Prozess und identifiziert weder Hardware noch Konto.
 

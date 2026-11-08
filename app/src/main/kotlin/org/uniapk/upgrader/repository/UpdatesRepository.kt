@@ -27,6 +27,7 @@ class UpdatesRepository(
 ) : UpdatesQuery {
 
     override fun updates(progressId: Long?) = flow<List<AppUpdate>> {
+        org.uniapk.upgrader.diagnostics.AppDiagnostics.captureSettings("before_scan",force=true)
         appsRepository.getApps().collect { result ->
             result.onSuccess { apps ->
                 org.uniapk.upgrader.diagnostics.AppDiagnostics.info("scan.app_inventory",mapOf("operationId" to progressId?.let{"scan-$it"},"visibleApps" to apps.size,"scope" to prefs.scanScope.get(),"detectedRegion" to org.uniapk.upgrader.glass.DeviceDetection(context,prefs).region().name,"comparisonRegion" to prefs.manualRegion.get(),"modelSimulation" to prefs.simulatedModel.get().isNotBlank()))

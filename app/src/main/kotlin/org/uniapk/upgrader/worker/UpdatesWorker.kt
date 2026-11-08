@@ -70,6 +70,7 @@ class UpdatesWorker(
 
     override suspend fun doWork(): Result = UpdateOperations.mutex.withLock {
         kotlinx.coroutines.withContext(org.uniapk.upgrader.diagnostics.DiagnosticContext.element(mapOf("operationId" to org.uniapk.upgrader.diagnostics.DiagnosticContext.nextId("worker")))) {
+        org.uniapk.upgrader.diagnostics.AppDiagnostics.captureSettings("before_background_scan",force=true)
         val lease=AppCache.begin()
         org.uniapk.upgrader.diagnostics.AppDiagnostics.info("background.scan.started")
         try {

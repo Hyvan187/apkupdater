@@ -175,6 +175,7 @@ import org.koin.compose.koinInject
                 if(section==3){
                 item { SettingsSection("Diagnose und Entwicklung") }
                 item { DiagnosticSettingsCard() }
+                item { BackupSettingsCard() }
                 }
                 if(section==3){
                 item { SettingsSection("Projekt") }
@@ -193,7 +194,7 @@ import org.koin.compose.koinInject
     if(restore)SettingsConfirm("Versionen wieder einblenden?",HelpText.RESTORE,{restore=false}){prefs.ignoredVersions.put(emptyList());prefs.ignoredReleases.put(emptyList());restore=false;onFiltersChanged()}
     if(clearHistory)SettingsConfirm("Updateverlauf löschen?","Entfernt die gespeicherten Verlaufseinträge. Installierte Apps und APK-Dateien bleiben erhalten.",{clearHistory=false}){history.clear();clearHistory=false;AppDiagnostics.info("history.cleared")}
     confirmInstaller?.let{choice->SettingsConfirm("${choice.second} verwenden?",HelpText.EXTERNAL,{confirmInstaller=null}){installer=choice.first;prefs.installerPackage.put(installer);confirmInstaller=null}}
-    if(legal)AlertDialog(onDismissRequest={legal=false},title={Text("Lizenzen und Rechtliches")},text={Text("Universal APK Upgrader steht unter GNU GPLv3. Enthält Code aus APKUpdater, Copyright rumboalla und Mitwirkende; Änderungen von UniAPK contributors. Vollständige Lizenz und passender Quellcode liegen dem Downloadpaket bei. Android-Roboter: von Google bereitgestelltes Werk gemäß CC BY 3.0; Liquid-Glass-Darstellung angepasst.")},confirmButton={TextButton(onClick={legal=false}){Text("Schließen")}})
+    if(legal)AlertDialog(onDismissRequest={legal=false},title={Text("Lizenzen und Rechtliches")},text={Text("Universal APK Upgrader steht unter GNU GPLv3. Enthält Code aus APKUpdater, Copyright rumboalla und Mitwirkende; Änderungen von UniAPK contributors. Vollständige Lizenz und passender Quellcode liegen dem Downloadpaket bei. Android-Roboter: von Google bereitgestelltes Werk gemäß CC BY 3.0; Liquid-Glass-Darstellung angepasst. PBKDF2-Kompatibilität: Bouncy Castle 1.86, Copyright 2000–2026 The Legion of the Bouncy Castle Inc., MIT-Lizenz. Der Lizenztext liegt im Quellpaket und in den App-Assets.")},confirmButton={TextButton(onClick={legal=false}){Text("Schließen")}})
 }
 
 @Composable private fun SettingsSection(title:String) { Text(title,style=MaterialTheme.typography.titleMedium,modifier=Modifier.padding(top=8.dp)) }

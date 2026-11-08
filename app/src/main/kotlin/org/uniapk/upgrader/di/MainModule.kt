@@ -172,7 +172,7 @@ val mainModule = module {
     single { org.uniapk.upgrader.glass.ReleaseFilterStore(get()) }
     single { org.uniapk.upgrader.glass.AppSelection(get()) }
 
-	single { Prefs(get(), androidContext().isAndroidTv()).also { it.migrateDefaults() } }
+	single { Prefs(get(), androidContext().isAndroidTv()).also { org.uniapk.upgrader.settings.SettingsBackup.recover(it);it.migrateDefaults() } }
 
 	single { UpdatesNotification(get()) }
 

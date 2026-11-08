@@ -65,6 +65,7 @@ class UpdatesViewModel(
     private val verifying: MutableSet<Int> = java.util.Collections.newSetFromMap(ConcurrentHashMap<Int, Boolean>())
     private fun identity(u: AppUpdate) = "${u.artifactKey}:${u.oldVersionCode}"
     init {
+        processState.onEach { org.uniapk.upgrader.diagnostics.DiagnosticRuntime.process=it }.launchIn(viewModelScope)
         viewModelScope.launch(Dispatchers.IO){operationMutex.withLock{
             val restored=savedReady.mapNotNull{record->val file=record.file(context) ?: return@mapNotNull null;val u=record.update();if(!AppExclusions.allowed(u.packageName,prefs)||!SkippedVersions.allowed(u,prefs))return@mapNotNull null;verified[identity(u)]=Checked(file,record.report,record.checkedAt,record.published);u}
             if(restored.isNotEmpty()){restored.forEach{preparedEntries[it.artifactKey]=it};setSuccess(state.value.updates()+restored);reconcileInstalledUpdates()}
@@ -143,6 +144,7 @@ class UpdatesViewModel(
         }
     }
     fun verify(update: AppUpdate): Job {
+        org.uniapk.upgrader.diagnostics.AppDiagnostics.captureSettings("before_prepare",force=true)
         if(!(AppExclusions.allowed(update.packageName,prefs)&&SkippedVersions.allowed(update,prefs)))return viewModelScope.launch{snackBar.snackBar(viewModelScope,TextSnack("Diese App ist ignoriert. Erst wieder zulassen."))}
         prefs.discardedDownloads.put(prefs.discardedDownloads.get()-releaseKey(update))
         processState.value=PackageProcess(update)

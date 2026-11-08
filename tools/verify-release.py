@@ -54,7 +54,7 @@ for name, expected_abis in variants.items():
     (reports/f"signature-{name}.txt").write_text(signature)
     badging = run([tools/"aapt", "dump", "badging", target])
     assert "name='org.uniapk.upgrader'" in badging
-    assert "versionCode='1012'" in badging and "versionName='0.7.0-rc4'" in badging
+    assert "versionCode='1013'" in badging and "versionName='0.7.0-rc5'" in badging
     assert "sdkVersion:'23'" in badging and "targetSdkVersion:'37'" in badging
     assert "application-debuggable" not in badging
     assert "application-label:'Universal APK Upgrader'" in badging
@@ -103,7 +103,7 @@ for name, expected_abis in variants.items():
                 assert destination not in archive.read(entry), f"Unobfuscated support destination in {entry.filename}"
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
     checksums.append(f"{digest}  {target.name}")
-    summary.append({"file":target.name,"size":target.stat().st_size,"sha256":digest,"abis":sorted(abis),"versionCode":1012,"versionName":"0.7.0-rc4","debuggable":False,"certificateSha256":expected_certificate,"signatureSchemes":[1,2,3],"zipAlignmentKiB":16,"native":native,"originalInstallerIconMatchesOriginalLauncher":True,"launcherVariants":5,"supportDestinationAbsentInPlaintext":True})
+    summary.append({"file":target.name,"size":target.stat().st_size,"sha256":digest,"abis":sorted(abis),"versionCode":1013,"versionName":"0.7.0-rc5","debuggable":False,"certificateSha256":expected_certificate,"signatureSchemes":[1,2,3],"zipAlignmentKiB":16,"native":native,"originalInstallerIconMatchesOriginalLauncher":True,"launcherVariants":5,"supportDestinationAbsentInPlaintext":True})
 
 (output/"SHA256SUMS.txt").write_text("\n".join(checksums)+"\n")
 (reports/"release-verification.json").write_text(json.dumps(summary,indent=2)+"\n")

@@ -61,7 +61,7 @@ class RC3QualityTest {
     @Test fun brandingAndBuildFingerprintIdentifyInstalledRelease() {
         assertEquals("Universal APK Upgrader",context.getString(org.uniapk.upgrader.R.string.app_name))
         assertTrue(BuildConfig.BUILD_FINGERPRINT.matches(Regex("[0-9a-f]{64}")))
-        assertEquals("0.7.0-rc4",BuildConfig.VERSION_NAME);assertEquals(1012,BuildConfig.VERSION_CODE)
+        assertEquals("0.7.0-rc5",BuildConfig.VERSION_NAME);assertEquals(1013,BuildConfig.VERSION_CODE)
     }
     @Test fun newEnglishControlsDoNotRetainGermanDownloadOrDiagnosticLabels() {
         assertEquals("Download and check APKs in a batch",UiEnglish.translate("APKs gesammelt herunterladen und prüfen","en"))

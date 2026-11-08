@@ -2,3 +2,5 @@ Universal APK Upgrader
 GPLv3. Includes APKUpdater code, copyright rumboalla and contributors. Changes: UniAPK contributors. See LICENSE and source history.
 
 Android robot icon: reproduced or modified from work created and shared by Google, used according to the Creative Commons 3.0 Attribution License: https://creativecommons.org/licenses/by/3.0/ . Liquid-glass rendering is a modification. Android brand source: https://developer.android.com/distribute/marketing-tools/brand-guidelines .
+
+Bouncy Castle bcprov-jdk18on 1.86: Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc. MIT License; included in LICENSE-BOUNCY-CASTLE.txt and app assets/licenses/bouncycastle.txt. Only the lightweight PBKDF2-HMAC-SHA256 fallback is used on Android 6/7; no system provider is replaced.

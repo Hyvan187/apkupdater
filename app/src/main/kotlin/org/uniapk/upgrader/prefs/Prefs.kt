@@ -11,6 +11,9 @@ class Prefs(
 	prefs: KryptoPrefs,
 	isAndroidTv: Boolean
 ): KryptoContext(prefs) {
+    internal val storage = prefs
+    fun flushSettings() { check(storage.sharedPreferences().edit().commit()) { "Einstellungen konnten nicht dauerhaft gespeichert werden." } }
+    val restoreJournal = string("settings.restoreJournal","",true)
     fun migrateDefaults() {
         if (sourceDefaultsSchema.get() == 0) {
             useApkMirror.put(true); usePlay.put(true); useGitHub.put(true); useGitLab.put(true)

@@ -30,6 +30,15 @@ class AppLanguageStore(private val prefs:Prefs) {
 }
 object UiEnglish {
  private val exact=mapOf(
+  "Backup & Wiederherstellung" to "Backup & restore", "Einstellungen sichern" to "Back up settings", "Backup wiederherstellen" to "Restore backup",
+  "Backup-Passwort festlegen" to "Set backup password", "Backup entsperren" to "Unlock backup", "Backup-Passwort" to "Backup password", "Passwort wiederholen" to "Repeat password",
+  "Backup erstellen" to "Create backup", "Entsperren und prüfen" to "Unlock and validate", "Einstellungen wiederherstellen?" to "Restore settings?", "Wiederherstellen" to "Restore",
+  "Erweiterte Diagnose zulassen" to "Allow detailed diagnostics", "Dieses Backup aktiviert erweiterte Diagnose." to "This backup enables detailed diagnostics.",
+  "Verschlüsseltes Einstellungsbackup gespeichert." to "Encrypted settings backup saved.", "Backup wird verarbeitet" to "Processing backup",
+  "Verschlüsselung und Prüfung laufen. Bitte kurz warten." to "Encryption and validation are running. Please wait.",
+  "Die Passwörter stimmen noch nicht überein." to "The passwords do not match yet.", "Einstellungen wiederhergestellt." to "Settings restored.",
+  "Cache, Backup, Diagnose und App-Informationen" to "Cache, backups, diagnostics and app information",
+
   "Allgemein" to "General", "Updates & Versionen" to "Updates & versions", "Erweitert / System" to "Advanced / system",
   "Startansicht" to "Start view", "Startübersicht" to "Overview", "Installierte Apps" to "Installed apps",
   "Basisfarbe" to "Base color", "Basisfarbe anpassen" to "Customize base color", "Diese Version überspringen" to "Skip this version",

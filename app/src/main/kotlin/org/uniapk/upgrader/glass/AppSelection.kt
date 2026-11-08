@@ -25,5 +25,6 @@ class AppSelection(private val prefs: Prefs) {
     }
     private val mutable = MutableStateFlow(AppScope.entries.getOrElse(prefs.scanScope.get()) { AppScope.ALL })
     val scope: StateFlow<AppScope> = mutable
+    fun reload(){mutable.value=AppScope.entries.getOrElse(prefs.scanScope.get()){AppScope.ALL}}
     fun select(value: AppScope) { prefs.scanScope.put(value.ordinal); mutable.value = value }
 }

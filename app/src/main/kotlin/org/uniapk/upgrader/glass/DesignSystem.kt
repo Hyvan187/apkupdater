@@ -43,7 +43,7 @@ enum class SettingsCategory(val title:String,val summary:String){
     GENERAL("Allgemein","Sprache, Startansicht, Schnellzugriff und Berechtigungen"),
     APPEARANCE("Erscheinungsbild","Design, Farbpalette, Glas, Icons und Leistung"),
     UPDATES("Updates & Versionen","Quellen, Versionsfilter, Downloads und Installation"),
-    SYSTEM("Erweitert / System","Cache, Verlauf, Diagnose und App-Informationen")
+    SYSTEM("Erweitert / System","Cache, Backup, Diagnose und App-Informationen")
 }
 object StartViews {
     val routes=listOf("overview","updates","apps")

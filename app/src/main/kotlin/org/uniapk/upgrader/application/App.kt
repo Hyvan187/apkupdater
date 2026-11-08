@@ -29,6 +29,8 @@ open class App : Application(), SingletonImageLoader.Factory, KoinComponent {
 			androidContext(this@App)
 			modules(mainModule)
 		}
+        get<org.uniapk.upgrader.glass.AppearanceStore>().state.value
+        org.uniapk.upgrader.diagnostics.AppDiagnostics.observeSettings(get())
         java.util.concurrent.Executors.newSingleThreadExecutor().let { executor -> executor.execute { try { org.uniapk.upgrader.glass.AppCache.maintain(this) } finally { executor.shutdown() } } }
 	}
 

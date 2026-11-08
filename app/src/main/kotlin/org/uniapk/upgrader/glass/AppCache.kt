@@ -13,6 +13,12 @@ object AppCache {
     private val gate = Any()
     private var active = 0
     private var clearing = false
+    fun status():Map<String,Any> = synchronized(gate){mapOf("activeOperations" to active,"maintenanceActive" to clearing)}
+    fun settingsChange():Closeable = synchronized(gate){
+        check(active==0&&!clearing){"Eine Dateioperation läuft. Bitte zuerst abschließen oder abbrechen."}
+        clearing=true
+        object:Closeable{override fun close(){synchronized(gate){clearing=false}}}
+    }
     fun begin(): Closeable = synchronized(gate) {
         check(!clearing) { "Der Cache wird gerade geleert. Bitte kurz warten." }
         active++

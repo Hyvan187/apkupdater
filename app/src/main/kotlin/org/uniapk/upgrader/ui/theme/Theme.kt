@@ -5,6 +5,7 @@ import android.app.Activity
 import android.os.Build
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.lerp
@@ -30,6 +31,11 @@ fun AppTheme(darkTheme: Boolean, dynamicColor: Boolean = false, content: @Compos
         val system=if(effectiveDark)dynamicDarkColorScheme(LocalContext.current) else dynamicLightColorScheme(LocalContext.current)
         if(a.oled)system.copy(background=Color.Black) else if(dusk)org.uniapk.upgrader.glass.PaletteModel.scheme(system.primary,true,true) else system
     }else localScheme
+    SideEffect{
+        fun color(c:Color)=String.format(java.util.Locale.ROOT,"#%08X",c.toArgb())
+        org.uniapk.upgrader.diagnostics.DiagnosticRuntime.colors=mapOf("primary" to color(scheme.primary),"onPrimary" to color(scheme.onPrimary),"secondary" to color(scheme.secondary),"background" to color(scheme.background),"surface" to color(scheme.surface),"onSurface" to color(scheme.onSurface))
+        org.uniapk.upgrader.diagnostics.DiagnosticRuntime.rendering=mapOf("dark" to effectiveDark,"dusk" to dusk,"oled" to a.oled,"wallpaperColors" to a.dynamic,"requestedGlassQuality" to a.quality)
+    }
     val family = when(a.font) { 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; else -> FontFamily.Default }
     fun scaled(style: androidx.compose.ui.text.TextStyle) = style.copy(fontFamily = family, fontSize = style.fontSize * a.textScale * (if(a.compact).96f else 1f), lineHeight = style.lineHeight * a.textScale * (if(a.compact).96f else 1f))
     val typography = Typography().let { t -> t.copy(

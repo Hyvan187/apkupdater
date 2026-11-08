@@ -37,6 +37,10 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
+    val revision by org.uniapk.upgrader.settings.SettingsRevision.state.collectAsStateWithLifecycle()
+    key(revision){MainScreenContent(mainViewModel)}
+}
+@Composable private fun MainScreenContent(mainViewModel:MainViewModel) {
     val updates: UpdatesViewModel = koinViewModel()
     val apps: AppsViewModel = koinViewModel()
     val search: SearchViewModel = koinViewModel()
@@ -44,6 +48,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     val history=koinInject<HistoryStore>()
     val historyScope=rememberCoroutineScope()
     val context=androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(Unit){org.uniapk.upgrader.settings.SettingsRevision.takeNotice()?.let{android.widget.Toast.makeText(context,it,android.widget.Toast.LENGTH_LONG).show()}}
     val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver { _,event -> if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME)historyScope.launch(kotlinx.coroutines.Dispatchers.IO){history.reconcile(context);updates.reconcileInstalledUpdates();updates.reconcilePreparedFiles()} };lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer)}}
     DisposableEffect(context) {
@@ -60,6 +65,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){updates.reconcilePreparedFiles();kotlinx.coroutines.delay(4000)}}}
     val nav = rememberNavController()
     val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "overview"
+    SideEffect{org.uniapk.upgrader.diagnostics.DiagnosticRuntime.route=route}
     val storedAppearance = koinInject<AppearanceStore>().state.collectAsStateWithLifecycle().value
     LaunchedEffect(context){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){ComputeBudget.refresh(context);kotlinx.coroutines.delay(5000)}}}
     val cpuTasks by ComputeBudget.state.collectAsStateWithLifecycle()

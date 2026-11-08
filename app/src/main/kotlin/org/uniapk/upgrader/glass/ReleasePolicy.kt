@@ -27,6 +27,7 @@ data class ReleaseFilters(val alpha: Boolean,val beta: Boolean,val preview: Bool
 class ReleaseFilterStore(private val prefs: Prefs) {
  private val mutable=MutableStateFlow(ReleaseFilters(prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get()))
  val state: StateFlow<ReleaseFilters> = mutable
+ fun reload(){mutable.value=ReleaseFilters(prefs.ignoreAlpha.get(),prefs.ignoreBeta.get(),prefs.ignorePreRelease.get())}
  fun change(alpha: Boolean=mutable.value.alpha,beta: Boolean=mutable.value.beta,preview: Boolean=mutable.value.preview) {
   prefs.ignoreAlpha.put(alpha);prefs.ignoreBeta.put(beta);prefs.ignorePreRelease.put(preview);mutable.value=ReleaseFilters(alpha,beta,preview)
  }
