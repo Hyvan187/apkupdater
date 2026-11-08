@@ -121,7 +121,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
             items(readyGroups,key={"ready-${it.packageName}"}){group->val u=group.candidates.first{it.fileReady&&it.verdict.installAllowed};GlassPanel(compact=true){Row(verticalAlignment=Alignment.CenterVertically){LoadingImageApp(u.packageName,Modifier.size(40.dp));Spacer(Modifier.width(10.dp));Column(Modifier.weight(1f)){Text(u.name,style=MaterialTheme.typography.titleSmall,maxLines=1,overflow=TextOverflow.Ellipsis);SecondaryText(u.version)};Button(onClick={viewModel.install(u,handler)}){Text("Installieren")}}}}
         }
         item { GlassPanel(compact=true) {
-            Text(if(ready>0)"$ready Updates vorbereitet" else if(pending>0)"$pending neue Versionsfunde" else "Deine Updates im Blick",style=MaterialTheme.typography.titleLarge)
+            Text(if(ready>0)"Vorbereitete Updates: $ready" else if(pending>0)"Neue Versionsfunde: $pending" else "Deine Updates im Blick",style=MaterialTheme.typography.titleLarge)
             SecondaryText("Suche vergleicht Versionen. APK vorbereiten lädt die gewählte Datei und prüft sie vor der Installation.")
             Button(onClick={viewModel.refresh()},enabled=!working,modifier=Modifier.fillMaxWidth()){Text(if(working)"Suche läuft …" else "Nach Updates suchen")}
             SecondaryText(if(prefs.lastCheck.get()==0L)"Noch keine vollständige Suche" else "Letzte vollständige Suche: ${DateFormat.getDateTimeInstance(DateFormat.SHORT,DateFormat.SHORT).format(Date(prefs.lastCheck.get()))}")

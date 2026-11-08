@@ -45,8 +45,8 @@ import org.koin.compose.koinInject
     val prefs=koinInject<Prefs>();val current by ComputeBudget.state.collectAsState();var requested by remember{mutableIntStateOf(prefs.cpuTasks.get())};var menu by remember{mutableStateOf(false)}
     GlassPanel {
         HelpTitle("Leistungsbudget","Begrenzt gleichzeitig ausgeführte rechenintensive UniAPK-Aufgaben. Android verteilt UI-, Netzwerk- und Grafikthreads weiterhin selbst auf die CPU-Kerne. Dies ist keine feste Kernzuweisung oder prozentuale Gesamtauslastungsgrenze. Weniger Aufgaben reduzieren zusätzlich Bildrate und Dichte des Hintergrunds.")
-        OutlinedButton(onClick={menu=true}){Text(if(requested==0)"Automatisch · aktuell $current Aufgaben" else "Bis zu $current parallele CPU-Aufgaben")}
-        SecondaryText("${Runtime.getRuntime().availableProcessors()} logische Prozessoren verfügbar · Hintergrund bis ${ComputeBudget.fps()} Bilder/s")
+        OutlinedButton(onClick={menu=true}){Text(if(requested==0)"Automatisch · Aufgabenlimit: $current" else "CPU-Aufgabenlimit: $current")}
+        SecondaryText("Verfügbare logische Prozessoren: ${Runtime.getRuntime().availableProcessors()} · Hintergrund bis ${ComputeBudget.fps()} Bilder/s")
     }
     if(menu)GlassChoiceSheet("CPU-Aufgaben",requested.toString(),listOf(GlassChoice("0","Automatisch","Passt Aufgaben und Effekte an Energiesparmodus, verfügbaren Speicher und Temperatur an."))+(1..Runtime.getRuntime().availableProcessors().coerceAtLeast(1)).map{GlassChoice(it.toString(),"$it ${if(it==1)"Aufgabe" else "Aufgaben"}")},{menu=false}){val n=it.toInt();requested=n;prefs.cpuTasks.put(n);ComputeBudget.set(n);ComputeBudget.refresh(context)}
 }

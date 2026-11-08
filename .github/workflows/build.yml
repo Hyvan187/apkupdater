@@ -40,34 +40,16 @@ jobs:
           printf '%s  %s\n' '60ea723356d81263e8002fec0fcf9e2b0eee0c0850c7a3d7ab0a63f2ccc601f3' "$gradle_zip" | sha256sum --check
           unzip -q "$gradle_zip" -d "$RUNNER_TEMP/uniapk-gradle"
           echo "$RUNNER_TEMP/uniapk-gradle/gradle-9.4.0/bin" >> "$GITHUB_PATH"
-      - name: Resolve dependencies with network retries
+      - name: Prepare debug compilation with network retries
         run: |
-          cat > "$RUNNER_TEMP/uniapk-prefetch.gradle" <<'GROOVY'
-          allprojects { project ->
-              afterEvaluate {
-                  if (project.path == ':app') {
-                      tasks.register('prefetchCiDependencies') {
-                          doLast {
-                              project.configurations.findAll { configuration ->
-                                  configuration.canBeResolved &&
-                                      (configuration.name.endsWith('CompileClasspath') ||
-                                       configuration.name.endsWith('RuntimeClasspath') ||
-                                       configuration.name == 'kotlinBuildToolsApiClasspath')
-                              }.each { configuration -> configuration.resolve() }
-                          }
-                      }
-                  }
-              }
-          }
-          GROOVY
-          resolved=0
+          prepared=0
           for attempt in 1 2 3; do
-            if gradle -I "$RUNNER_TEMP/uniapk-prefetch.gradle" :app:prefetchCiDependencies --stacktrace; then
-              resolved=1
+            if gradle :app:compileDebugUnitTestKotlin --stacktrace; then
+              prepared=1
               break
             fi
           done
-          test "$resolved" = 1
+          test "$prepared" = 1
       - name: Tests, lint and debug APK
         run: |
           gradle :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
