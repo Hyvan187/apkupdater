@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Long,val lightAccent:Long){
  ORION("Orion",0xffc8b9ff,0xffb5e7a2,0xff5b45ba),OCEAN("Ocean",0xff8bd3ff,0xffffa3b5,0xff16678e),FOREST("Forest",0xff88d99a,0xffffca80,0xff276a39),SUNSET("Sunset",0xffffb68f,0xffc4a5ff,0xff934b24),ROSE("Rose",0xffffacd0,0xff83ded7,0xff943b67)
 }
-@Composable fun SettingsHero(title:String,subtitle:String,icon:ImageVector,onBack:()->Unit){
+@Composable fun SettingsHero(title:String,subtitle:String,icon:ImageVector,onBack:()->Unit,showBack:Boolean=true){
  val primary=MaterialTheme.colorScheme.primary
  Box(Modifier.fillMaxWidth().heightIn(min=if(LocalAppearance.current.compact)148.dp else 198.dp).clip(RoundedCornerShape(bottomStart=30.dp,bottomEnd=30.dp)).background(Brush.verticalGradient(listOf(primary.copy(alpha=.23f),Color.Transparent)))){
   Canvas(Modifier.matchParentSize()){
@@ -34,7 +34,7 @@ enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Lon
    repeat(81){i->val a=i*2*kotlin.math.PI/80;val r=radius*(1+.15*kotlin.math.sin(a*6));val x=cx+kotlin.math.cos(a).toFloat()*r.toFloat();val y=cy+kotlin.math.sin(a).toFloat()*r.toFloat();if(i==0)path.moveTo(x,y)else path.lineTo(x,y)};path.close();drawPath(path,primary.copy(alpha=.08f))
   }
   Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=spacing(12))){
-   Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,"Zurück")};Spacer(Modifier.weight(1f));Icon(icon,null,Modifier.size(34.dp),tint=primary)}
+   Row(verticalAlignment=Alignment.CenterVertically){if(showBack)IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,"Zurück")}else Spacer(Modifier.size(48.dp));Spacer(Modifier.weight(1f));Icon(icon,null,Modifier.size(34.dp),tint=primary)}
    Spacer(Modifier.height(spacing(14)));Text(title,style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Medium);Spacer(Modifier.height(6.dp));SecondaryText(subtitle)
   }
  }
@@ -80,3 +80,7 @@ enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Lon
  }
 }
 
+
+@Composable fun PinnedSettingsBack(onBack:()->Unit,modifier:Modifier=Modifier){
+ IconButton(onClick=onBack,modifier=modifier.size(48.dp).background(MaterialTheme.colorScheme.surface.copy(alpha=.86f),CircleShape)){Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,"Zurück")}
+}

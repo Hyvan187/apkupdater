@@ -23,6 +23,8 @@ class RC3InstallerTest {
  private val target="org.example.installer"
  private fun fixture(name:String)=checkNotNull(javaClass.getResourceAsStream("/apksets/$name"))
  @Before fun setup(){
+  // Robolectric gives each case a different app directory; AndroidX retains a static URI root cache.
+  val cache=androidx.core.content.FileProvider::class.java.getDeclaredField("sCache").apply{isAccessible=true}.get(null) as MutableMap<*,*>;cache.clear()
   prefs=Prefs(KryptoBuilder.nocrypt(context,"rc3-installer-${System.nanoTime()}"),false)
   val appContext=context
   val provider=ArchiveTestProvider().apply{attachInfo(appContext,ProviderInfo().apply{authority="media"})};ShadowContentResolver.registerProviderInternal("media",provider)

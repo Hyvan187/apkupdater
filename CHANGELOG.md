@@ -1,3 +1,7 @@
+# 0.7.0-rc3
+
+Favoriten und Ignorierlisten, formatabhängige Installer-Auswahl, Play-Herkunftshinweise, Themenkarten, vier Designs, Farbpaletten, Kompaktmodus, automatische Leistungssteuerung, Dock-Stile und Launcher-Symbole. Polarlichter überarbeitet, Leuchtwürmchen ergänzt und vorbereitete APKs auf der Startseite dargestellt. Details und Diagnoseauswertung: docs/RC3-CHANGES-DE.md.
+
 # 0.7.0-rc2
 
 - Add first-run/reopenable permission checklist and live, named APK-folder status.

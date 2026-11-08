@@ -212,8 +212,9 @@ import org.koin.compose.koinInject
  val prefs=koinInject<Prefs>();val context=LocalContext.current;val a=LocalAppearance.current
  var stable by remember{mutableStateOf(prefs.ignorePreRelease.get())};var background by remember{mutableStateOf(prefs.enableAlarm.get())}
  val rowHeight=if(a.compact)118.dp else 144.dp
+ Box(Modifier.fillMaxSize()){
  LazyColumn(Modifier.fillMaxSize().statusBarsPadding(),contentPadding=PaddingValues(start=16.dp,end=16.dp,bottom=32.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))){
-  item{SettingsHero("Einstellungen","Universal APK Upgrader ${BuildConfig.VERSION_NAME}",Icons.Default.Settings,onBack)}
+  item{SettingsHero("Einstellungen","Universal APK Upgrader ${BuildConfig.VERSION_NAME}",Icons.Default.Settings,onBack,showBack=false)}
   item{Text("Schnellzugriff",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
   item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
    FilterChip(stable,{stable=!stable;prefs.ignorePreRelease.put(stable);org.koin.core.context.GlobalContext.get().get<ReleaseFilterStore>().change(preview=stable);onFiltersChanged()},modifier=Modifier.weight(1f).heightIn(min=64.dp),label={Column{Text("Nur stabile Versionen");SecondaryText(if(stable)"Aktiv" else "Aus")}})
@@ -238,6 +239,8 @@ import org.koin.compose.koinInject
    SettingsTile("Diagnose","Protokolle und Fehler",Color(0xff414d76),Icons.Default.Info,Modifier.weight(1f).height(rowHeight)){section=7}
   }}
   item{SettingsTile("Über UniAPK","Version, Lizenzen und Projekt unterstützen",Color(0xff3d4050),Icons.Default.Favorite,Modifier.fillMaxWidth().height(rowHeight)){section=8}}
+ }
+ PinnedSettingsBack(onBack,Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start=32.dp,top=12.dp))
  }
 }
 

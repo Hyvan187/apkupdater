@@ -1,3 +1,7 @@
+# Universal APK Upgrader · UniAPK 0.7.0-rc3
+
+Aktuelle Änderungen und Grenzen: [RC3-CHANGES-DE.md](docs/RC3-CHANGES-DE.md). Tatsächliche Prüfergebnisse: [TEST-RESULTS.md](docs/TEST-RESULTS.md).
+
 # Universal APK Upgrader (UniAPK) 0.7.0-rc2
 
 Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version code 1010, min/compile/target API 23/37/37. This new neutral package installs alongside the earlier application; it cannot read another package's private settings or history.

@@ -31,10 +31,10 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
  val store=koinInject<AppearanceStore>();val a by store.state.collectAsStateWithLifecycle();var picking by remember{mutableStateOf<String?>(null)}
  DisposableEffect(store) { onDispose { store.commitPreview() } }
  CompositionLocalProvider(LocalEffectLevel provides a.quality.coerceAtMost(1)) {
- Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=LocalDeviceLayout.current.horizontalPadding)) {
+ Box(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=LocalDeviceLayout.current.horizontalPadding)) {
   
-  LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))) {
-   item{SettingsHero("Design und Leistung","Design, Glas, Bewegung und Dichte",UniIcons.Palette,onBack)}
+  LazyColumn(Modifier.fillMaxSize().navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))) {
+   item{SettingsHero("Design und Leistung","Design, Glas, Bewegung und Dichte",UniIcons.Palette,onBack,showBack=false)}
    item{Text("Design",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
    item{GlassPanel{ThemePreviewChoices(a){theme,oled->store.update{it.copy(theme=theme,oled=oled,customBackground=false)}};AppearanceToggle("Android-Design folgen","Verwendet das helle oder dunkle Systemdesign.",a.theme==0&&!a.oled){v->store.update{it.copy(theme=if(v)0 else 1,oled=false,customBackground=false)}}}}
    item{Text("Farbpalette",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
@@ -92,6 +92,7 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
    }}
    item{Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={LauncherIcons.select(context,0);store.reset()},modifier=Modifier.weight(1f)){Text("Alle Darstellungswerte auf Standard zurücksetzen")};HelpButton("Darstellung zurücksetzen","Stellt das dunkle violett-blaue Standarddesign wieder her. Updatequellen, Downloads und Favoriten bleiben erhalten.")}}
   }
+  PinnedSettingsBack(onBack,Modifier.align(Alignment.TopStart).padding(start=16.dp,top=12.dp))
  }
  }
  picking?.let{target->
