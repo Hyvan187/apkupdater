@@ -1,4 +1,4 @@
-# Anforderungsabgleich: UniAPK 0.7.0-rc1
+# Anforderungsabgleich: UniAPK 0.7.0-rc2
 
 Die Anforderungen wurden vor der Umsetzung vollständig geordnet: Datenschutz/Identität, Profile und ROM-Erkennung, Downloads und Installation, Quellen, Speicher, Diagnose, Oberfläche, Verifikation. Die vorherige RC3-Quelle wurde anhand sämtlicher 327 Dateiprüfsummen wiederhergestellt. Neue Funktionen ersetzen die bisherigen Schutzregeln nur dort, wo ausdrücklich gewünscht.
 
@@ -28,3 +28,22 @@ Die Anforderungen wurden vor der Umsetzung vollständig geordnet: Datenschutz/Id
 | Speicher dauerhaft begrenzen | HTTP 64 MiB, Bildcache 32 MiB, geprüfte Privatdateien bis 1 GiB mit Alterung/Wartung; aktive Vorgänge und ausstehende Installerdateien geschützt. | Bewusst gespeicherte öffentliche APKs werden nur gemäß Behalten-/Erfolgsregel entfernt, nicht durch Cachewartung. |
 
 Zusätzlich gefunden und korrigiert: erster GitHub-Katalogeintrag wurde übersprungen; Installerstatus/-meldung fehlten im tiefen Protokoll; Zeitüberschreitungen mit geschlossener Socket-Ursache waren teilweise falsch klassifiziert. Metadatensuche ohne APKMirror-Schlüssel gilt als Webmodus, nicht als erfolgreich durchsuchter API-Katalog. Auch automatisch vorbereitete APKs übernehmen sofort die tatsächlich gelesene Manifestversion, Architektur und SDK-Daten; abweichende Quellenbehauptungen bleiben nicht bis zum nächsten Scan sichtbar.
+
+
+## Nachrüstung gemäß dem neuen Gerätefeedback
+
+| Anforderung | Umsetzung und Prüfung |
+|---|---|
+| Berechtigungen bei Einrichtung und in Einstellungen | Einmalige Übersicht mit einzeln auslösbaren Android-Abfragen; danach weiter verfügbar. Ablehnung sperrt die reine Suche nicht. Keine pauschale Speicherfreigabe. |
+| Gewählten APK-Ordner anzeigen | Ordnername, verständlicher Speicherpfad und aktueller Schreibstatus; Rückkehr aus Android aktualisiert die Angaben. Nicht beschreibbare Auswahl ersetzt die vorherige Freigabe nicht. |
+| CPU und Glas logisch einordnen | Gemeinsames Menü Design und Leistung. Die vorhandene transparente Erklärung des tatsächlichen Parallelitätsbudgets bleibt erreichbar. |
+| Animationen korrigieren und Matrix ergänzen | Unterschiedliche Geometrie/Bewegung, Matrix-Zeichenregen, Original-/Ein-/Zweifarbpalette. Alle Effekte reagieren auf Dichte; 0 % blendet sie aus und stoppt ihre Uhr. Bisherige gespeicherte Modi behalten ihre Indexwerte. |
+| Texte und Symbole | Aktionsbeschriftungen und Hilfen der betroffenen Abläufe verkürzt; grüne Bestätigung, orange Warnung und rotes X ergänzen den Status. Text bleibt zusätzlich für Verständlichkeit und Barrierefreiheit erhalten. Anbieterfehlermeldungen werden nicht sinnentstellend umgeschrieben. |
+| Ladeanzeigen und Auswahl | Linie, Segmente, Welle und Ring mit Vorschau. Bekannte Werte bleiben echte Prozent; unbekannte Dauer bleibt unbestimmt. Ergänzt bei Installation, lokaler Analyse, Ordnerprüfung, Diagnose, Cache und Verbindungstest. |
+| Bereite APKs löschen | Bestätigung, Löschung privater vorbereiteter Bytes und ausschließlich verwalteter öffentlicher Kopien; Rückkehr zu Funde. Entfernte Versionen werden bis zur manuellen Vorbereitung nicht erneut automatisch geladen. |
+| Extern gelöschte APK erkennen | Beim Zurückkehren und alle vier Sekunden im aktiven Bildschirm über Metadaten. Entzogene Berechtigung zählt nicht als nachgewiesene Löschung. |
+| Update-Risiko erklären | Kategorie plus geringeres/erhöhtes/hohes Risiko oder konkrete technische Sperre; kritische Komponenten verlangen eine Bestätigung. Kein erfundener Prozentwert und keine Laufzeitgarantie. |
+| Neues Protokoll prüfen | Alle 26 Ereignisse und Metadaten des RC1-Exports geprüft. Kein Fehler im aufgezeichneten Suchlauf; keine Behauptung über darin nicht enthaltene Downloads oder Installationen. |
+| Logo korrigieren | Freigestelltes Motiv ohne bereits eingebaute Kachel; passende adaptive Größe und einheitliche Legacy-Referenzen. Native Vorschau für mehrere Masken beigefügt. |
+
+Zusätzlich verbessert: Die App-Katalogsuche nutzt denselben Vorbereitungsdialog wie Updates. Private Cachealterung löscht keine bewusst aufbewahrten öffentlichen APKs. Lokale APK-Berichte erhalten verständliche Statuswörter und dieselbe Risikoeinordnung. Die erste RC2-Einrichtung ist auch für bestehende RC1-Installationen einmalig sichtbar; App-Kennung und Signatur bleiben unverändert.

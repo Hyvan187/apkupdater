@@ -1,8 +1,8 @@
-# UniAPK 0.7.0-rc1: Installation und Geräteabnahme
+# UniAPK 0.7.0-rc2: Installation und Geräteabnahme
 
 Für OnePlus 15 und Galaxy S23 ist **arm64-v8a.apk** vorgesehen. Universal ist eine Alternative. Pro Gerät nur eine Variante installieren.
 
-Die neutrale Paketkennung `org.uniapk.upgrader` bedeutet eine separate Installation neben der bisherigen App. Android überträgt deren private Einstellungen, Verlauf oder Zugangsdaten nicht. Diese Trennung ist beabsichtigt; private Vorgaben werden nicht in den neuen Produktstand eingebaut.
+Die neutrale Paketkennung `org.uniapk.upgrader` bedeutet eine separate Installation neben der bisherigen App. Android überträgt deren private Einstellungen, Verlauf oder Zugangsdaten nicht. Gegenüber UniAPK RC1 bleibt die Paketkennung jedoch gleich; RC2 wird als gewöhnliche Aktualisierung installiert. Diese Trennung ist beabsichtigt; private Vorgaben werden nicht in den neuen Produktstand eingebaut.
 
 ## Nachgewiesener Umfang
 

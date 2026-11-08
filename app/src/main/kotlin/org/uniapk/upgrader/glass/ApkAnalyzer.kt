@@ -11,10 +11,15 @@ import java.util.zip.ZipFile
 
 class ApkAnalyzer(private val context: Context, private val detection: DeviceDetection,
     private val archiveMetadata: ((File, Int) -> PackageInfo?)? = null) {
-    data class Report(val candidate: Candidate, val verdict: Verdict, val sha256: String, val signers: Set<String>, val targetSdk: Int, val owner: String?) {
-        fun text() = "${candidate.packageName}\nVersionscode: ${candidate.versionCode}\nZiel-SDK: $targetSdk\nStatus: ${verdict.status}\n" +
-            verdict.evidence.joinToString("\n") { "${it.property}: ${it.status} · ${it.detail}" } +
-            "\nUpdate-Owner: ${owner ?: "keiner oder nicht auslesbar"}\nSHA-256: $sha256\nZertifikate:\n${signers.joinToString("\n")}\nAndroid entscheidet abschließend. Keine Funktionsgarantie."
+    data class Report(val candidate: Candidate, val verdict: Verdict, val sha256: String, val signers: Set<String>, val targetSdk: Int, val owner: String?,val system:Boolean=false) {
+        fun text():String {
+            fun status(s:Compatibility)=when(s){Compatibility.COMPATIBLE->"Passt";Compatibility.UNKNOWN->"Noch offen";Compatibility.INCOMPATIBLE->"Passt nicht"}
+            val risk=UpdateRisk.assessFacts(candidate.packageName,system,candidate.versionName,false,verdict,verdict.installAllowed)
+            return "${candidate.packageName}\nVersion: ${candidate.versionName} · Code ${candidate.versionCode}\nZiel-SDK: $targetSdk\nPrüfergebnis: ${status(verdict.status)}\n"+
+                "\nUpdate-Risiko: ${risk.level.label} · ${risk.category}\n${risk.summary}\n\n"+
+                verdict.evidence.joinToString("\n"){"${it.property}: ${status(it.status)} · ${it.detail}"}+
+                "\nUpdate-Verwaltung: ${owner ?: "nicht angegeben"}\nSHA-256: $sha256\nZertifikate:\n${signers.joinToString("\n")}\nAndroid entscheidet über die Installation. Keine Funktionsgarantie."
+        }
     }
     fun analyze(file: File, expectedPackage: String? = null): Report = analyzePart(file, expectedPackage, false)
     internal fun analyzePart(file: File, expectedPackage: String?, setValidated: Boolean): Report = try { analyzeInternal(file,expectedPackage,setValidated) }
@@ -68,7 +73,7 @@ class ApkAnalyzer(private val context: Context, private val detection: DeviceDet
             val digest = MessageDigest.getInstance("SHA-256"); val buf = ByteArray(65536)
             while (true) { val n = stream.read(buf); if (n < 0) break; digest.update(buf, 0, n) }
             digest.digest().joinToString("") { "%02x".format(it) }
-        }, certs, apk.applicationInfo?.targetSdkVersion ?: 0, owner)
+        }, certs, apk.applicationInfo?.targetSdkVersion ?: 0,owner,base.system)
     }
     @Suppress("DEPRECATION")
     private fun signers(info: PackageInfo): Set<String> = (if (Build.VERSION.SDK_INT >= 28) info.signingInfo?.apkContentsSigners else info.signatures)?.map { hash(it.toByteArray()) }?.toSet().orEmpty()

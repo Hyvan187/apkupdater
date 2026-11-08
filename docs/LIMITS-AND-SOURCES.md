@@ -10,3 +10,11 @@ Stand der Recherche: 7. November 2026. Die Größenwerte sind eigene konservativ
 - Android-Prozessbeendigungen: https://developer.android.com/reference/android/app/ApplicationExitInfo . Normale App-Updates/Nutzerbeendigungen belegen keinen Crash.
 
 Externe Store-Berechtigungen, reale OEM-Installerablehnungen und physische Leistungsverhältnisse können durch Code-/Hosttests nicht abschließend bestätigt werden.
+
+
+Für RC2 geprüft: Androids Storage Access Framework mit persistierbarer Ordnerfreigabe, Benachrichtigungsfreigabe ab API 33 und installationsbezogene Freigabe ab API 26. Die App benötigt dafür keine Berechtigung für sämtliche Dateien. Hersteller können zusätzliche Dialoge/Richtlinien einführen.
+- https://developer.android.com/training/data-storage/shared/documents-files
+- https://developer.android.com/develop/ui/compose/notifications/notification-permission
+- https://developer.android.com/reference/android/content/pm/PackageManager#canRequestPackageInstalls()
+
+Die Risikoeinordnung ist eine eigene konservative Regel anhand tatsächlicher Systemkennzeichnung, bekannter zentraler Paketnamen, Herstellernamensräumen, Vorabzweig und vorhandener technischer Nachweise. Sie ist weder ein statistischer Crash-Score noch ein Herstellerzertifikat.

@@ -16,5 +16,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "apkupdater"
+rootProject.name = "UniAPK"
 include(":app")

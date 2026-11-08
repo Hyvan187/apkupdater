@@ -211,4 +211,34 @@ class RC2RegressionTest {
         assertEquals(MotionMode.SNOW,MotionPolicy.mode(MotionMode.RANDOM.ordinal,true,12,23))
         assertTrue(MotionPolicy.count(MotionMode.NET,1f)>MotionPolicy.count(MotionMode.NET,0f))
     }
+    private fun attachPrepared(vm:UpdatesViewModel,u:AppUpdate,file:File,digest:String,published:Boolean=true){
+        val report=ApkAnalyzer.Report(Candidate(u.packageName,u.versionCode,versionName=u.version),u.verdict,digest,emptySet(),37,null)
+        val type=Class.forName("org.uniapk.upgrader.viewmodel.UpdatesViewModel"+"$"+"Checked")
+        val ctor=type.declaredConstructors.first{it.parameterCount==4}.apply{isAccessible=true}
+        val field=vm.javaClass.getDeclaredField("verified").apply{isAccessible=true}
+        @Suppress("UNCHECKED_CAST") val cache=field.get(vm) as MutableMap<String,Any>
+        cache["${u.artifactKey}:${u.oldVersionCode}"]=ctor.newInstance(file,report,1L,published)
+    }
+    @Test fun deletingReadyCopiesMovesAllVariantsBackToFindings()=runBlocking{
+        val provider=ArchiveTestProvider().also{it.attachInfo(context,android.content.pm.ProviderInfo().apply{authority="media"});org.robolectric.shadows.ShadowContentResolver.registerProviderInternal("media",it)}
+        val file=File(context.cacheDir,"ready-delete.apk").apply{writeText("synthetic bytes")};DownloadArchive(context,prefs).publish(file,"org.example.update","2");val digest=prefs.downloadArchive.get().keys.single();prefs.autoDownloadReceipts.put(mapOf("receipt" to digest))
+        val ready=app().copy(fileReady=true,sha256=digest,verifiedAt=1,verdict=Verdict(Compatibility.COMPATIBLE,emptyList()));val other=ready.copy(source=AptoideSource,artifactKey="other-ready-source")
+        val vm=model(UpdatesQuery{flowOf(listOf(ready,other))});vm.refresh().join();attachPrepared(vm,ready,file,digest);attachPrepared(vm,other,file,digest);vm.discardPrepared(ready).join()
+        assertFalse(file.exists());assertTrue(provider.files.isEmpty());assertTrue(prefs.autoDownloadReceipts.get().isEmpty());assertEquals(2,vm.state().value.updates().size);assertTrue(vm.state().value.updates().all{it.verdict.status==Compatibility.UNKNOWN&&!it.fileReady&&it.sha256==null});assertEquals(Compatibility.UNKNOWN,vm.state().value.updates().appGroups().single().status);assertTrue(releaseKey(ready) in prefs.discardedDownloads.get());assertTrue(vm.deletingPackages.value.isEmpty());assertEquals(0,requests.get())
+    }
+    @Test fun externallyRemovedPublicApkInvalidatesPrivateReadyCopyWithoutNetwork()=runBlocking{
+        val provider=ArchiveTestProvider().also{it.attachInfo(context,android.content.pm.ProviderInfo().apply{authority="media"});org.robolectric.shadows.ShadowContentResolver.registerProviderInternal("media",it)}
+        val file=File(context.cacheDir,"ready-external.apk").apply{writeText("synthetic bytes")};val uri=DownloadArchive(context,prefs).publish(file,"org.example.update","2");val digest=prefs.downloadArchive.get().keys.single();val ready=app().copy(fileReady=true,sha256=digest,verifiedAt=1,verdict=Verdict(Compatibility.COMPATIBLE,emptyList()))
+        val vm=model(UpdatesQuery{flowOf(listOf(ready))});vm.refresh().join();attachPrepared(vm,ready,file,digest);provider.delete(uri,null,null);vm.reconcilePreparedFiles();assertFalse(file.exists());assertFalse(vm.state().value.updates().single().fileReady);assertEquals(Compatibility.UNKNOWN,vm.state().value.updates().single().verdict.status);assertEquals(0,requests.get());assertEquals(0,resolutions.get())
+    }
+    @Test fun expiredPrivateCachePreservesKeptPublicCopy()=runBlocking{
+        val provider=ArchiveTestProvider().also{it.attachInfo(context,android.content.pm.ProviderInfo().apply{authority="media"});org.robolectric.shadows.ShadowContentResolver.registerProviderInternal("media",it)};prefs.keepDownloadedApks.put(true)
+        val file=File(context.cacheDir,"ready-expired.apk").apply{writeText("synthetic bytes")};val uri=DownloadArchive(context,prefs).publish(file,"org.example.update","2");val digest=prefs.downloadArchive.get().keys.single();val ready=app().copy(fileReady=true,sha256=digest,verifiedAt=1,verdict=Verdict(Compatibility.COMPATIBLE,emptyList()))
+        val vm=model(UpdatesQuery{flowOf(listOf(ready))});vm.refresh().join();attachPrepared(vm,ready,file,digest);file.delete();vm.reconcilePreparedFiles();assertTrue(provider.files.getValue(uri).exists());assertTrue(prefs.downloadArchive.get().containsKey(digest));assertFalse(vm.state().value.updates().single().fileReady);assertEquals(0,requests.get())
+    }
+    @Test fun criticalInstallAsksForRiskAcknowledgementBeforeInstallerOrNetwork()=runBlocking{
+        val ready=app().copy(packageName="com.google.android.gms",system=true,fileReady=true,sha256="fixture",verifiedAt=1,verdict=Verdict(Compatibility.COMPATIBLE,emptyList()));val vm=model(UpdatesQuery{flowOf(listOf(ready))});vm.refresh().join();vm.install(ready,object:UriHandler{override fun openUri(uri:String){error("No browser")}})
+        withTimeout(5_000){while(vm.riskConfirmation.value==null)delay(10)};assertEquals(ready,vm.riskConfirmation.value);assertEquals(0,requests.get());assertEquals(0,resolutions.get());vm.dismissRisk();assertNull(vm.riskConfirmation.value)
+    }
+
 }

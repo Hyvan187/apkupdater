@@ -1,3 +1,14 @@
+# 0.7.0-rc2
+
+- Add first-run/reopenable permission checklist and live, named APK-folder status.
+- Consolidate effects and CPU budget under Design and performance.
+- Add Matrix, customizable animation palettes, density control across every effect and distinct effect geometry.
+- Add four accessible progress designs and missing operation indicators; share preparation with catalog search.
+- Delete prepared APKs safely and reconcile externally removed files without re-downloading or losing intentionally kept copies.
+- Add conservative update-risk classification and critical-component acknowledgement; retain technical installation blocks.
+- Shorten action labels, improve status icons and local APK reports.
+- Replace the double-framed launcher artwork with a transparent foreground and native mask previews.
+
 # 0.7.0-rc1
 
 - Rename to Universal APK Upgrader / UniAPK with neutral package and source namespace.

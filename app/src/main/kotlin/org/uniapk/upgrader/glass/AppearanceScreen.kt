@@ -90,12 +90,12 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
  val title=when(target){"accent"->"Akzentfarbe";"motion"->"Animationsfarbe";"motionSecondary"->"Zweite Animationsfarbe";else->"Hintergrundfarbe"}
  val initial=when(target){"accent"->a.accent;"motion"->a.motionColor;"motionSecondary"->a.motionSecondary;else->a.background}
  val alpha=when(target){"accent"->a.accentAlpha;"background"->a.backgroundAlpha;else->1f}
- ColorPickerDialog(title,initial,alpha,{picking=null}){color,opacity->store.update{when(target){"accent"->it.copy(accent=color,accentAlpha=opacity,customAccent=true,dynamic=false);"motion"->it.copy(motionColor=color);"motionSecondary"->it.copy(motionSecondary=color);else->it.copy(background=color,backgroundAlpha=opacity,customBackground=true)}};picking=null}}
+ ColorPickerDialog(title,initial,alpha,{picking=null},showAlpha=target in listOf("accent","background")){color,opacity->store.update{when(target){"accent"->it.copy(accent=color,accentAlpha=opacity,customAccent=true,dynamic=false);"motion"->it.copy(motionColor=color);"motionSecondary"->it.copy(motionSecondary=color);else->it.copy(background=color,backgroundAlpha=opacity,customBackground=true)}};picking=null}}
 
 }
 @Composable fun AppearanceToggle(title:String,description:String,checked:Boolean,onChange:(Boolean)->Unit){Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.bodyMedium);SecondaryText(description)};Switch(checked,onChange);if(HelpTopics.technical(title))HelpButton(title,description)}}
 @Composable private fun ColorSetting(label:String,color:Color,onClick:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(30.dp).background(color,CircleShape));Spacer(Modifier.width(12.dp));Text(label,Modifier.weight(1f))}}
-@Composable fun ColorPickerDialog(title:String,initial:Long,initialAlpha:Float=1f,onDismiss:()->Unit,onSave:(Long,Float)->Unit){
+@Composable fun ColorPickerDialog(title:String,initial:Long,initialAlpha:Float=1f,onDismiss:()->Unit,showAlpha:Boolean=true,onSave:(Long,Float)->Unit){
  val hsv=remember{FloatArray(3).also{AndroidColor.colorToHSV(initial.toInt(),it)}}
  var hue by remember{mutableFloatStateOf(hsv[0])};var saturation by remember{mutableFloatStateOf(hsv[1])};var brightness by remember{mutableFloatStateOf(hsv[2])};var alpha by remember{mutableFloatStateOf(initialAlpha)};var hex by remember{mutableStateOf(ColorInput.hex(initial))}
  fun updateHex(){hex=ColorInput.hex(AndroidColor.HSVToColor(floatArrayOf(hue,saturation,brightness)).toLong())}
@@ -110,7 +110,7 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
   }
   OutlinedTextField(hex,{v->hex=v.removePrefix("#").take(6).uppercase();ColorInput.parse(hex)?.let{AndroidColor.colorToHSV(it.toInt(),hsv);hue=hsv[0];saturation=hsv[1];brightness=hsv[2]}},label={Text("HEX-Farbe")},prefix={Text("#")},singleLine=true,isError=parsed==null)
   ValueSlider("Helligkeit",brightness,1f,{brightness=it;updateHex()},.05f..1f,body="Helligkeit der ausgewählten Farbe.")
-  ValueSlider("Deckkraft: ${(alpha*100).toInt()} %",alpha,1f,{alpha=it},0f..1f,body="100 % ist deckend. Niedrigere Werte mischen mit dem Hintergrund.")
+  if(showAlpha)ValueSlider("Deckkraft: ${(alpha*100).toInt()} %",alpha,1f,{alpha=it},0f..1f,body="100 % ist deckend. Niedrigere Werte mischen mit dem Hintergrund.")
   Box(Modifier.fillMaxWidth().height(28.dp).background(Color((parsed?:initial).toInt()).copy(alpha=alpha),CircleShape))
  }},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={parsed?.let{onSave(it,alpha)}},enabled=parsed!=null){Text("Übernehmen")}},dismissButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick=onDismiss){Text("Abbrechen")}})
 }

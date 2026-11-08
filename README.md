@@ -1,6 +1,20 @@
-# Universal APK Upgrader (UniAPK) 0.7.0-rc1
+# Universal APK Upgrader (UniAPK) 0.7.0-rc2
 
-Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version code 1009, min/compile/target API 23/37/37. This new neutral package installs alongside the earlier application; it cannot read another package's private settings or history.
+Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version code 1010, min/compile/target API 23/37/37. This new neutral package installs alongside the earlier application; it cannot read another package's private settings or history.
+
+## RC2 usability changes
+
+A permission checklist opens once on first setup or the first RC2 launch and remains available in settings. Unknown-app installation access, optional notifications and an explicit APK directory are checked on return from Android. No all-files, location, contacts, camera or microphone access is requested. A selected folder shows its name/path and current provider write support, rather than merely a generic selection label.
+
+Design and performance now contains CPU concurrency, glass, background animation and all four progress styles. Matrix is appended without changing existing saved effect indices. Every effect responds to density, including colored ribbons/fog; zero density stops its animation clock. Original, single-color and two-color palettes are supported. Circle/ring, starfield/particles, aurora/waves and confetti have distinct geometry and movement.
+
+Prepared APKs can be deleted with confirmation. Only app-recorded public copies and private prepared bytes are removed; the installed app stays untouched. Findings lose their file approval and return to Found. Deleted versions are excluded from automatic re-download until explicitly prepared again. Active-screen metadata checks and resume reconciliation detect outside deletions. Revoked read access is not mistaken for a missing file; private-cache expiry does not delete an intentionally retained public copy.
+
+Risk labels distinguish user, system and Google-system apps; critical system services and vendor components receive stronger warnings and explicit acknowledgement before installation. This is conservative category/dependency guidance, not a crash probability, malware score or permission to bypass a failed technical check. The same guidance appears in local APK reports. Search results use the shared preparation process and progress dialog.
+
+The launcher foreground is the freestanding robot/arrows mark with actual transparency. The baked rounded tile was removed; Android supplies the mask. Adaptive and legacy resources share the new artwork. Native rendering checks cover round, rounded and square masks.
+
+RC2 retains the UniAPK application ID and release signer, so it updates RC1 normally. Earlier Liquid-APK-Store packages still have a different app identity.
 
 ## Update workflow
 

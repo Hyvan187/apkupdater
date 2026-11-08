@@ -25,3 +25,10 @@ Die bisherigen Vollprotokolle enthielten technische Angaben wie Gerätemodell, H
 Die neue App protokolliert keine Anfrage-/Antwortinhalte, Nachrichten, Passwörter oder absichtlich eindeutige Hardwarekennungen. Bekannte Zugangsdaten-/Pfad-/Kennungsmuster werden bereinigt. Eine vollständige Anonymitätsgarantie für beliebige technische Fehlermeldungen ist dennoch nicht seriös; die erweiterte Diagnose enthält deshalb einen deutlich sichtbaren Hinweis und Bestätigungsdialog. Auch bereinigte ZIPs sollten vor Weitergabe kontrolliert werden.
 
 Die Archive entsprechen einem geeigneten ZIP/JSONL-Diagnoseformat; eine universelle externe Zertifizierung für dieses app-eigene Format wird nicht behauptet. Wichtig sind belastbare Ergebnisse, Ursachen, Ablaufzuordnung, begrenzte Aufbewahrung und Datenminimierung. Die neuen Merkmale werden durch tatsächliche Export-, Redaktions-, Rotations- und Prozesspfadtests abgedeckt. Reale Android-Ordnerauswahl, Hersteller-Installer und Live-Play-Zustellung bleiben Geräteabnahme.
+
+
+## Neuer RC1-Export vom 7. November, 23:46 Uhr
+
+Der zusätzlich bereitgestellte detaillierte Export wurde lokal vollständig gelesen. Er passt über Version 0.7.0-rc1 / 1009 und App-Fingerabdruck zum gelieferten Build. ZIP und drei enthaltene Dateien waren lesbar; 26 Ereignisse, ausschließlich INFO, keine verworfenen Warteschlangeneinträge. Der Suchlauf meldet acht abgeschlossene Quellen und keine Quellen- oder Prüffehler. APKMirror bleibt dabei ausdrücklich Webmodus; dies ist kein Nachweis eines funktionierenden API-Zugangs.
+
+In diesem Ausschnitt sind weder APK-Downloads noch Installationsversuche enthalten. Die gemeldeten Bedienungsprobleme lassen sich daraus daher nicht als Ausnahme rekonstruieren. Ihre Ursachen wurden anhand der Produktoberfläche und Quelle bearbeitet: fehlende konkrete Ordneranzeige, feste Farbbandanzahlen trotz Dichte, ausgelagerte Leistungseinstellung sowie fehlende Löschaktion für vorbereitete Dateien. Die Originaldaten und das persönliche Bildschirmfoto werden nicht in das Release oder den öffentlichen Quellcode kopiert.

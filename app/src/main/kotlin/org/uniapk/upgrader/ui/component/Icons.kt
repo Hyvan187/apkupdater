@@ -101,10 +101,7 @@ fun BoxScope.InstallProgressIcon(
     onClick: () -> Unit
 ) {
     if(isInstalling) {
-        CircularProgressIndicator(
-            Modifier.align(Alignment.TopEnd).size(30.dp).padding(4.dp),
-            color = MaterialTheme.colorScheme.primary
-        )
+        org.uniapk.upgrader.glass.UniProgress(modifier=Modifier.align(Alignment.TopEnd).size(30.dp).padding(4.dp),label="Installation läuft")
     }
     else {
         InstallIcon(
