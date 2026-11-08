@@ -11,6 +11,7 @@ data class Appearance(
     val quality: Int = 2, val reduceMotion: Boolean = false,
     val blur: Boolean = true, val refraction: Boolean = true, val progressiveBlur: Boolean = false,
     val oled: Boolean=false,val motion: Int=0,val speed: Float=.5f,val density: Float=.35f,val parallax: Boolean=false,val seasonal: Boolean=false,val accentAlpha: Float=1f,val backgroundAlpha: Float=1f,
+    val motionPalette:Int=0,val motionColor:Long=0xff39e898,val motionSecondary:Long=0xffa27bff,val progressStyle:Int=0,
     val opacity: Float = .46f, val font: Int = 0, val textScale: Float = 1f
 )
 object ColorInput {
@@ -19,6 +20,7 @@ object ColorInput {
 }
 class AppearanceStore(private val prefs: Prefs) {
     private val mutable = MutableStateFlow(Appearance(
+        motionPalette=prefs.motionPalette.get().coerceIn(0,2),motionColor=prefs.motionColor.get(),motionSecondary=prefs.motionSecondary.get(),progressStyle=prefs.progressStyle.get(),
         oled=prefs.oledMode.get(),motion=prefs.backgroundMotion.get(),speed=prefs.motionSpeed.get()/100f,density=prefs.motionDensity.get()/100f,parallax=prefs.parallax.get(),seasonal=prefs.seasonal.get(),accentAlpha=prefs.accentOpacity.get()/100f,backgroundAlpha=prefs.backgroundOpacity.get()/100f,
         theme = prefs.theme.get(), dynamic = prefs.dynamicColors.get(), accent = prefs.accentColor.get(), background = prefs.backgroundColor.get(),
         customAccent = prefs.customAccent.get(), customBackground = prefs.customBackground.get(), quality = prefs.effectLevel.get().coerceIn(0,3),
@@ -33,6 +35,10 @@ class AppearanceStore(private val prefs: Prefs) {
         val old = persisted
         val v = change(mutable.value).let { it.copy(opacity = it.opacity.coerceIn(0f, 1f)) }
         // A slider changes one encrypted preference, not every appearance key.
+        if(old.motionPalette!=v.motionPalette)prefs.motionPalette.put(v.motionPalette)
+        if(old.motionColor!=v.motionColor)prefs.motionColor.put(v.motionColor)
+        if(old.motionSecondary!=v.motionSecondary)prefs.motionSecondary.put(v.motionSecondary)
+        if(old.progressStyle!=v.progressStyle)prefs.progressStyle.put(v.progressStyle)
         if (old.oled != v.oled) prefs.oledMode.put(v.oled)
         if (old.motion != v.motion) prefs.backgroundMotion.put(v.motion)
         if (old.speed != v.speed) prefs.motionSpeed.put((v.speed * 100).toInt())

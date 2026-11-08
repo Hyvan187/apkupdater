@@ -15,13 +15,14 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowContentResolver
 import java.io.File
 class ArchiveTestProvider : ContentProvider() {
+ var denied=false
  val files=mutableMapOf<Uri,File>();var lastValues: ContentValues?=null;var published=false
  override fun onCreate()=true
  override fun insert(uri: Uri,values: ContentValues?): Uri { lastValues=values;val result=Uri.parse("content://media/external/downloads/${files.size+1}");files[result]=File.createTempFile("archive-",".apk",requireNotNull(context).cacheDir);return result }
- override fun openFile(uri: Uri,mode: String)=ParcelFileDescriptor.open(requireNotNull(files[uri]),ParcelFileDescriptor.parseMode(mode))
+ override fun openFile(uri: Uri,mode: String)=ParcelFileDescriptor.open(files[uri] ?: throw java.io.FileNotFoundException("Fixture missing"),ParcelFileDescriptor.parseMode(mode))
  override fun update(uri: Uri,values: ContentValues?,selection: String?,args: Array<out String>?): Int {published=true;return 1}
- override fun delete(uri: Uri,selection: String?,args: Array<out String>?): Int=if(files.remove(uri)?.delete()==true)1 else 0
- override fun query(uri: Uri,projection: Array<out String>?,selection: String?,args: Array<out String>?,sort: String?): Cursor?=null
+ override fun delete(uri: Uri,selection: String?,args: Array<out String>?): Int {if(denied)throw SecurityException("Fixture revoked");return if(files.remove(uri)?.delete()==true)1 else 0}
+ override fun query(uri: Uri,projection: Array<out String>?,selection: String?,args: Array<out String>?,sort: String?): Cursor {if(denied)throw SecurityException("Fixture revoked");val columns=projection ?: arrayOf(android.provider.OpenableColumns.DISPLAY_NAME);return android.database.MatrixCursor(columns).apply{files[uri]?.takeIf{it.exists()}?.let{f->addRow(columns.map<String,Any?>{if(it==android.provider.OpenableColumns.DISPLAY_NAME)f.name else f.length()}.toTypedArray())}}}
  override fun getType(uri: Uri)="application/vnd.android.package-archive"
 }
 @RunWith(RobolectricTestRunner::class)

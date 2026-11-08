@@ -1,1 +1,1 @@
-<inset xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/liquid_launcher" android:insetLeft="26dp" android:insetTop="26dp" android:insetRight="26dp" android:insetBottom="26dp" />
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/uniapk_mark" android:insetLeft="18dp" android:insetTop="18dp" android:insetRight="18dp" android:insetBottom="18dp" />

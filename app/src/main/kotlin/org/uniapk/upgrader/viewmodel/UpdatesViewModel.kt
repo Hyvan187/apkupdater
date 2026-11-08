@@ -36,6 +36,14 @@ class UpdatesViewModel(
     private val state = MutableStateFlow<UpdatesUiState>(UpdatesUiState.Loading)
     private val processState=MutableStateFlow<PackageProcess?>(null)
     val process:StateFlow<PackageProcess?> = processState
+    private val deletingState=MutableStateFlow<Set<String>>(emptySet())
+    val deletingPackages:StateFlow<Set<String>> = deletingState
+    private val riskState=MutableStateFlow<AppUpdate?>(null)
+    val riskConfirmation:StateFlow<AppUpdate?> = riskState
+    private val riskConsent=java.util.Collections.newSetFromMap(ConcurrentHashMap<String,Boolean>())
+    private fun consentKey(u:AppUpdate)="${u.artifactKey}:${u.sha256}:${u.oldVersionCode}"
+    fun dismissRisk(){riskState.value=null}
+    fun confirmRisk(){val u=riskState.value ?: return;riskState.value=null;riskConsent.add(consentKey(u));downloadAndInstall(u)}
     fun hideProcess(){processState.value=null}
     private val categoryState=MutableStateFlow(-1)
     val selectedCategory:StateFlow<Int> = categoryState
@@ -44,7 +52,7 @@ class UpdatesViewModel(
     private var batchJob: Job? = null
     private val operationMutex = UpdateOperations.mutex
     fun cancelVerification(){batchJob?.cancel();processState.update{it?.copy(phase=PackagePhase.CANCELLED,message="Abbruch angefordert; temporäre Dateien werden entfernt.")}}
-    private data class Checked(val file: File, val report: ApkAnalyzer.Report,val checkedAt:Long=System.currentTimeMillis())
+    private data class Checked(val file: File, val report: ApkAnalyzer.Report,val checkedAt:Long=System.currentTimeMillis(),val published:Boolean=false)
     private val verified = ConcurrentHashMap<String, Checked>()
     private val installedFacts=ConcurrentHashMap<String,ActualInstalledVersion>()
     private val removedPackages:MutableSet<String> = java.util.Collections.newSetFromMap(ConcurrentHashMap<String,Boolean>())
@@ -102,7 +110,7 @@ class UpdatesViewModel(
                 if(state.value.updates().isEmpty()&&SourceHealth.flow.value.any{!it.webOnly}&&SourceHealth.flow.value.none{it.problem!=null}){if(prefs.quietSince.get()==0L)prefs.quietSince.put(System.currentTimeMillis())}else prefs.quietSince.put(0)
                 AutomaticDownloads.run(context,prefs,state.value.updates(),downloader,installer){u,file,report->
                     while(verified.isNotEmpty()&&verified.values.sumOf{it.file.length()}+file.length()>ResourcePolicy.READY_BYTES){val oldest=verified.entries.minByOrNull{it.value.checkedAt} ?: break;verified.remove(oldest.key)?.file?.delete()}
-                    verified.put(identity(u),Checked(file,report))?.file?.delete()
+                    verified.put(identity(u),Checked(file,report,published=prefs.downloadArchive.get().containsKey(report.sha256)))?.file?.delete()
                     setSuccess(state.value.updates().map{if(it.artifactKey==u.artifactKey)it.withInspection(report,System.currentTimeMillis()) else it});true
                 }
                 ScanProgress.finish(progressId)
@@ -115,7 +123,16 @@ class UpdatesViewModel(
             }
         }.also { scanJob = it }
     }
+    fun prepareFromSearch(update:AppUpdate) {
+        viewModelScope.launch(Dispatchers.IO){
+            val info=runCatching{context.packageManager.getPackageInfo(update.packageName,0)}.getOrNull()
+            val candidate=update.copy(oldVersion=info?.versionName.orEmpty(),oldVersionCode=info?.let{if(android.os.Build.VERSION.SDK_INT>=28)it.longVersionCode else @Suppress("DEPRECATION")it.versionCode.toLong()} ?: -1L,system=info?.applicationInfo?.let{CategoryPolicy.system(it.flags)} ?: false)
+            operationMutex.withLock{removedPackages.remove(candidate.packageName);setSuccess(state.value.updates().filter{it.artifactKey!=candidate.artifactKey}+candidate)}
+            verify(candidate)
+        }
+    }
     fun verify(update: AppUpdate): Job {
+        prefs.discardedDownloads.put(prefs.discardedDownloads.get()-releaseKey(update))
         processState.value=PackageProcess(update)
         return startVerification {
         val progressId = ScanProgress.begin("explicit_single_check")
@@ -185,7 +202,7 @@ class UpdatesViewModel(
                 }
             }
             val retain=trigger!=org.uniapk.upgrader.util.DownloadTrigger.BATCH_CHECK
-            if(retain){verified.put(identity(update), Checked(file, report))?.file?.delete();file = null}
+            if(retain){verified.put(identity(update), Checked(file,report,published=prefs.downloadArchive.get().containsKey(report.sha256)))?.file?.delete();file = null}
             val verdict=if(!retain&&report.verdict.installAllowed)Verdict(Compatibility.UNKNOWN,report.verdict.evidence+Evidence("Prüfdatei","Temporäre Sammelprüfung abgeschlossen; Prüfdatei gelöscht. Zum Installieren ausdrücklich erneut laden.",Compatibility.UNKNOWN)) else report.verdict
             setSuccess(state.value.updates().map { if(it.id == update.id) it.copy(verdict = verdict, fileReady=retain, sha256 = report.sha256, updateOwner=report.owner, version = report.candidate.versionName, versionCode = report.candidate.versionCode ?: it.versionCode, minSdk = report.candidate.minSdk, targetSdk = report.targetSdk, abis = report.candidate.abis, verifiedAt = System.currentTimeMillis(), verificationError = null, isInstalling = false) else it })
             if(trigger==org.uniapk.upgrader.util.DownloadTrigger.SINGLE_CHECK){val updated=state.value.updates().firstOrNull{it.artifactKey==update.artifactKey} ?: update.copy(verdict=report.verdict,fileReady=retain);processState.update{it?.copy(update=updated,phase=if(report.verdict.installAllowed)PackagePhase.READY else PackagePhase.FAILED,evidence=report.verdict.evidence,message=report.verdict.summary)}}
@@ -199,8 +216,45 @@ class UpdatesViewModel(
             return false
         } finally { file?.delete(); verifying.remove(update.id); mark(update.id, false); lease?.close() }
     }
+    fun discardPrepared(update:AppUpdate)=viewModelScope.launch(Dispatchers.IO) {
+        deletingState.update{it+update.packageName}
+        try {operationMutex.withLock {
+            val targets=state.value.updates().filter{it.packageName==update.packageName&&it.fileReady}
+            val archive=DownloadArchive(context,prefs);val removed=mutableSetOf<String>();var failures=0
+            for(target in targets){
+                val checked=verified[identity(target)];val digest=target.sha256 ?: checked?.report?.sha256
+                if(digest!=null&&!archive.removeDigest(digest)){failures++;continue}
+                if(checked!=null&&checked.file.exists()&&!checked.file.delete()){failures++;continue}
+                verified.remove(identity(target));removed+=target.artifactKey
+            }
+            if(removed.isNotEmpty()){
+                prefs.discardedDownloads.put((prefs.discardedDownloads.get()+targets.filter{it.artifactKey in removed}.map(::releaseKey)).distinct().takeLast(200))
+                setSuccess(state.value.updates().map{if(it.artifactKey in removed)PreparedUpdatePolicy.reset(it,"Vorbereitete APK gelöscht. Zum Installieren erneut herunterladen.") else it})
+                processState.update{p->if(p!=null&&p.update.artifactKey in removed)null else p}
+                riskState.update{u->if(u!=null&&u.artifactKey in removed)null else u}
+            }
+            val message=if(failures==0&&removed.isEmpty())"Keine vorbereiteten Dateien mehr vorhanden." else if(failures==0)"Vorbereitete APKs gelöscht. Die Version steht wieder unter Funde." else "Nicht alle Kopien konnten gelöscht werden. Bitte die Ordnerfreigabe prüfen."
+            snackBar.snackBar(viewModelScope,TextSnack(message));org.uniapk.upgrader.diagnostics.AppDiagnostics.info("prepared.discarded",mapOf("removed" to removed.size,"failed" to failures))
+        }}catch(e:CancellationException){throw e}catch(e:Exception){org.uniapk.upgrader.diagnostics.AppDiagnostics.error("prepared.discard_failed",error=e);snackBar.snackBar(viewModelScope,TextSnack("Löschen nicht abgeschlossen. Bitte Ordnerfreigabe und Speicher prüfen."))}finally{deletingState.update{it-update.packageName}}
+    }
+    suspend fun reconcilePreparedFiles()=withContext(Dispatchers.IO) {
+        if(!operationMutex.tryLock())return@withContext
+        try {
+            val archive=DownloadArchive(context,prefs);val invalid=mutableSetOf<String>()
+            for((key,checked) in verified.entries.toList()){
+                val publicMissing=checked.published&&archive.presence(checked.report.sha256)==ArchivePresence.MISSING
+                if(!checked.file.exists()||publicMissing){verified.remove(key);checked.file.delete();invalid+=key;if(publicMissing)archive.removeDigest(checked.report.sha256)}
+            }
+            if(invalid.isNotEmpty()){
+                val affected=state.value.updates().filter{identity(it) in invalid}
+                prefs.discardedDownloads.put((prefs.discardedDownloads.get()+affected.map(::releaseKey)).distinct().takeLast(200))
+                setSuccess(state.value.updates().map{if(identity(it) in invalid)PreparedUpdatePolicy.reset(it,"Prüfdatei oder gespeicherte APK fehlt. Zum Installieren erneut herunterladen.") else it})
+                processState.update{p->if(p!=null&&identity(p.update) in invalid)p.copy(update=PreparedUpdatePolicy.reset(p.update,"Prüfdatei fehlt."),phase=PackagePhase.FAILED,message="Die vorbereitete Datei wurde gelöscht. Bitte erneut herunterladen.") else p}
+            }
+        }finally{operationMutex.unlock()}
+    }
     private fun mark(id: Int, active: Boolean) = state.update { UpdatesUiState.Success(it.mutableUpdates().setIsInstalling(id, active)) }
-    fun installAll() = viewModelScope.launch(Dispatchers.IO) { state.value.updates().filter { it.verdict.installAllowed }.forEach { downloadAndInstall(it).join() } }
+    fun installAll() = viewModelScope.launch(Dispatchers.IO) { state.value.updates().filter { it.verdict.installAllowed&&!UpdateRisk.assess(it).requiresConfirmation }.forEach { downloadAndInstall(it).join() } }
     fun prefer(update: AppUpdate) { prefs.preferredSources.put(prefs.preferredSources.get() + (update.packageName to update.source.name)) }
     fun preferred(packageName: String) = prefs.preferredSources.get()[packageName]
     fun ignoreRelease(update: AppUpdate) {
@@ -217,6 +271,7 @@ class UpdatesViewModel(
     override fun downloadAndInstall(update: AppUpdate) = viewModelScope.launch(Dispatchers.IO) {
         operationMutex.withLock {
         if(!update.verdict.installAllowed) { snackBar.snackBar(viewModelScope, TextSnack("Diese APK hat keine Installationsfreigabe.")); return@launch }
+        if(UpdateRisk.assess(update).requiresConfirmation&&!riskConsent.remove(consentKey(update))){riskState.value=update;return@launch}
         if(processState.value==null)processState.value=PackageProcess(update,PackagePhase.READY,evidence=update.verdict.evidence)
         val checked = verified[identity(update)]
         if(checked == null || !checked.file.exists()) {

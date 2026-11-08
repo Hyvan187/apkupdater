@@ -13,6 +13,7 @@ object DownloadNames {
  fun name(pkg: String,version: String,hash: String)="${pkg.take(100)}-${version.take(40)}-${hash.take(8)}.apk".replace(Regex("[^a-zA-Z0-9._-]"),"_")
  fun deleteAfterSuccess(success: Boolean,keep: Boolean)=success && !keep
 }
+enum class ArchivePresence { UNMANAGED, PRESENT, MISSING, UNAVAILABLE }
 class DownloadArchive(private val context: Context,private val prefs: Prefs) {
  companion object { private val lock=Any() }
  private fun hash(file: File): String {
@@ -45,8 +46,17 @@ class DownloadArchive(private val context: Context,private val prefs: Prefs) {
  }
  fun installedDigest(key: String) = synchronized(lock) {
   if(!DownloadNames.deleteAfterSuccess(true,prefs.keepDownloadedApks.get()))return@synchronized
-  val saved=prefs.downloadArchive.get()[key] ?: return@synchronized;val uri=Uri.parse(saved)
-  val removed=runCatching{if(!DocumentsContract.isDocumentUri(context,uri))context.contentResolver.delete(uri,null,null)>0 else DocumentsContract.deleteDocument(context.contentResolver,uri)}.getOrDefault(false)
-  if(removed)prefs.downloadArchive.put(prefs.downloadArchive.get()-key)
+  removeDigest(key)
+ }
+ fun presence(key:String):ArchivePresence {
+  val raw=prefs.downloadArchive.get()[key] ?: return ArchivePresence.UNMANAGED
+  return try {context.contentResolver.query(Uri.parse(raw),arrayOf(android.provider.OpenableColumns.DISPLAY_NAME),null,null,null)?.use{if(it.moveToFirst())ArchivePresence.PRESENT else ArchivePresence.MISSING} ?: ArchivePresence.UNAVAILABLE}
+  catch(_:java.io.FileNotFoundException){ArchivePresence.MISSING}catch(_:Exception){ArchivePresence.UNAVAILABLE}
+ }
+ fun removeDigest(key:String):Boolean = synchronized(lock) {
+  val raw=prefs.downloadArchive.get()[key] ?: return@synchronized true;val uri=Uri.parse(raw)
+  val removed=runCatching{if(DocumentsContract.isDocumentUri(context,uri))DocumentsContract.deleteDocument(context.contentResolver,uri) else context.contentResolver.delete(uri,null,null)>0}.getOrDefault(false)
+  if(!removed&&presence(key)!=ArchivePresence.MISSING)return@synchronized false
+  prefs.downloadArchive.put(prefs.downloadArchive.get()-key);prefs.autoDownloadReceipts.put(prefs.autoDownloadReceipts.get().filterValues{it!=key});true
  }
 }

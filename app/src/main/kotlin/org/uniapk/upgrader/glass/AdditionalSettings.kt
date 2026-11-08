@@ -43,7 +43,7 @@ import org.koin.compose.koinInject
 @Composable fun ComputeSettings() {
     val prefs=koinInject<Prefs>();val current by ComputeBudget.state.collectAsState();var menu by remember{mutableStateOf(false)}
     GlassPanel {
-        HelpTitle("CPU und Glaseffekte","Begrenzt gleichzeitig ausgeführte rechenintensive UniAPK-Aufgaben. Android verteilt UI-, Netzwerk- und Grafikthreads weiterhin selbst auf die CPU-Kerne. Dies ist keine feste Kernzuweisung oder prozentuale Gesamtauslastungsgrenze. Weniger Aufgaben reduzieren zusätzlich Bildrate und Dichte des Hintergrunds.")
+        HelpTitle("Leistungsbudget","Begrenzt gleichzeitig ausgeführte rechenintensive UniAPK-Aufgaben. Android verteilt UI-, Netzwerk- und Grafikthreads weiterhin selbst auf die CPU-Kerne. Dies ist keine feste Kernzuweisung oder prozentuale Gesamtauslastungsgrenze. Weniger Aufgaben reduzieren zusätzlich Bildrate und Dichte des Hintergrunds.")
         OutlinedButton(onClick={menu=true}){Text("Bis zu $current parallele CPU-Aufgaben")}
         SecondaryText("${Runtime.getRuntime().availableProcessors()} logische Prozessoren verfügbar · Hintergrund bis ${ComputeBudget.fps()} Bilder/s")
     }

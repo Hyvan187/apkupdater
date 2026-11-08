@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalLayoutApi::class)
-@Composable fun GlassSettingsScreen(onBack:()->Unit,onAppearance:()->Unit,onFiltersChanged:()->Unit={},onHistory:()->Unit={},onCacheCleared:()->Unit={}) {
+@Composable fun GlassSettingsScreen(onBack:()->Unit,onAppearance:()->Unit,onFiltersChanged:()->Unit={},onHistory:()->Unit={},onCacheCleared:()->Unit={},onPermissions:()->Unit={}) {
     val prefs=koinInject<Prefs>();val languages=koinInject<AppLanguageStore>();val history=koinInject<HistoryStore>()
     val selection=koinInject<AppSelection>();val selected by selection.scope.collectAsState()
     val filters=koinInject<ReleaseFilterStore>();val health by SourceHealth.flow.collectAsState();val entries by history.state.collectAsState()
@@ -33,7 +33,10 @@ import org.koin.compose.koinInject
     var languageMenu by remember { mutableStateOf(false) };var presetMenu by remember { mutableStateOf(false) };var installerMenu by remember { mutableStateOf(false) }
     var region by remember { mutableStateOf(prefs.manualRegion.get()) };var model by remember { mutableStateOf(prefs.simulatedModel.get()) };var profileMessage by remember { mutableStateOf("") }
     var activateAfterFolder by remember{mutableStateOf(false)};var automatic by remember{mutableStateOf(prefs.autoDownloadUpdates.get())}
-    var folderText by remember { mutableStateOf(if(prefs.downloadTree.get().isBlank())"Download/UniAPK" else "Eigener Ordner ausgewählt") }
+    var folderStatus by remember{mutableStateOf<FolderStatus?>(null)};var folderMessage by remember{mutableStateOf("")};var folderBusy by remember{mutableStateOf(false)}
+    val lifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle;var folderRevision by remember{mutableIntStateOf(0)}
+    DisposableEffect(lifecycle){val observer=androidx.lifecycle.LifecycleEventObserver{_,event->if(event==androidx.lifecycle.Lifecycle.Event.ON_RESUME)folderRevision++};lifecycle.addObserver(observer);onDispose{lifecycle.removeObserver(observer)}}
+    LaunchedEffect(folderRevision){folderStatus=withContext(Dispatchers.IO){FolderAccess.status(context,prefs)}}
     var installer by remember { mutableStateOf(prefs.installerPackage.get()) };var confirmInstaller by remember { mutableStateOf<Pair<String,String>?>(null) }
     var legal by remember { mutableStateOf(false) };var restore by remember { mutableStateOf(false) };var clearHistory by remember { mutableStateOf(false) }
     var testing by remember { mutableStateOf(false) };var diagnostic by remember { mutableStateOf("") };var clearing by remember { mutableStateOf(false) };var cacheMessage by remember { mutableStateOf("") }
@@ -42,18 +45,19 @@ import org.koin.compose.koinInject
     val permission=rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()){}
     val folder=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { selectedUri ->
         if(selectedUri==null&&activateAfterFolder){activateAfterFolder=false;automatic=false;prefs.autoDownloadUpdates.put(false)}
-        if(selectedUri!=null)runCatching { context.contentResolver.takePersistableUriPermission(selectedUri,Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION);prefs.downloadTree.put(selectedUri.toString());folderText="Eigener Ordner ausgewählt";if(activateAfterFolder){automatic=DownloadFolderPolicy.valid(context,prefs);prefs.autoDownloadUpdates.put(automatic)};activateAfterFolder=false }
-            .onFailure { folderText="Ordnerzugriff fehlgeschlagen. Bitte einen anderen Ordner wählen.";AppDiagnostics.error("downloads.folder_failed",error=it) }
+        if(selectedUri!=null)scope.launch{folderBusy=true;try{folderStatus=withContext(Dispatchers.IO){FolderAccess.select(context,prefs,selectedUri)};folderMessage="Ordner freigegeben.";if(activateAfterFolder){automatic=folderStatus?.writable==true;prefs.autoDownloadUpdates.put(automatic)}}catch(e:Exception){folderMessage=e.message ?: "Ordnerzugriff fehlgeschlagen.";if(activateAfterFolder){automatic=false;prefs.autoDownloadUpdates.put(false)};AppDiagnostics.error("downloads.folder_failed",error=e)}finally{activateAfterFolder=false;folderBusy=false;folderRevision++}}
+
     }
     val choices=remember(installerMenu){InstallerChoices.available(context)}
     Box(Modifier.fillMaxSize(),contentAlignment=Alignment.TopCenter) {
         Column(Modifier.widthIn(max=layout.contentMaxWidth).fillMaxSize().statusBarsPadding().padding(horizontal=layout.horizontalPadding)) {
             ScreenHeader("Einstellungen","UNIAPK",onBack=onBack)
             LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=32.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-                item { SettingsSection("Darstellung und Sprache") }
+                item {GlassPanel{Text("Berechtigungen",style=MaterialTheme.typography.titleSmall);SecondaryText("Installationsfreigabe, Benachrichtigungen und APK-Ordner prüfen.");OutlinedButton(onClick=onPermissions,modifier=Modifier.fillMaxWidth()){Text("Berechtigungen verwalten")}}}
+                item { SettingsSection("Design und Sprache") }
                 item { GlassPanel {
                     Row(Modifier.fillMaxWidth().clickable(onClick=onAppearance),verticalAlignment=Alignment.CenterVertically) {
-                        Text("Erscheinungsbild",Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
+                        Text("Design und Leistung",Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
                         TextButton(onClick=onAppearance){Text("Design anpassen")}
                     }
                     Text("Sprache",style=MaterialTheme.typography.titleSmall)
@@ -104,19 +108,24 @@ import org.koin.compose.koinInject
                     health.forEach{entry->Text(entry.name,style=MaterialTheme.typography.labelLarge);SecondaryText(if(entry.running)"Wird abgefragt …" else if(entry.webOnly)"Webmodus: Link zur jeweiligen App; keine automatische API-Abfrage ohne Schlüssel." else entry.problem ?: "Kein Fehler gemeldet");entry.problem?.let{SecondaryText(NetworkDiagnostics.hints(it))}}
                     OutlinedButton(onClick={testing=true;scope.launch{try{diagnostic=NetworkDiagnostics.test(context)}finally{testing=false}}},enabled=!testing){Text(if(testing)"Verbindung wird geprüft …" else "APKMirror-Webverbindung testen")}
                     OutlinedButton(onClick={ProviderCooldown.retry("ApkMirror");onFiltersChanged()}){Text("APKMirror-API erneut abfragen")}
+                    if(testing)UniProgress(label="Webverbindung wird getestet")
                     if(diagnostic.isNotBlank())SecondaryText(diagnostic)
                     TextButton(onClick={runCatching{uri.openUri("https://www.apkmirror.com/")}}){Text("APKMirror-Webseite öffnen")}
                 } }
                 item { SourceApiSettings(onFiltersChanged) }
                 item { SettingsSection("Downloads und Installation") }
                 item { GlassPanel {
-                    SecondaryText(folderText)
+                    val currentFolder=folderStatus
+                    StatusLine(if(currentFolder?.writable==true)StatusTone.SUCCESS else StatusTone.WARNING,"APK-Ordner",currentFolder?.headline ?: "Ordner wird geprüft")
+                    currentFolder?.let{SecondaryText(it.location)}
+                    if(folderMessage.isNotBlank())SecondaryText(folderMessage)
+                    if(folderBusy)UniProgress(label="Ordnerfreigabe wird geprüft")
                     Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text("APKs bei der Suche automatisch laden");SecondaryText("Standardmäßig aus. Lädt höchstens eine passende Variante pro App, prüft sie und speichert sie im ausdrücklich gewählten Zielordner. Keine automatische Installation.")};Switch(automatic,{enabled->
-                        if(!enabled){automatic=false;prefs.autoDownloadUpdates.put(false)}else if(DownloadFolderPolicy.valid(context,prefs)){automatic=true;prefs.autoDownloadUpdates.put(true)}else{activateAfterFolder=true;folderText="Zuerst einen Downloadordner auswählen.";folder.launch(null)}
+                        if(!enabled){automatic=false;prefs.autoDownloadUpdates.put(false)}else if(folderStatus?.writable==true){automatic=true;prefs.autoDownloadUpdates.put(true)}else{activateAfterFolder=true;folderMessage="Für automatische Downloads zuerst einen Ordner freigeben.";folder.launch(null)}
                     })}
                     SettingSwitch("Automatische Downloads nur ohne Datenlimit","Wartet bei einer von Android als getaktet erkannten Verbindung, zum Beispiel vielen Mobilfunktarifen. Meist ist WLAN erlaubt; als getaktet markiertes WLAN wird ebenfalls ausgeschlossen.",{prefs.autoVerifyWifiOnly.get()},{prefs.autoVerifyWifiOnly.put(it)})
-                    Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(onClick={folder.launch(null)},modifier=Modifier.weight(1f)){Text("APK-Ordner auswählen")};HelpButton("APK-Ordner auswählen","Android kann Stammordner sperren. Wähle einen Unterordner; bereits gespeicherte APKs werden nicht verschoben.")}
-                    TextButton(onClick={prefs.downloadTree.put("");prefs.autoDownloadUpdates.put(false);automatic=false;folderText="Download/UniAPK · automatische Downloads deaktiviert"}){Text("Standardordner verwenden")}
+                    Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(onClick={folder.launch(prefs.downloadTree.get().takeIf{it.isNotBlank()}?.let(android.net.Uri::parse))},enabled=!folderBusy,modifier=Modifier.weight(1f)){Text(if(folderStatus?.selected==true)"APK-Ordner ändern" else "APK-Ordner auswählen")};HelpButton("APK-Ordner auswählen","Android kann Stammordner sperren. Wähle einen Unterordner; bereits gespeicherte APKs werden nicht verschoben.")}
+                    TextButton(onClick={prefs.downloadTree.put("");prefs.autoDownloadUpdates.put(false);automatic=false;folderRevision++;folderMessage="Manuelle Downloads verwenden wieder Downloads / UniAPK. Automatische Downloads sind aus."}){Text("Standardordner verwenden")}
                     SettingSwitch("APKs nach Installation behalten","Aus: erst nach bestätigtem Erfolg löschen. Bei Fehler oder Abbruch behalten.",{prefs.keepDownloadedApks.get()},{prefs.keepDownloadedApks.put(it)})
                     HelpTitle("Installer",HelpText.EXTERNAL)
                     OutlinedButton(onClick={installerMenu=true},modifier=Modifier.fillMaxWidth()){Text(if(installer=="SYSTEM")"Android PackageInstaller" else choices.find{it.first==installer}?.second ?: "Gewählter Installer nicht verfügbar")}
@@ -136,9 +145,9 @@ import org.koin.compose.koinInject
                     val cacheBytes by produceState(0L){while(true){value=withContext(Dispatchers.IO){AppCache.bytes(context)};kotlinx.coroutines.delay(2000)}}
                     SecondaryText("Aktuell freigebbarer Cache: ${ResourcePolicy.label(cacheBytes)}")
                     OutlinedButton(onClick={clearing=true;scope.launch {try{val bytes=AppCache.clear(context,http);onCacheCleared();cacheMessage="Cache geleert · zuvor mindestens ${bytes/1024} KiB."}catch(e:Exception){cacheMessage=e.message ?: "Cache konnte nicht geleert werden.";AppDiagnostics.error("cache.clear_failed",error=e)}finally{clearing=false}}},enabled=!clearing,modifier=Modifier.fillMaxWidth()){Text(if(clearing)"Cache wird geleert …" else "Cache leeren")}
+                    if(clearing)UniProgress(label="Cache wird geleert")
                     if(cacheMessage.isNotBlank())SecondaryText(cacheMessage)
                 } }
-                item { ComputeSettings() }
                 item { SettingsSection("Diagnose und Entwicklung") }
                 item { DiagnosticSettingsCard() }
                 item { SettingsSection("Projekt") }

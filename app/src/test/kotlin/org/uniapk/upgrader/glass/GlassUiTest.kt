@@ -22,7 +22,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
-class GlassTestApp : App() {
+open class GlassTestApp : App() {
     // JVM UI tests have no Android Keystore. Device security is tested separately.
     override fun preferenceStorage() = com.kryptoprefs.preferences.KryptoBuilder.nocrypt(this, "ui-test-preferences")
     override fun onCreate() {
@@ -30,7 +30,7 @@ class GlassTestApp : App() {
         val p = GlobalContext.get().get<Prefs>()
         p.useGitHub.put(false); p.useGitLab.put(false); p.useFdroid.put(false); p.useIzzy.put(false)
         p.useApkMirror.put(false); p.useApkPure.put(false); p.useAptoide.put(false); p.usePlay.put(false)
-        p.autoVerify.put(false); p.enableAlarm.put(false); p.theme.put(1)
+        p.permissionSetupVersion.put(1); p.autoVerify.put(false); p.enableAlarm.put(false); p.theme.put(1)
     }
 }
 @RunWith(RobolectricTestRunner::class)
@@ -63,7 +63,7 @@ class GlassUiTest {
         compose.onNodeWithText("Nach Updates suchen").assertIsDisplayed()
         screenshot("01-dashboard")
         compose.onNodeWithText("Updates").performClick()
-        compose.onNodeWithText("Keine freigegebenen Updates").assertIsDisplayed()
+        compose.onNodeWithText("Keine vorbereiteten APKs").assertIsDisplayed()
         screenshot("02-updates")
         compose.onNodeWithText("Blockiert 0").performClick()
         compose.onNodeWithText("Keine blockierten Varianten").assertIsDisplayed()
@@ -214,10 +214,10 @@ class GlassUiTest {
 
     @Test fun singleAppearanceEntryAndRecommendedResetWork() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Erscheinungsbild"))
-        compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Design und Leistung"))
+        compose.onAllNodesWithText("Design und Leistung").assertCountEquals(1)
         compose.onNodeWithText("Design anpassen").performClick()
-        compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
+        compose.onAllNodesWithText("Design und Leistung").assertCountEquals(1)
         val store=GlobalContext.get().get<AppearanceStore>()
         compose.runOnIdle { store.update{it.copy(quality=0,opacity=.9f,blur=false,accent=0xff123456,customAccent=true)} }
         compose.onNodeWithText("Empfohlene Glaswerte anwenden").performClick()
@@ -254,7 +254,7 @@ class GlassUiTest {
 
     @Test fun helpExplainsBlockedWithoutInstallingAnything() {
         compose.onNodeWithText("Updates").performClick()
-        compose.onNodeWithContentDescription("Hilfe: Funde und vorbereitete APKs").performClick()
+        compose.onNodeWithContentDescription("Hilfe: Was bedeuten die Bereiche?").performClick()
         compose.onNodeWithText(HelpText.BLOCKED,substring=true).assertIsDisplayed()
         compose.onNodeWithText(HelpText.CHECK,substring=true).assertIsDisplayed()
         compose.onNodeWithText("Verstanden").performClick()

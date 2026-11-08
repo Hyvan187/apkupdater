@@ -21,7 +21,7 @@ object AutomaticDownloads {
         if(!AutomaticChecks.allowed(context,true,prefs.autoVerifyWifiOnly.get()))return
         var budget=ResourcePolicy.budget(context.cacheDir.usableSpace,prefs.autoCheckBudgetMiB.get()*ResourcePolicy.MIB)
         val max=prefs.autoVerifyLimitMiB.get()*ResourcePolicy.MIB
-        val plan=AutoCheckPolicy.plan(candidates,prefs.preferredSources.get(),max,prefs.autoCheckCount.get(),budget,true)
+        val plan=AutoCheckPolicy.plan(candidates.filter{releaseKey(it) !in prefs.discardedDownloads.get()},prefs.preferredSources.get(),max,prefs.autoCheckCount.get(),budget,true)
         for(update in plan){
             currentCoroutineContext().ensureActive()
             if(!AutomaticChecks.allowed(context,prefs.autoDownloadUpdates.get(),prefs.autoVerifyWifiOnly.get())||!DownloadFolderPolicy.valid(context,prefs))break

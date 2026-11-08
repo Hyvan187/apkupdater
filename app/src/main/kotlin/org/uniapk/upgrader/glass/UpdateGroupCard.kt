@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,7 +28,7 @@ fun UpdateCard(update: AppUpdate, verify: () -> Unit, install: () -> Unit, ignor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) -> Unit, install: (AppUpdate) -> Unit, ignore: (AppUpdate) -> Unit, prefer: (AppUpdate) -> Unit, external: (() -> Unit)? = null) {
+fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) -> Unit, install: (AppUpdate) -> Unit, ignore: (AppUpdate) -> Unit, prefer: (AppUpdate) -> Unit, external: (() -> Unit)? = null,discard:((AppUpdate)->Unit)?=null,deleting:Boolean=false) {
     val favorites=org.koin.compose.koinInject<FavoriteStore>()
     val flags by favorites.state.collectAsState()
     var chosenKey by remember(group.packageName) { mutableStateOf<String?>(null) }
@@ -35,10 +36,10 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
     var expanded by remember { mutableStateOf(false) }
     var picker by remember { mutableStateOf(false) }
     var changelog by remember{mutableStateOf(false)}
-    var technical by remember { mutableStateOf(false) }
+    var technical by remember { mutableStateOf(false) };var deletePrepared by remember{mutableStateOf(false)}
     val handler = LocalUriHandler.current
     val blocked = update.verdict.status == Compatibility.INCOMPATIBLE
-    val busy = group.candidates.any { it.isInstalling }
+    val busy = deleting||group.candidates.any { it.isInstalling }
     val color = if(blocked) MaterialTheme.colorScheme.error else safeStatusColor(update.verdict.installAllowed)
     GlassPanel {
         Row(Modifier.clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
@@ -46,9 +47,9 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             Column(Modifier.weight(1f)) {
                 Text(update.name.ifBlank { update.packageName }, style = MaterialTheme.typography.titleSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 SecondaryText("${update.oldVersion.ifBlank { "?" }} → ${update.version}")
-                Text(if(busy) "Prüfung läuft …" else if(blocked) "Abgelehnt" else if(update.verdict.installAllowed) "Geprüft · bereit" else "Prüfung offen", style = MaterialTheme.typography.labelSmall, color = color)
+                Text(if(deleting)"APKs werden gelöscht …" else if(busy)"APK wird vorbereitet …" else if(blocked) "Abgelehnt" else if(update.verdict.installAllowed) "Geprüft · bereit" else "Datei noch ungeprüft", style = MaterialTheme.typography.labelSmall, color = color)
             }
-            TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={favorites.toggle(update.packageName)}){Text(if(update.packageName in flags)"★" else "☆")}
+            IconButton(onClick={favorites.toggle(update.packageName)}){Icon(if(update.packageName in flags)Icons.Default.Star else Icons.Outlined.Star,if(update.packageName in flags)"Aus Favoriten entfernen" else "Zu Favoriten hinzufügen")}
             Icon(if(expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, "Details", Modifier.size(20.dp))
         }
         Spacer(Modifier.height(10.dp))
@@ -56,11 +57,10 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
         if(blocked) SecondaryText(update.verdict.summary)
         val assessment=TechnicalAssessment.from(update)
         Row(verticalAlignment=Alignment.CenterVertically) {
-            Text("Technische Risiken",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium)
-            HelpButton("Technische Risiken",assessment.details())
+            Text("Risikoeinschätzung",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium)
+            HelpButton("Risikoeinschätzung",UpdateRisk.assess(update).summary+" "+assessment.details())
         }
-        SecondaryText(assessment.headline)
-        SecondaryText(assessment.summary)
+        RiskSummary(update)
         update.verificationError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         if(expanded) {
             Spacer(Modifier.height(12.dp))
@@ -74,12 +74,13 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { technical = true }) { Text("Technische Details") }
             Row(verticalAlignment=Alignment.CenterVertically) { Text("Prüfverfahren",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium);HelpButton("Prüfverfahren",HelpText.CHECK) }
         }
-        if(busy) { Spacer(Modifier.height(10.dp)); LinearProgressIndicator(Modifier.fillMaxWidth()) }
+        if(busy) { Spacer(Modifier.height(10.dp)); UniProgress(label=if(deleting)"APKs werden gelöscht" else "APK wird vorbereitet") }
         else if(!blocked || group.candidates.any { it.verdict.status != Compatibility.INCOMPATIBLE }) {
             Spacer(Modifier.height(10.dp))
             if(update.verdict.installAllowed) Button(onClick = { if(update.fileReady)install(update) else verify(update) }, modifier = Modifier.fillMaxWidth()) { Text(if(update.fileReady)"Installieren" else "APK erneut laden und vorbereiten") }
             OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { picker = true }, modifier = Modifier.fillMaxWidth()) { Text(if(update.verdict.installAllowed) "Andere Quelle / erneut prüfen" else "Quelle wählen · APK vorbereiten") }
         }
+        if(discard!=null&&group.candidates.any{it.fileReady}&&!busy)TextButton(onClick={deletePrepared=true}){Icon(Icons.Default.Delete,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("Vorbereitete APKs löschen")}
         if(update.whatsNew.isNotBlank())TextButton(onClick={changelog=true}){Text("Änderungen dieser Version")}
         else if(expanded)SecondaryText("Die Quelle stellt keinen Änderungsverlauf bereit.")
         if(expanded) HelpButton("Version ausblenden","Blendet diese Versionsbezeichnung dieser App quellenübergreifend aus. Unter Einstellungen lassen sich ausgeblendete Versionen wieder einblenden.")
@@ -124,6 +125,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                 }, enabled = selected.verdict.status != Compatibility.INCOMPATIBLE && (selected.link is Link.Url || selected.link is Link.Xapk || selected.link is Link.Play), modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp)) { Text(if(selected.source == ApkMirrorSource) "Quellseite öffnen" else "Auswahl herunterladen und prüfen") }
         }
     }
+    if(deletePrepared)AlertDialog(onDismissRequest={deletePrepared=false},title={Text("Vorbereitete APKs löschen?")},text={Text("Entfernt die vorbereiteten Dateien dieser App und ihre von UniAPK gespeicherten Kopien. Die installierte App bleibt erhalten. Die Version steht wieder unter Funde und wird nicht erneut automatisch geladen, bis du sie selbst vorbereitest.")},confirmButton={TextButton(onClick={deletePrepared=false;discard?.invoke(update)}){Text("APKs löschen")}},dismissButton={TextButton(onClick={deletePrepared=false}){Text("Abbrechen")}})
     if(changelog)AlertDialog(onDismissRequest={changelog=false},title={Text("Änderungen · ${update.version}")},text={Column(Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState())){SecondaryText("Laut ${update.source.name}; Angaben der Quelle, keine eigene Zusicherung.");Text(org.jsoup.Jsoup.parse(update.whatsNew.take(32000)).wholeText())}},confirmButton={TextButton(onClick={changelog=false}){Text("Schließen")}})
     if(technical) AlertDialog(onDismissRequest = { technical = false }, title = { Text("Technische Details") }, text = {
         Column(Modifier.heightIn(max = 440.dp).verticalScroll(rememberScrollState())) {

@@ -30,7 +30,7 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
  DisposableEffect(store) { onDispose { store.commitPreview() } }
  CompositionLocalProvider(LocalEffectLevel provides a.quality.coerceAtMost(1)) {
  Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=LocalDeviceLayout.current.horizontalPadding)) {
-  ScreenHeader("Erscheinungsbild","FARBEN, GLAS UND BEWEGUNG",onBack=onBack)
+  ScreenHeader("Design und Leistung","FARBEN, EFFEKTE UND RESSOURCEN",onBack=onBack)
   LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
    item{GlassPanel(effectLevel=a.quality){HelpTitle("Empfohlenes Liquid Glass","Setzt nur Qualität, Glastransparenz, Unschärfe und Brechung auf ausgewogene Werte. Deine Farben bleiben erhalten.");SecondaryText("Standard · 54 % Glastransparenz · Unschärfe und Brechung an");OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.recommendedGlass()}){Text("Empfohlene Glaswerte anwenden")}}}
    item{GlassPanel{GlassTransparencyControl(store,a)}}
@@ -60,7 +60,21 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
     AppearanceToggle("Parallax-Effekt","Sanfte Verschiebung beim Neigen; nur bei aktivem Bildschirm.",a.parallax){v->store.update{it.copy(parallax=v)}}
     AppearanceToggle("Saisonale Designs","Bei Zufällig sind saisonale Effekte möglich. Eine fest ausgewählte Animation bleibt aktiv.",a.seasonal){v->store.update{it.copy(seasonal=v)}}
     ValueSlider("Geschwindigkeit: ${(a.speed*100).toInt()} %",a.speed,.5f,{v->store.preview{it.copy(speed=v)}},.1f..1f,body="Langsame Bewegung ist ruhiger; Standard: 50 %.",finished={store.commitPreview()})
-    ValueSlider("Effektdichte: ${(a.density*100).toInt()} %",a.density,.35f,{v->store.preview{it.copy(density=v)}},.1f..1f,body="Anzahl der sichtbaren Elemente. Weniger spart Grafikarbeit; Standard: 35 %.",finished={store.commitPreview()})
+    ValueSlider("Effektdichte: ${(a.density*100).toInt()} %",a.density,.35f,{v->store.preview{it.copy(density=v)}},0f..1f,body="Wirkt auf alle Effekte: weniger Elemente, Bänder oder Spalten. 0 % blendet die Animation aus.",finished={store.commitPreview()})
+   }}
+   item{GlassPanel{
+    HelpTitle("Animationsfarben","Originalfarben des Effekts oder eigene Farben. Betrifft nur die Hintergrundanimation.")
+    var menu by remember{mutableStateOf(false)};OutlinedButton(onClick={menu=true}){Text(listOf("Passend zum Effekt","Einfarbig","Zwei Farben")[a.motionPalette])}
+    if(menu)GlassChoiceSheet("Animationsfarben",a.motionPalette.toString(),listOf("Passend zum Effekt","Einfarbig","Zwei Farben").mapIndexed{i,t->GlassChoice(i.toString(),t)},{menu=false}){v->store.update{it.copy(motionPalette=v.toInt())}}
+    if(a.motionPalette>0)ColorSetting("Animationsfarbe",Color(a.motionColor.toInt())){picking="motion"}
+    if(a.motionPalette==2)ColorSetting("Zweite Animationsfarbe",Color(a.motionSecondary.toInt())){picking="motionSecondary"}
+   }}
+   item{ComputeSettings()}
+   item{GlassPanel{
+    HelpTitle("Ladeanzeige","Gilt für Suche, Downloads und Prüfungen. Prozent erscheinen nur bei bekanntem Fortschritt.")
+    var menu by remember{mutableStateOf(false)};OutlinedButton(onClick={menu=true}){Text(ProgressPolicy.style(a.progressStyle).label)}
+    if(menu)GlassChoiceSheet("Ladeanzeige",a.progressStyle.toString(),ProgressStyle.entries.map{GlassChoice(it.ordinal.toString(),it.label)},{menu=false}){v->store.update{it.copy(progressStyle=v.toInt())}}
+    SecondaryText("Vorschau · 65 %");UniProgress(.65f,label="Vorschau: 65 Prozent",style=a.progressStyle)
    }}
    item{GlassPanel{
     HelpTitle("Schrift","Es werden verfügbare Systemschriften verwendet. Die Textgröße wird mit Androids Schriftgröße kombiniert.")
@@ -72,7 +86,12 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
   }
  }
  }
- picking?.let{target->ColorPickerDialog(if(target=="accent")"Buttonfarbe" else "Hintergrundfarbe",if(target=="accent")a.accent else a.background,if(target=="accent")a.accentAlpha else a.backgroundAlpha,{picking=null}){color,alpha->store.update{if(target=="accent")it.copy(accent=color,accentAlpha=alpha,customAccent=true,dynamic=false) else it.copy(background=color,backgroundAlpha=alpha,customBackground=true)};picking=null}}
+ picking?.let{target->
+ val title=when(target){"accent"->"Akzentfarbe";"motion"->"Animationsfarbe";"motionSecondary"->"Zweite Animationsfarbe";else->"Hintergrundfarbe"}
+ val initial=when(target){"accent"->a.accent;"motion"->a.motionColor;"motionSecondary"->a.motionSecondary;else->a.background}
+ val alpha=when(target){"accent"->a.accentAlpha;"background"->a.backgroundAlpha;else->1f}
+ ColorPickerDialog(title,initial,alpha,{picking=null}){color,opacity->store.update{when(target){"accent"->it.copy(accent=color,accentAlpha=opacity,customAccent=true,dynamic=false);"motion"->it.copy(motionColor=color);"motionSecondary"->it.copy(motionSecondary=color);else->it.copy(background=color,backgroundAlpha=opacity,customBackground=true)}};picking=null}}
+
 }
 @Composable fun AppearanceToggle(title:String,description:String,checked:Boolean,onChange:(Boolean)->Unit){Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.bodyMedium);SecondaryText(description)};Switch(checked,onChange);if(HelpTopics.technical(title))HelpButton(title,description)}}
 @Composable private fun ColorSetting(label:String,color:Color,onClick:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(30.dp).background(color,CircleShape));Spacer(Modifier.width(12.dp));Text(label,Modifier.weight(1f))}}

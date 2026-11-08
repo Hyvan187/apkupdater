@@ -85,12 +85,12 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
     val ready = all.appGroups().count { it.status == Compatibility.COMPATIBLE }
     val pending = all.appGroups().count { it.status == Compatibility.UNKNOWN }
     val blocked = all.appGroups().count { it.status == Compatibility.INCOMPATIBLE }
-    var report by remember { mutableStateOf<String?>(null) }
+    var report by remember { mutableStateOf<String?>(null) };var inspecting by remember{mutableStateOf(false)};var showReport by remember{mutableStateOf(false)}
     val scope = rememberCoroutineScope()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if(uri != null) scope.launch {
-            report = "Die Datei wird lokal geprüft …"
-            report = withContext(Dispatchers.IO) { AppCache.use {
+            inspecting=true;showReport=true
+            try{report = withContext(Dispatchers.IO) { AppCache.use {
                 val f = File.createTempFile("glass-local-", ".apk", context.cacheDir)
                 try {
                     context.contentResolver.openInputStream(uri).use { input ->
@@ -101,8 +101,8 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
                         }
                     }
                     ApkSetInspector(context, detection).inspect(f).text()
-                } catch(e: Exception) { "Prüfung nicht möglich: ${e.message}" } finally { f.delete() }
-            } }
+                }catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e: Exception) { "Prüfung nicht möglich: ${e.message}" } finally { f.delete() }
+            } }}catch(e:kotlinx.coroutines.CancellationException){throw e}catch(e:Exception){report="Prüfung nicht möglich: ${e.message}"}finally{inspecting=false}
         }
     }
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -124,8 +124,9 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
             SecondaryText("${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} · ${rom?.label ?: "ROM wird erkannt …"}")
         } }
         if(health.any { it.problem != null }) item { StateMessage("Quellen teilweise nicht erreichbar", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
+        if(inspecting)item{GlassPanel{Text("APK wird untersucht");UniProgress(label="Lokale APK wird untersucht")}}
         item { Row(verticalAlignment=Alignment.CenterVertically){Text("WERKZEUGE",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);HelpButton("Lokale APK-Prüfung",HelpText.CHECK+" Die Dateiauswahl analysiert nur deine Datei; es findet keine Installation statt.")} }
-        item { GlassPanel(Modifier.clickable { picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "application/zip", "application/x-zip-compressed")) }) {
+        item { GlassPanel(Modifier.clickable { if(!inspecting)picker.launch(arrayOf("application/vnd.android.package-archive", "application/octet-stream", "application/zip", "application/x-zip-compressed")) }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, null, Modifier.size(26.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) { Text("APK untersuchen", style = MaterialTheme.typography.titleSmall); SecondaryText("Datei prüfen, ohne sie zu installieren") }; Icon(Icons.AutoMirrored.Filled.ArrowForward, null, Modifier.size(18.dp))
@@ -136,7 +137,8 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
             if(expanded) { Spacer(Modifier.height(12.dp)); SecondaryText(rom?.detail.orEmpty()); SecondaryText("${Build.SUPPORTED_ABIS.joinToString()} · API ${Build.VERSION.SDK_INT}\nDie erkannte Geräte-ROM bestätigt keine Herkunft einer fremden APK.") }
         } }
     }
-    report?.let { body -> AlertDialog(onDismissRequest = { report = null }, title = { Text("APK-Analyse") }, text = { androidx.compose.foundation.rememberScrollState().let { scroll -> androidx.compose.foundation.layout.Box(Modifier.heightIn(max = 440.dp).verticalScroll(scroll)) { Text(body, style = MaterialTheme.typography.bodySmall) } } }, confirmButton = { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { report = null }) { Text("Schließen") } }) }
+    if(showReport)AlertDialog(onDismissRequest={showReport=false},title={Text(if(inspecting)"APK wird untersucht" else "APK-Analyse")},text={Column(Modifier.heightIn(max=440.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())){if(inspecting){UniProgress(label="Lokale APK wird untersucht");SecondaryText("Datei lesen und technische Voraussetzungen prüfen. Es wird nichts installiert.")}else Text(report.orEmpty(),style=MaterialTheme.typography.bodySmall)}},confirmButton={TextButton(onClick={showReport=false}){Text(if(inspecting)"Im Hintergrund fortsetzen" else "Schließen")}})
+
 }
 @Composable
 private fun Metric(label: String, count: Int, color: Color, modifier: Modifier, click: () -> Unit) {
@@ -152,6 +154,7 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
     val health = SourceHealth.flow.collectAsStateWithLifecycle().value
     val scanProgress by ScanProgress.state.collectAsStateWithLifecycle()
     val working = state is UpdatesUiState.Loading || health.any { it.running } || scanProgress.active
+    val deletingPackages by viewModel.deletingPackages.collectAsStateWithLifecycle()
     val requestedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val selected=if(requestedCategory>=0)requestedCategory else if(all.none{it.verdict.installAllowed}&&all.any{it.verdict.status==Compatibility.UNKNOWN})1 else 0
     var query by remember { mutableStateOf("") }
@@ -164,11 +167,11 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
     val visible = groups.filter { (!onlyFavorites || it.packageName in favorites) && it.status == status && (it.candidates.any { c -> c.name.contains(query, true) } || it.packageName.contains(query, true)) }.sortedBy { it.best().name.lowercase() }
 
     LazyColumn(Modifier.fillMaxSize().statusBarsPadding(), contentPadding = ScreenPadding, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { ScreenHeader("Updates", "GEPRÜFT STATT NUR NEUER", onSettings) }
+        item { ScreenHeader("Updates", "SUCHE, PRÜFUNG UND INSTALLATION", onSettings) }
         if(scanProgress.active) item { ScanProgressCard() }
         item { ScopeChoices(scopeFilter, selection::select) }
         item { FilterChip(onlyFavorites,{onlyFavorites=!onlyFavorites},label={Text("Nur Favoriten")});HelpButton("Favoritenfilter","Zeigt nur Apps, die du mit dem Stern markiert hast.") }
-        item { HelpTitle("Funde und vorbereitete APKs","Funde: neuere Versionsangaben aus den Quellen. Bereit: die gewählte APK wurde geladen und technisch geprüft. Blockiert: mindestens eine konkrete Voraussetzung passt nicht. "+HelpText.BLOCKED+" "+HelpText.CHECK) }
+        item { HelpTitle("Was bedeuten die Bereiche?","Funde: neuere Versionsangaben aus den Quellen. Bereit: die gewählte APK wurde geladen und technisch geprüft. Blockiert: mindestens eine konkrete Voraussetzung passt nicht. "+HelpText.BLOCKED+" "+HelpText.CHECK) }
 
         item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("Bereit", "Funde", "Blockiert").forEachIndexed { i, label ->
@@ -181,9 +184,9 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
 
         if(health.any { it.problem != null }) item { StateMessage("Quellenfehler", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
         if(state is UpdatesUiState.Error) item { StateMessage("Suche fehlgeschlagen", "Bitte Verbindung und aktivierte Quellen prüfen.") }
-        if(visible.isEmpty() && !working) item { StateMessage(when(selected) { 0 -> "Keine freigegebenen Updates"; 1 -> "Nichts zur Prüfung offen"; else -> "Keine blockierten Varianten" }, when(selected) { 0 -> "Nur tatsächlich geprüfte APKs erscheinen hier. Weitere Funde findest du unter Funde."; 1 -> "Starte eine neue Suche oder prüfe die Quellen in den Einstellungen."; else -> "Ältere Systemzweige und nachweislich unpassende APKs erscheinen separat in diesem Bereich." }) }
-        if(selected == 1 && visible.isNotEmpty()) item { OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { viewModel.verifyAll() }, shape = CircleShape, modifier = Modifier.fillMaxWidth()) { Text("Funde nur auf Kompatibilität prüfen") };HelpButton("Alle APKs prüfen",HelpText.CHECK+" Pro App wird eine unterstützte Quelle verwendet. Bereits geprüfte und blockierte Dateien werden übersprungen. Es wird nacheinander geprüft; Webquellen bleiben manuell."); SecondaryText("Temporäre Prüfdownloads werden anschließend gelöscht. Für eine Installation die gewünschte APK einzeln vorbereiten.") }
-        items(visible, key = { it.packageName }) { group -> UpdateGroupCard(group, viewModel.preferred(group.packageName), { viewModel.verify(it) }, { viewModel.install(it, handler) }, viewModel::ignoreRelease, viewModel::prefer) }
+        if(visible.isEmpty() && !working) item { StateMessage(when(selected) { 0 -> "Keine vorbereiteten APKs"; 1 -> "Keine neuen Funde"; else -> "Keine blockierten Varianten" }, when(selected) { 0 -> "Nur tatsächlich geprüfte APKs erscheinen hier. Weitere Funde findest du unter Funde."; 1 -> "Starte eine neue Suche oder prüfe die Quellen in den Einstellungen."; else -> "Ältere Systemzweige und nachweislich unpassende APKs erscheinen separat in diesem Bereich." }) }
+        if(selected == 1 && visible.isNotEmpty()) item { OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { viewModel.verifyAll() }, shape = CircleShape, modifier = Modifier.fillMaxWidth()) { Text("Funde vorübergehend prüfen") };HelpButton("Alle APKs prüfen",HelpText.CHECK+" Pro App wird eine unterstützte Quelle verwendet. Bereits geprüfte und blockierte Dateien werden übersprungen. Es wird nacheinander geprüft; Webquellen bleiben manuell."); SecondaryText("Temporäre Prüfdownloads werden anschließend gelöscht. Für eine Installation die gewünschte APK einzeln vorbereiten.") }
+        items(visible, key = { it.packageName }) { group -> UpdateGroupCard(group, viewModel.preferred(group.packageName), { viewModel.verify(it) }, { viewModel.install(it, handler) }, viewModel::ignoreRelease,viewModel::prefer,discard={viewModel.discardPrepared(it)},deleting=group.packageName in deletingPackages) }
     }
 }
 @Composable

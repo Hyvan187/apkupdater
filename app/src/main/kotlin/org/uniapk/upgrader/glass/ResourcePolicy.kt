@@ -33,6 +33,6 @@ object ComputeBudget {
 object DownloadFolderPolicy {
     fun isTree(uri:android.net.Uri)=if(android.os.Build.VERSION.SDK_INT>=24)android.provider.DocumentsContract.isTreeUri(uri) else uri.scheme=="content" && uri.pathSegments.firstOrNull()=="tree" && runCatching{android.provider.DocumentsContract.getTreeDocumentId(uri).isNotBlank()}.getOrDefault(false)
     fun valid(context:Context,prefs:Prefs)=prefs.downloadTree.get().takeIf{it.isNotBlank()}?.let { raw ->
-        runCatching {val uri=android.net.Uri.parse(raw);context.contentResolver.persistedUriPermissions.any{it.uri==uri&&it.isWritePermission} && isTree(uri)}.getOrDefault(false)
+        FolderAccess.status(context,raw).writable
     } ?: false
 }

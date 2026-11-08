@@ -23,7 +23,13 @@ class Prefs(
         if(limitsSchema.get()<1){autoVerifyLimitMiB.put(512);autoCheckBudgetMiB.put(2048);autoCheckCount.put(10);limitsSchema.put(1)}
         org.uniapk.upgrader.glass.ComputeBudget.set(cpuTasks.get())
     }
-	val autoDownloadReceipts = json("downloads.receipts",emptyMap<String,String>(),true)
+	val permissionSetupVersion = int("permissions.setup",0,true)
+    val discardedDownloads = json("downloads.discarded",emptyList<String>(),true)
+    val motionPalette = int("appearance.motionPalette",0,true)
+    val motionColor = long("appearance.motionColor",0xff39e898,true)
+    val motionSecondary = long("appearance.motionSecondary",0xffa27bff,true)
+    val progressStyle = int("appearance.progressStyle",0,true)
+    val autoDownloadReceipts = json("downloads.receipts",emptyMap<String,String>(),true)
     val autoDownloadUpdates = boolean("downloads.automatic",false,true)
     val simulatedPreset = string("profile.preset","ACTUAL",true)
     val simulatedRegion = string("profile.region","EU",true)

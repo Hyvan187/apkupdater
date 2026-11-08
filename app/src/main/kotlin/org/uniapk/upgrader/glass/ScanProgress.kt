@@ -51,8 +51,8 @@ object ScanProgress {
         Text(when(state.phase) { ScanPhase.PREPARING -> "Gerät und Apps werden erkannt"; ScanPhase.SOURCES -> "Updatequellen werden geprüft"; else -> "APK-Kompatibilität wird geprüft" },style=MaterialTheme.typography.titleSmall)
         Spacer(Modifier.height(12.dp))
         val label=when(state.phase) { ScanPhase.SOURCES -> "${state.completed} von ${state.total} Quellen abgeschlossen"; ScanPhase.VERIFYING -> "${state.completed} von ${state.total} Prüfversuchen abgeschlossen"; else -> "App-Liste wird eingelesen …" }
-        if(state.total > 0) LinearProgressIndicator(progress={fraction},modifier=Modifier.fillMaxWidth().height(8.dp).semantics { contentDescription=label })
-        else LinearProgressIndicator(modifier=Modifier.fillMaxWidth().height(8.dp))
+        if(state.total > 0) UniProgress(fraction,label=label)
+        else UniProgress(label=label)
         Spacer(Modifier.height(8.dp));SecondaryText(label)
         if(state.current.isNotBlank())SecondaryText(state.current)
         if(state.failedChecks>0)SecondaryText("${state.failedChecks} Prüfversuche ohne vollständigen Nachweis.")
