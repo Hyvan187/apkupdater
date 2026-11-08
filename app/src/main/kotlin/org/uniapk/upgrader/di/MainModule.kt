@@ -203,3 +203,4 @@ val mainModule = module {
 	viewModel { SearchViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
 
 }
+

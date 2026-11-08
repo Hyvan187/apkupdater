@@ -72,7 +72,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     val snacks = koinInject<SnackBar>()
     LaunchedEffect(Unit) { snacks.flow().collectLatest { snack.showSnackbar(it) } }
     LaunchedEffect(Unit) { mainViewModel.refresh(apps, updates) }
-    fun go(page: String) { nav.navigate(page) { popUpTo("overview") { saveState = true }; launchSingleTop = true; restoreState = true } }
+    fun go(page: String) { nav.navigate(page) { popUpTo("overview") { saveState = page != "overview" }; launchSingleTop = true; restoreState = page in listOf("apps","updates") } }
     val activity = LocalActivity.current as? ComponentActivity
     DisposableEffect(activity) {
         val listener = Consumer<Intent> { if(it.action == org.uniapk.upgrader.util.UpdatesNotification.UpdateAction) go("updates") }
@@ -124,3 +124,4 @@ private fun NavPillItem(label: String, icon: ImageVector, selected: Boolean, mod
         Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = if(selected) FontWeight.SemiBold else FontWeight.Normal, color = if(selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+

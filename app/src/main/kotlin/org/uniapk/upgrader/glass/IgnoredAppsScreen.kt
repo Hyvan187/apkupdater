@@ -20,6 +20,7 @@ import kotlinx.coroutines.withContext
   item{SecondaryText("Diese Apps werden weder bei manuellen Updateabfragen noch im Hintergrund geprüft oder automatisch geladen. Wieder zulassen wirkt bei der nächsten Suche.")}
   item{OutlinedTextField(query,{query=it},Modifier.fillMaxWidth(),label={Text("Ignorierte Apps durchsuchen")},singleLine=true)}
   if(ignored.isEmpty())item{StateMessage("Keine Apps ignoriert","Über App dauerhaft ignorieren in einer Updatekarte kannst du eine App ausschließen.")}
-  items(ignored.filter{it.contains(query,true)||names[it].orEmpty().contains(query,true)}.sortedBy{names[it]?:it},key={it}){pkg->GlassPanel{Text(names[pkg]?:pkg,style=MaterialTheme.typography.titleSmall);SecondaryText(pkg);TextButton(onClick={store.set(pkg,false)}){Text("Updates wieder zulassen")}}}
+  items(ignored.filter{it.contains(query,true)||names[it].orEmpty().contains(query,true)}.sortedBy{names[it]?:it},key={it}){pkg->GlassPanel{Text(names[pkg]?:pkg,style=MaterialTheme.typography.titleSmall);if(names[pkg]!=pkg)SecondaryText(pkg);TextButton(onClick={store.set(pkg,false)}){Text("Updates wieder zulassen")}}}
  }
 }
+

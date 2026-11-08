@@ -54,7 +54,7 @@ for name, expected_abis in variants.items():
     (reports/f"signature-{name}.txt").write_text(signature)
     badging = run([tools/"aapt", "dump", "badging", target])
     assert "name='org.uniapk.upgrader'" in badging
-    assert "versionCode='1010'" in badging and "versionName='0.7.0-rc2'" in badging
+    assert "versionCode='1011'" in badging and "versionName='0.7.0-rc3'" in badging
     assert "sdkVersion:'23'" in badging and "targetSdkVersion:'37'" in badging
     assert "application-debuggable" not in badging
     assert "application-label:'Universal APK Upgrader'" in badging
@@ -64,7 +64,9 @@ for name, expected_abis in variants.items():
     (reports/f"alignment-{name}.txt").write_text(alignment)
     manifest = run([tools/"aapt", "dump", "xmltree", target, "AndroidManifest.xml"])
     icon_ids = re.findall(r"android:icon\([^)]*\)=(@0x[0-9a-f]+)",manifest)
-    assert len(icon_ids) >= 2 and len(set(icon_ids)) == 1, "Installer/launcher icon mismatch"
+    assert len(icon_ids) == 7 and len(set(icon_ids)) == 5 and len(set(icon_ids[:3])) == 1, "Expected original installer icon and five launcher variants"
+    for alias in ("Original","Black","White","Milk","Transparent"):
+        assert f".Launcher{alias}" in manifest, f"Missing launcher alias: {alias}"
     debug = re.search(r"android:debuggable\([^)]*\)=\(type 0x12\)0x([0-9a-f]+)",manifest)
     assert debug is None or int(debug[1],16) == 0
     (reports/f"manifest-{name}.txt").write_text(manifest)
@@ -82,7 +84,7 @@ for name, expected_abis in variants.items():
                 assert destination not in archive.read(entry), f"Unobfuscated support destination in {entry.filename}"
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
     checksums.append(f"{digest}  {target.name}")
-    summary.append({"file":target.name,"size":target.stat().st_size,"sha256":digest,"abis":sorted(abis),"versionCode":1010,"versionName":"0.7.0-rc2","debuggable":False,"certificateSha256":expected_certificate,"signatureSchemes":[1,2,3],"zipAlignmentKiB":16,"native":native,"installerIconMatchesLauncher":True,"supportDestinationAbsentInPlaintext":True})
+    summary.append({"file":target.name,"size":target.stat().st_size,"sha256":digest,"abis":sorted(abis),"versionCode":1011,"versionName":"0.7.0-rc3","debuggable":False,"certificateSha256":expected_certificate,"signatureSchemes":[1,2,3],"zipAlignmentKiB":16,"native":native,"originalInstallerIconMatchesOriginalLauncher":True,"launcherVariants":5,"supportDestinationAbsentInPlaintext":True})
 
 (output/"SHA256SUMS.txt").write_text("\n".join(checksums)+"\n")
 (reports/"release-verification.json").write_text(json.dumps(summary,indent=2)+"\n")

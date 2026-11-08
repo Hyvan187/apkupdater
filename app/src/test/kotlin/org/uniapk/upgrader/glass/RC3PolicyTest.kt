@@ -38,6 +38,7 @@ class RC3PolicyTest {
  @Test fun autoCpuIsANewInstallDefaultWithoutChangingManualChoices(){val p=prefs();assertEquals(0,p.cpuTasks.get());p.cpuTasks.put(2);p.migrateDefaults();assertEquals(2,p.cpuTasks.get());assertEquals(2,ComputeBudget.state.value)}
  @Test fun firefliesAreAppendedAndRespectDensity(){assertEquals(17,MotionMode.FIREFLIES.ordinal);assertEquals(16,MotionMode.MATRIX.ordinal);assertEquals(0,MotionPolicy.count(MotionMode.FIREFLIES,0f));assertTrue(MotionPolicy.count(MotionMode.FIREFLIES,1f)>MotionPolicy.count(MotionMode.FIREFLIES,.1f))}
  @Test fun archiveFormatUsesContentInsteadOfMisleadingFilename(){assertEquals(InstallFormat.APK,InstallerChoices.format(zip("AndroidManifest.xml","classes.dex")));assertEquals(InstallFormat.SET,InstallerChoices.format(zip("base.apk","config.en.apk")))}
+ @Test fun singleApkArchiveUsesApkCapableInstallerChoices(){assertEquals(InstallFormat.APK,InstallerChoices.payloadFormat(zip("base.apk")));assertEquals(InstallFormat.SET,InstallerChoices.payloadFormat(zip("base.apk","config.en.apk")))}
  @Test fun bundleIntentIncludesReadGrantAndClipData(){val uri=android.net.Uri.parse("content://test/package.apks");val i=InstallerChoices.intent(uri,"application/x-apks");assertEquals(uri,i.data);assertEquals(uri,i.clipData!!.getItemAt(0).uri);assertTrue(i.flags and android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION!=0)}
  @Test fun unsupportedInstallerDoesNotLaunchOrCopy(){try{InstallerChoices.handoff(context,zip("base.apk"),"org.example","missing.installer");fail()}catch(_:IllegalStateException){};assertNull(shadowOf(context).nextStartedActivity)}
  @Test fun allFiveLauncherOptionsEnableExactlyOneAlias(){for(i in LauncherIcons.names.indices){LauncherIcons.select(context,i);LauncherIcons.names.forEachIndexed{j,n->assertEquals(if(i==j)PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED,context.packageManager.getComponentEnabledSetting(ComponentName(context,"${context.packageName}.Launcher$n")))}}}
@@ -48,3 +49,4 @@ class RC3PolicyTest {
  @Test fun sourceRetryNeverRepeatsCancellation()=runTest{var n=0;try{SourceRetry.once{n++;throw kotlinx.coroutines.CancellationException()};fail()}catch(_:kotlinx.coroutines.CancellationException){};assertEquals(1,n)}
  @Test fun playWarningPreferenceIsExplicitAndDoesNotSpoofInstaller(){assertTrue(prefs().preferPlay.get());assertEquals("com.android.vending",PlayInstallPolicy.PLAY);assertEquals("ASK",InstallerChoices.ASK)}
 }
+

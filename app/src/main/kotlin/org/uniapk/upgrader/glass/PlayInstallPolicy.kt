@@ -11,3 +11,4 @@ object PlayInstallPolicy {
   runCatching{context.startActivity(market)}.getOrElse{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse("https://play.google.com/store/apps/details?id=$packageName")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))}
  }
 }
+

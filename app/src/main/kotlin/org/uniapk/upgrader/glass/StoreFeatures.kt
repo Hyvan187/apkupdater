@@ -59,3 +59,4 @@ object ProfilePolicy {
  fun simulationActive(prefs: Prefs)=prefs.manualRegion.get()!="AUTO" || prefs.simulatedPreset.get()!="ACTUAL"
  fun actualProfile(profile: DeviceProfile,region: String,model: String)=profile // Overrides are labels/search context, never installation facts.
 }
+

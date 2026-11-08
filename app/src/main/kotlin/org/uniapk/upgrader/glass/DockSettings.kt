@@ -16,5 +16,7 @@ enum class DockSize(val label:String,val fraction:Float){COMPACT("Compact",.72f)
  OutlinedButton(onClick={menu=true}){Text(DockStyle.entries[a.dockStyle].label)}
  if(menu)GlassChoiceSheet("Dock-Stil",a.dockStyle.toString(),DockStyle.entries.map{GlassChoice(it.ordinal.toString(),it.label)},{menu=false}){v->store.update{it.copy(dockStyle=v.toInt())}}
  FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){DockSize.entries.forEachIndexed{i,v->FilterChip(a.dockSize==i,{store.update{it.copy(dockSize=i)}},label={Text(v.label)})}}
+ SecondaryText("Vorschau")
  DockNavigation("overview",null,Modifier.fillMaxWidth(),{})
 }}
+

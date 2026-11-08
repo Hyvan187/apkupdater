@@ -69,3 +69,4 @@ class StoreFeaturesTest {
  @Test fun differentUpdateOwnerRaisesRiskWithoutGrantingCompatibility(){val u=app(status=Compatibility.COMPATIBLE).copy(updateOwner="com.android.vending");assertEquals("Erhöht",RiskPolicy.risk(u).level);assertTrue(u.verdict.installAllowed)}
 
 }
+

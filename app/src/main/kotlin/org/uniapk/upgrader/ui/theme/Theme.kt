@@ -32,7 +32,7 @@ fun AppTheme(darkTheme: Boolean, dynamicColor: Boolean = false, content: @Compos
     val accent=lerp(base.surface,accentRaw,a.accentAlpha)
     val background = if(a.oled) Color.Black else if(a.customBackground) lerp(base.background,Color(a.background.toInt()),a.backgroundAlpha) else base.background
     val scheme = base.copy(primary = accent, onPrimary = if(accent.luminance() > .4f) Color(0xff10131c) else Color.White,
-        primaryContainer = lerp(base.surface, accent, .2f), background = background)
+        primaryContainer = lerp(base.surface, accent, .2f), secondary=if(a.dynamic)base.secondary else Color(p.secondary), secondaryContainer=lerp(base.surface,if(a.dynamic)base.secondary else Color(p.secondary),.2f), background = background)
     val family = when(a.font) { 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; else -> FontFamily.Default }
     fun scaled(style: androidx.compose.ui.text.TextStyle) = style.copy(fontFamily = family, fontSize = style.fontSize * a.textScale * (if(a.compact).96f else 1f), lineHeight = style.lineHeight * a.textScale * (if(a.compact).96f else 1f))
     val typography = Typography().let { t -> t.copy(
@@ -51,3 +51,4 @@ fun AppTheme(darkTheme: Boolean, dynamicColor: Boolean = false, content: @Compos
 }
 fun ColorScheme.statusBarColor() = surfaceColorAtElevation(3.dp)
 fun isDarkTheme(theme: Int): Boolean = when(theme) { 1 -> true; 2 -> false; else -> isDark() }
+

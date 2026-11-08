@@ -33,8 +33,8 @@ class UpdatesRepository(
                 val filtered = apps.filter { !it.ignored && org.uniapk.upgrader.glass.AppExclusions.allowed(it.packageName,prefs) }.filter {
                     org.uniapk.upgrader.glass.CategoryPolicy.matches(org.uniapk.upgrader.glass.AppScope.entries.getOrElse(prefs.scanScope.get()) { org.uniapk.upgrader.glass.AppScope.ALL }, it.system, it.packageName)
                 }
-                if(filtered.isEmpty()){emit(emptyList());return@collect}
                 org.uniapk.upgrader.glass.SourceHealth.reset(progressId?.let{"scan-$it"} ?: org.uniapk.upgrader.diagnostics.DiagnosticContext.current()["operationId"]?.toString())
+                if(filtered.isEmpty()){emit(emptyList());return@collect}
                 val sources = mutableListOf<Pair<String, Flow<List<AppUpdate>>>>()
                 if (prefs.useApkMirror.get()) sources.add("ApkMirror" to apkMirrorRepository.updates(filtered))
                 if (prefs.useGitHub.get()) sources.add("GitHub" to gitHubRepository.updates(filtered))
@@ -75,3 +75,4 @@ class UpdatesRepository(
     }
 
 }
+

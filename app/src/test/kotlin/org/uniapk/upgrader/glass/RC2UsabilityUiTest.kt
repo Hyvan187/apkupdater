@@ -50,3 +50,4 @@ class RC2UsabilityUiTest{
         repeat(3){i->var visible=0;for(y in 20..195)for(x in 20..195){val p=result.getPixel(12+i*240+x,y);if(Color.green(p)>70||Color.blue(p)>100)visible++};assertTrue("Logo too small in mask $i",visible>3500)};foreground.recycle();result.recycle()
     }
 }
+

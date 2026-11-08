@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +34,7 @@ enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Lon
    repeat(81){i->val a=i*2*kotlin.math.PI/80;val r=radius*(1+.15*kotlin.math.sin(a*6));val x=cx+kotlin.math.cos(a).toFloat()*r.toFloat();val y=cy+kotlin.math.sin(a).toFloat()*r.toFloat();if(i==0)path.moveTo(x,y)else path.lineTo(x,y)};path.close();drawPath(path,primary.copy(alpha=.08f))
   }
   Column(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=spacing(12))){
-   Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.Default.KeyboardArrowLeft,"Zurück")};Spacer(Modifier.weight(1f));Icon(icon,null,Modifier.size(34.dp),tint=primary)}
+   Row(verticalAlignment=Alignment.CenterVertically){IconButton(onClick=onBack){Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,"Zurück")};Spacer(Modifier.weight(1f));Icon(icon,null,Modifier.size(34.dp),tint=primary)}
    Spacer(Modifier.height(spacing(14)));Text(title,style=MaterialTheme.typography.headlineLarge,fontWeight=FontWeight.Medium);Spacer(Modifier.height(6.dp));SecondaryText(subtitle)
   }
  }
@@ -78,3 +79,4 @@ enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Lon
   }
  }
 }
+

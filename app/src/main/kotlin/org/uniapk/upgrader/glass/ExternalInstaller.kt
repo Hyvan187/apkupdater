@@ -17,6 +17,7 @@ enum class InstallFormat(val extension:String,val mimeTypes:List<String>){
 object InstallerChoices {
  const val ASK="ASK"
  fun format(file:File):InstallFormat=runCatching{java.util.zip.ZipFile(file).use{if(it.getEntry("AndroidManifest.xml")!=null)InstallFormat.APK else InstallFormat.SET}}.getOrDefault(InstallFormat.APK)
+ fun payloadFormat(file:File):InstallFormat=runCatching{java.util.zip.ZipFile(file).use{z->if(z.getEntry("AndroidManifest.xml")!=null||z.entries().asSequence().count{!it.isDirectory&&it.name.endsWith(".apk",true)}==1)InstallFormat.APK else InstallFormat.SET}}.getOrDefault(InstallFormat.APK)
  fun intent(uri:Uri=Uri.parse("content://placeholder/checked.apk"),mime:String="application/vnd.android.package-archive")=Intent(Intent.ACTION_VIEW).setDataAndType(uri,mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION).apply{clipData=ClipData.newRawUri("Geprüftes APK-Paket",uri)}
  private fun handlers(context:Context,format:InstallFormat):List<Pair<String,android.content.pm.ResolveInfo>> {
   val pm=context.packageManager;return format.mimeTypes.flatMap{mime->
@@ -44,3 +45,4 @@ object InstallerChoices {
 class InstallResultReceiver : BroadcastReceiver() {
  override fun onReceive(context: Context,intent: Intent) { if(intent.action!=Intent.ACTION_MY_PACKAGE_REPLACED)return;val pending=goAsync();kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch{try{GlobalContext.getOrNull()?.get<HistoryStore>()?.reconcile(context)}finally{pending.finish()}} }
 }
+

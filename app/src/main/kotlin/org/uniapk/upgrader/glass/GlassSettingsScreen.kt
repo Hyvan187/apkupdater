@@ -240,3 +240,4 @@ import org.koin.compose.koinInject
   item{SettingsTile("Über UniAPK","Version, Lizenzen und Projekt unterstützen",Color(0xff3d4050),Icons.Default.Favorite,Modifier.fillMaxWidth().height(rowHeight)){section=8}}
  }
 }
+

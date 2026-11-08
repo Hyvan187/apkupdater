@@ -50,3 +50,4 @@ import org.koin.compose.koinInject
     }
     if(menu)GlassChoiceSheet("CPU-Aufgaben",requested.toString(),listOf(GlassChoice("0","Automatisch","Passt Aufgaben und Effekte an Energiesparmodus, verfügbaren Speicher und Temperatur an."))+(1..Runtime.getRuntime().availableProcessors().coerceAtLeast(1)).map{GlassChoice(it.toString(),"$it ${if(it==1)"Aufgabe" else "Aufgaben"}")},{menu=false}){val n=it.toInt();requested=n;prefs.cpuTasks.put(n);ComputeBudget.set(n);ComputeBudget.refresh(context)}
 }
+

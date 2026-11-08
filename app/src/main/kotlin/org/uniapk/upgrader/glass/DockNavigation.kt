@@ -4,6 +4,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.List
@@ -24,10 +26,11 @@ import androidx.compose.ui.unit.dp
     val routes=listOf("overview","updates","apps","search");val labels=listOf("Start","Updates","Apps","Suche");val icons=listOf(Icons.Default.Home,Icons.Default.Refresh,Icons.AutoMirrored.Filled.List,Icons.Default.Search)
     routes.forEachIndexed{i,target->val selected=target==route
      val color by animateColorAsState(if(selected)MaterialTheme.colorScheme.primary.copy(alpha=.23f)else Color.Transparent,label="dock-color")
-     val shape=when(style){DockStyle.CLASSIC->RoundedCornerShape(10.dp);DockStyle.EXPRESSIVE->RoundedCornerShape(topStart=if(selected)24.dp else 10.dp,topEnd=8.dp,bottomEnd=24.dp,bottomStart=8.dp);DockStyle.SHAPE_SHIFT->RoundedCornerShape(if(selected)18.dp else 50.dp);else->CircleShape}
+     val corner by animateDpAsState(if(selected)18.dp else 50.dp,animationSpec=tween(if(a.reduceMotion)0 else 220),label="dock-shape")
+     val shape=when(style){DockStyle.CLASSIC->RoundedCornerShape(10.dp);DockStyle.EXPRESSIVE->RoundedCornerShape(topStart=if(selected)24.dp else 10.dp,topEnd=8.dp,bottomEnd=24.dp,bottomStart=8.dp);DockStyle.SHAPE_SHIFT->RoundedCornerShape(corner);else->CircleShape}
      Column(Modifier.weight(1f).heightIn(min=48.dp).clip(shape).background(color).clickable(role=androidx.compose.ui.semantics.Role.Tab){navigate(target)}.semantics{this.selected=selected;contentDescription=if(target=="search")"Apps suchen" else labels[i]}.padding(vertical=if(a.compact)5.dp else 8.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
       Icon(icons[i],null,Modifier.size(if(style==DockStyle.EXPRESSIVE&&selected)27.dp else 23.dp),tint=if(selected)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
-      if(style!=DockStyle.CLASSIC&&(a.dockSize!=0||style==DockStyle.LABELED||selected))Text(labels[i],style=MaterialTheme.typography.labelSmall,maxLines=1)
+      if(style!=DockStyle.CLASSIC&&style!=DockStyle.PILL&&(a.dockSize!=0||style==DockStyle.LABELED||selected))Text(labels[i],style=MaterialTheme.typography.labelSmall,maxLines=1)
       if(style==DockStyle.CLASSIC&&selected)Box(Modifier.padding(top=3.dp).size(4.dp).background(MaterialTheme.colorScheme.primary,CircleShape))
      }
     }
@@ -35,3 +38,4 @@ import androidx.compose.ui.unit.dp
   }
  }
 }
+

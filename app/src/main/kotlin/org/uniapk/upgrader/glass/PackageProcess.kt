@@ -55,3 +55,4 @@ data class InstallerPrompt(val update:AppUpdate,val choices:List<Pair<String,Str
  }},confirmButton={TextButton(onClick=viewModel::dismissInstaller){Text("Abbrechen")}})
 }
 @Composable private fun Modifier.androidxScroll()=this.then(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()))
+

@@ -17,3 +17,4 @@ class IgnoredAppStore(private val prefs:Prefs) {
 object AppExclusions {
  fun allowed(pkg:String,prefs:Prefs)=pkg !in prefs.ignoredApps.get()
 }
+

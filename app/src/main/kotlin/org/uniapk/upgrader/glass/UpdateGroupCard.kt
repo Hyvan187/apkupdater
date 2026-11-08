@@ -145,3 +145,4 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
 private fun FactRow(label: String, value: String) = Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
     SecondaryText(label, Modifier.width(88.dp)); Text(value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
 }
+

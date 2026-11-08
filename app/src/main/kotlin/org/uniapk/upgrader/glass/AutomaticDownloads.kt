@@ -34,7 +34,7 @@ object AutomaticDownloads {
             }
             var file:File?=null
             try {
-                file=downloader.download(update.link,DownloadTrigger.AUTOMATIC_SCAN,minOf(max,budget,ResourcePolicy.budget(context.cacheDir.usableSpace,max)))
+                file=downloader.download(update.link,DownloadTrigger.AUTOMATIC_SCAN,minOf(max,budget,ResourcePolicy.budget(context.cacheDir.usableSpace,max))){_,_->check(AppExclusions.allowed(update.packageName,prefs)){"App inzwischen ignoriert."}}
                 budget-=file.length()
                 val report=withContext(ComputeBudget.dispatcher()){installer.inspect(file,update.packageName)}
                 if(!report.verdict.installAllowed||!AppExclusions.allowed(update.packageName,prefs))continue
@@ -52,3 +52,4 @@ object AutomaticDownloads {
         }
     }
 }
+

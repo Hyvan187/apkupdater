@@ -15,3 +15,4 @@ data class ReadyRecord(val name:String,val packageName:String,val version:String
   fun from(u:AppUpdate,file:File,report:ApkAnalyzer.Report,time:Long,published:Boolean)=ReadyRecord(u.name,u.packageName,u.version,u.oldVersion,u.versionCode,u.oldVersionCode,u.source.name,u.source.resourceId,u.artifactKey,u.id,file.name,time,published,u.system,(u.link as? Link.Url)?.link ?: (u.link as? Link.Xapk)?.link.orEmpty(),report)
  }
 }
+

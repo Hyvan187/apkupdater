@@ -138,3 +138,4 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
     }
     TextButton(onClick = { store.update { it.copy(opacity = .46f) } }) { Text("Standard: 54 %") }
 }
+

@@ -38,7 +38,7 @@ class GlassTransparencyUiTest {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
         compose.onNodeWithContentDescription("Glastransparenz").assertDoesNotExist()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Design und Leistung"));compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Design und Leistung"));compose.onNodeWithText("Design und Leistung").performClick()
-        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasContentDescription("Glastransparenz"))
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasContentDescription("Glastransparenz"))
         compose.onAllNodesWithContentDescription("Glastransparenz").assertCountEquals(1)
         compose.onNodeWithContentDescription("Glastransparenz").assertIsDisplayed()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(.8f) }
@@ -128,3 +128,4 @@ class GlassTransparencyUiTest {
         compose.onNodeWithText("Auswahl herunterladen und prüfen").assertIsDisplayed()
     }
 }
+

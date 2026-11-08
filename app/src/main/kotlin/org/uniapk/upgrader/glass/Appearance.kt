@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 data class Appearance(
-    val compact:Boolean=false,val dockStyle:Int=0,val dockSize:Int=1,val iconStyle:Int=0,val palette:Int=0,
+    val compact:Boolean=false,val dockStyle:Int=2,val dockSize:Int=1,val iconStyle:Int=0,val palette:Int=0,
     val theme: Int = 1, val dynamic: Boolean = false,
     val accent: Long = 0xffc8b9ff, val background: Long = 0xff080b13,
     val customAccent: Boolean = false, val customBackground: Boolean = false,
@@ -72,5 +72,6 @@ class AppearanceStore(private val prefs: Prefs) {
         persisted = v
     }
     fun recommendedGlass() = update { it.copy(quality=2,opacity=.46f,blur=true,refraction=true,progressiveBlur=false) }
-    fun reset() = update { Appearance() }
+    fun reset() { prefs.cpuTasks.put(0);ComputeBudget.set(0);update { Appearance() } }
 }
+

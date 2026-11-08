@@ -114,13 +114,15 @@ val LocalBackgroundFrameRate=staticCompositionLocalOf { 30 }
             MotionMode.LAVA->positions.indices.forEach{i->val p=Offset(size.width*(.15f+positions[i].x*.7f)+sin(t*.25f+i)*size.width*.12f,wrap(positions[i].y*size.height-t*(7+i%3)*unit,size.height));val radius=min(size.width,size.height)*(.13f+i%3*.035f);val path=Path();repeat(33){j->val angle=j*2*PI/32;val r=radius*(1+.12f*sin(angle*3+t*.5f+i).toFloat());val v=p+Offset(cos(angle).toFloat(),sin(angle).toFloat())*r;if(j==0)path.moveTo(v.x,v.y)else path.lineTo(v.x,v.y)};path.close();drawPath(path,Brush.radialGradient(listOf(tint(i).copy(alpha=.26f),tint(i).copy(alpha=.05f)),p,radius*1.2f))}
             MotionMode.NEBULA->positions.indices.forEach{i->val p=Offset(positions[i].x*size.width+sin(t*.2f+i)*size.width*.12f,positions[i].y*size.height+cos(t*.17f+i)*size.height*.1f)+shift;val radius=max(size.width,size.height)*(.34f+i%3*.06f);drawCircle(Brush.radialGradient(listOf(tint(i).copy(alpha=.19f),Color.Transparent),p,radius),radius,p)}
             MotionMode.AURORA->{
-                // Soft vertical curtains follow a moving folded horizon, with rays fading downward.
-                val bands=minOf(count,7)
-                repeat(bands){b->val base=size.height*(.14f+b*.105f);val spread=size.height*(.18f+b%3*.035f)
-                    val path=Path();for(x in 0..96){val u=x/96f;val y=base+sin(u*5.5f+t*.16f+b*.8f)*size.height*.08f+sin(u*13f-t*.12f+b)*size.height*.027f;if(x==0)path.moveTo(0f,y)else path.lineTo(u*size.width,y)}
-                    for(x in 96 downTo 0){val u=x/96f;val y=base+sin(u*5.5f+t*.16f+b*.8f)*size.height*.08f+sin(u*13f-t*.12f+b)*size.height*.027f;path.lineTo(u*size.width,y+spread*(.7f+.3f*sin(u*8f+t*.18f+b)))};path.close()
-                    drawPath(path,Brush.verticalGradient(listOf(Color.Transparent,tint(b).copy(alpha=.18f),tint(b).copy(alpha=.07f),Color.Transparent),base-size.height*.09f,base+spread))
-                    for(x in 0..90){val u=x/90f;val px=u*size.width;val y=base+sin(u*5.5f+t*.16f+b*.8f)*size.height*.08f+sin(u*13f-t*.12f+b)*size.height*.027f;val len=spread*(.6f+.4f*sin(x*.9f+t*.35f+b).pow(2));drawLine(Brush.verticalGradient(listOf(tint(b).copy(alpha=.05f),tint(b).copy(alpha=.13f),Color.Transparent),y,y+len),Offset(px,y),Offset(px+sin(t*.2f+b)*8*unit,y+len),max(1f,size.width/100))}
+                val bands=(1+(count-2).coerceAtLeast(0)/3).coerceAtMost(3)
+                repeat(bands){b->
+                    fun edge(u:Float)=size.height*(.23f+b*.19f)+sin(u*5.7f+t*.12f+b*.8f)*size.height*.1f+sin(u*12.5f-t*.09f+b)*size.height*.028f-u*size.height*.08f
+                    val crest=Path();for(x in 0..128){val u=x/128f;val y=edge(u);if(x==0)crest.moveTo(0f,y)else crest.lineTo(u*size.width,y)}
+                    drawPath(crest,tint(b).copy(alpha=.025f),style=Stroke(24*unit));drawPath(crest,tint(b).copy(alpha=.05f),style=Stroke(11*unit));drawPath(crest,tint(b).copy(alpha=.19f),style=Stroke(1.8f*unit))
+                    val rays=(30+a.density*100).toInt()
+                    repeat(rays){x->val u=(x+.3f*sin(x*2.7f+b))/rays;val px=u*size.width;val y=edge(u);val breath=.5f+.5f*sin(u*9+t*.16f+b);val length=size.height*(.12f+.18f*breath)*(.8f+.2f*sin(x*1.7f+t*.3f).pow(2));val opacity=.035f+.065f*(.5f+.5f*sin(x*1.31f+t*.23f+b))
+                        drawLine(Brush.verticalGradient(listOf(tint(b).copy(alpha=opacity),tint(b).copy(alpha=opacity*.3f),Color.Transparent),y,y+length),Offset(px,y),Offset(px+sin(t*.14f+b+u*4)*16*unit,y+length),size.width/rays*1.8f)
+                    }
                 }
             }
             MotionMode.FIREFLIES->positions.indices.forEach{i->val origin=positions[i];val p=Offset(wrap(origin.x*size.width+sin(t*.25f+i*1.7f)*(10+i%5*5)*unit+cos(t*.12f+i)*8*unit,size.width),wrap(origin.y*size.height+cos(t*.21f+i*.9f)*(12+i%4*7)*unit,size.height))+shift;val pulse=(.18f+.82f*((sin(t*(.6f+i%3*.13f)+i*2.4f)+1)/2).pow(3));val radius=(6+i%3*2)*unit;drawCircle(Brush.radialGradient(listOf(tint(i).copy(alpha=.35f*pulse),Color.Transparent),p,radius),radius,p);drawCircle(tint(i).copy(alpha=.9f*pulse),(.8f+i%3*.3f)*unit,p)}
@@ -133,3 +135,4 @@ val LocalBackgroundFrameRate=staticCompositionLocalOf { 30 }
         }
     }
 }
+

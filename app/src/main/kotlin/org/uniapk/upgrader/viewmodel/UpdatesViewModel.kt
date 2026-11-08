@@ -297,7 +297,7 @@ class UpdatesViewModel(
         }
         val chosen=selectedInstaller ?: prefs.installerPackage.get()
         val play=PlayInstallPolicy.installedByPlay(context,update.packageName)
-        val options=InstallerChoices.available(context,InstallerChoices.format(checked.file))
+        val options=InstallerChoices.available(context,InstallerChoices.payloadFormat(checked.file))
         val supported=chosen=="SYSTEM"||options.any{it.first==chosen}
         if(selectedInstaller==null&&(chosen==InstallerChoices.ASK||!supported||(prefs.preferPlay.get()&&play))){installerState.value=InstallerPrompt(update,options,play);return@launch}
         riskConsent.remove(consentKey(update))
@@ -341,3 +341,4 @@ class UpdatesViewModel(
     }
     override fun onCleared() { verified.clear(); batchJob?.cancel(); super.onCleared() }
 }
+

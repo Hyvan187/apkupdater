@@ -20,3 +20,4 @@ import java.util.Date
  }
  if(confirm)AlertDialog(onDismissRequest={confirm=false},title={Text("Verlauf löschen?")},text={Text("Alle gespeicherten Verlaufseinträge entfernen?")},confirmButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.clear();confirm=false}){Text("Löschen")}},dismissButton={TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={confirm=false}){Text("Abbrechen")}})
 }
+

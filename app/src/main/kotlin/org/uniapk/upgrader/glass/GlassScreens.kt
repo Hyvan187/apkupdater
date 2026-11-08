@@ -208,3 +208,4 @@ fun ScopeChoices(selected: AppScope, choose: (AppScope) -> Unit) {
         AppScope.entries.forEach { value -> FilterChip(selected == value, { choose(value) }, label = { Text(if(value == AppScope.GENERAL) "Allgemeine" else value.label, style = MaterialTheme.typography.labelSmall) }) }
     }
 }
+

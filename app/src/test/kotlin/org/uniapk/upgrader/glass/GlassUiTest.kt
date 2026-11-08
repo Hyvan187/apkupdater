@@ -207,6 +207,7 @@ class GlassUiTest {
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updateprüfung"));compose.onNodeWithText("Updateprüfung").performClick();compose.onNodeWithText("Allgemeine").performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals(AppScope.GENERAL, koin.get<AppSelection>().scope.value) }
         compose.onNodeWithContentDescription("Zurück").performClick()
+        compose.onNodeWithContentDescription("Zurück").performClick()
         compose.onNodeWithText("Apps").performClick()
         compose.onNodeWithText("Allgemeine").assertIsSelected()
         screenshot("10-custom-colors-categories")
@@ -220,7 +221,7 @@ class GlassUiTest {
         compose.onAllNodesWithText("Design und Leistung").assertCountEquals(1)
         val store=GlobalContext.get().get<AppearanceStore>()
         compose.runOnIdle { store.update{it.copy(quality=0,opacity=.9f,blur=false,accent=0xff123456,customAccent=true)} }
-        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Empfohlene Glaswerte anwenden"));compose.onNodeWithText("Empfohlene Glaswerte anwenden").performClick()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Empfohlene Glaswerte anwenden"));compose.onNodeWithText("Empfohlene Glaswerte anwenden").performClick()
         compose.runOnIdle {org.junit.Assert.assertEquals(2,store.state.value.quality);org.junit.Assert.assertTrue(store.state.value.blur);org.junit.Assert.assertEquals(.46f,store.state.value.opacity);org.junit.Assert.assertTrue(store.state.value.customAccent)}
         screenshot("11-recommended-appearance")
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Alle Darstellungswerte auf Standard zurücksetzen"))
@@ -315,3 +316,4 @@ class GlassUiTest {
     }
 
 }
+

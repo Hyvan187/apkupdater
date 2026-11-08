@@ -5,6 +5,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
@@ -48,3 +49,4 @@ class RC3UiTest {
  @Test fun installerSettingsOfferAskEveryTime(){content{GlassSettingsScreen({}, {})};scroll("Downloads und Installer");compose.onNodeWithText("Downloads und Installer").performClick();scroll("Android PackageInstaller");compose.onNodeWithText("Android PackageInstaller").performClick();compose.onNodeWithText("Bei jeder Installation fragen").assertIsDisplayed().performClick();compose.runOnIdle{assertEquals(InstallerChoices.ASK,GlobalContext.get().get<Prefs>().installerPackage.get())}}
  @Test fun auroraAndFirefliesProduceDifferentVisibleFrames(){val store=GlobalContext.get().get<AppearanceStore>();compose.mainClock.autoAdvance=false;content{MotionBackground(LocalAppearance.current)};for(m in listOf(MotionMode.AURORA,MotionMode.FIREFLIES)){compose.runOnIdle{store.update{it.copy(motion=m.ordinal,density=.7f,reduceMotion=false)}};compose.mainClock.advanceTimeBy(1000);shot("31-effect-${m.name.lowercase()}")}}
 }
+

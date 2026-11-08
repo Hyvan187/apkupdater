@@ -15,3 +15,4 @@ object UniIcons {
  val PhoneAndroid=icon("Phone","M6,1 L18,1 Q20,1 20,3 L20,21 Q20,23 18,23 L6,23 Q4,23 4,21 L4,3 Q4,1 6,1 Z M6,4 L6,19 L18,19 L18,4 Z")
  val Language=icon("Language","M12,2 A10,10 0,1 0,12,22 A10,10 0,1 0,12,2 Z M12,4 Q7,12 12,20 Q17,12 12,4 Z M4,11 L20,11 L20,13 L4,13 Z")
 }
+

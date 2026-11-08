@@ -42,7 +42,7 @@ class Prefs(
     val limitsSchema = int("limits.schema",0,true)
     val appLanguage = string("store.language","SYSTEM",true)
     val compactMode = boolean("appearance.compact",false,true)
-    val dockStyle = int("appearance.dockStyle",0,true)
+    val dockStyle = int("appearance.dockStyle",2,true)
     val dockSize = int("appearance.dockSize",1,true)
     val iconStyle = int("appearance.iconStyle",0,true)
     val palette = int("appearance.palette",0,true)
@@ -122,3 +122,4 @@ class Prefs(
 	val lastPlayCheck = long("lastPlayCheck", 0L, true)
 	val newInstaller = boolean("newInstaller", defValue = true, backed = true)
 }
+

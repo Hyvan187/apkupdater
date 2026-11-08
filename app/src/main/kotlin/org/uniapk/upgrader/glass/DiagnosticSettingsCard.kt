@@ -49,3 +49,4 @@ import java.util.Locale
     }
     confirmation?.let{action->AlertDialog(onDismissRequest={confirmation=null},title={Text("Technische Gerätedaten enthalten")},text={Text("Die erweiterte Diagnose enthält unter anderem Modell/Hersteller, Android-/Displaykonfiguration, Sprache, Zeitzone, Netzart und beteiligte App-Paketnamen. Das kann Rückschlüsse auf Gerät und App-Nutzung ermöglichen. Zugangsdaten, eindeutige Hardwarekennungen und persönliche Inhalte werden weiterhin ausgeschlossen. ${if(action=="export")"Die ZIP nur bewusst weitergeben." else "Ab jetzt gilt dieser Umfang für neu erfasste Ereignisse."}")},confirmButton={TextButton(onClick={confirmation=null;if(action=="export")launchExport() else AppDiagnostics.configure(verbose=true)}){Text(if(action=="export")"Bewusst exportieren" else "Erweiterte Aufzeichnung aktivieren")}},dismissButton={TextButton(onClick={confirmation=null}){Text("Abbrechen")}})}
 }
+
