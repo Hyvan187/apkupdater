@@ -28,10 +28,19 @@ jobs:
           sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
           python3 tools/normalize-sdk37.py
       - uses: gradle/actions/setup-gradle@v4
+      - name: Download verified Gradle with network retries
+        run: |
+          gradle_zip="$RUNNER_TEMP/uniapk-gradle.zip"
+          curl --fail --location --retry 4 --retry-all-errors --connect-timeout 20 --max-time 180 \
+            https://downloads.gradle.org/distributions/gradle-9.4.0-bin.zip -o "$gradle_zip" || \
+          curl --fail --location --retry 4 --retry-all-errors --connect-timeout 20 --max-time 180 \
+            https://github.com/gradle/gradle-distributions/releases/download/v9.4.0/gradle-9.4.0-bin.zip -o "$gradle_zip"
+          printf '%s  %s\n' '60ea723356d81263e8002fec0fcf9e2b0eee0c0850c7a3d7ab0a63f2ccc601f3' "$gradle_zip" | sha256sum --check
+          unzip -q "$gradle_zip" -d "$RUNNER_TEMP/uniapk-gradle"
+          echo "$RUNNER_TEMP/uniapk-gradle/gradle-9.4.0/bin" >> "$GITHUB_PATH"
       - name: Tests, lint and debug APK
         run: |
-          chmod +x gradlew
-          ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+          gradle :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
       - name: Name and verify artifact
         run: |
           mkdir -p artifacts
