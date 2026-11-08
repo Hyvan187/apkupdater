@@ -17,6 +17,13 @@ class DiagnosticQualityTest {
         ZipInputStream(bytes.inputStream()).use { zip -> while(true){val e=zip.nextEntry ?: break;result[e.name]=zip.readBytes().toString(Charsets.UTF_8)} }
         return result
     }
+    @Test fun numericSoftwareVersionsArePreservedWhileActualAddressesStayPrivate(){
+        val input=com.google.gson.JsonObject().apply{addProperty("version","17.0.0.102");addProperty("address","192.168.1.4");addProperty("password","PRIVATE_TEST_VALUE")}
+        val safe=DiagnosticRedaction.json(input).asJsonObject
+        assertEquals("17.0.0.102",safe["version"].asString);assertEquals("[ip]",safe["address"].asString);assertEquals("[redacted]",safe["password"].asString)
+        assertEquals("17.0.0.102",DiagnosticRedaction.value("version","17.0.0.102"))
+        assertFalse(DiagnosticRedaction.version("17.0.0.102 token=TEST_CREDENTIAL").contains("TEST_CREDENTIAL"))
+    }
     @Test fun redactsQuotedJsonCredentialsAndUnlabelledBearerValues() {
         val input="""{"Authorization":"Bearer HEADERSECRET","password":"PASSSECRET","access_token":"TOKENSECRET"} Bearer OTHERSECRET at 192.168.1.4"""
         val output=DiagnosticRedaction.text(input)

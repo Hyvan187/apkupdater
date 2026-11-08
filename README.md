@@ -1,10 +1,10 @@
-# Universal APK Upgrader · UniAPK 0.7.0-rc4
+# Universal APK Upgrader · UniAPK 0.7.0-rc5
 
-Aktuelle Änderungen und Grenzen: [RC4-CHANGES-DE.md](docs/RC4-CHANGES-DE.md). Tatsächliche Prüfergebnisse: [TEST-RESULTS.md](docs/TEST-RESULTS.md).
+Aktuelle Änderungen und Grenzen: [RC5-CHANGES-DE.md](docs/RC5-CHANGES-DE.md). Tatsächliche Prüfergebnisse: [TEST-RESULTS.md](docs/TEST-RESULTS.md).
 
 ## Application
 
-Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version 0.7.0-rc4, version code 1012, min/compile/target API 23/37/37. RC4 updates RC1/RC2/RC3 with the same package and signer, preserving their settings. The older Liquid-APK-Store package remains separate.
+Native Android application for discovering APK updates and inspecting packages before requesting installation. Product identity: `org.uniapk.upgrader`, version 0.7.0-rc5, version code 1013, min/compile/target API 23/37/37. RC5 updates RC1/RC2/RC3/RC4 with the same package and signer, preserving their settings. The older Liquid-APK-Store package remains separate.
 
 ## Earlier RC2 usability changes
 

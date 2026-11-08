@@ -27,17 +27,20 @@ object DiagnosticRedaction {
         if(depth>12)return com.google.gson.JsonPrimitive("[depth limit]")
         return when {
             value.isJsonNull->value
-            value.isJsonObject->com.google.gson.JsonObject().also{out->value.asJsonObject.entrySet().take(200).forEach{(key,v)->if(detailed||!DiagnosticPrivacy.personalKey(key))out.add(key,if(sensitiveKey(key))com.google.gson.JsonPrimitive("[redacted]") else json(v,detailed,depth+1))}}
+            value.isJsonObject->com.google.gson.JsonObject().also{out->value.asJsonObject.entrySet().take(200).forEach{(key,v)->if(detailed||!DiagnosticPrivacy.personalKey(key))out.add(key,if(sensitiveKey(key))com.google.gson.JsonPrimitive("[redacted]") else if(key in versionKeys&&v.isJsonPrimitive&&v.asJsonPrimitive.isString)com.google.gson.JsonPrimitive(version(v.asString)) else json(v,detailed,depth+1))}}
             value.isJsonArray->com.google.gson.JsonArray().also{out->value.asJsonArray.take(10000).forEach{out.add(json(it,detailed,depth+1))}}
             value.asJsonPrimitive.isString->com.google.gson.JsonPrimitive(text(value.asString))
             else->value.deepCopy()
         }
     }
-    fun value(key: String, value: String): String = if (sensitive.matches(key)) "[redacted]" else text(value)
+    private val versionKeys=setOf("version","versionName","fromVersion","toVersion")
+    fun value(key: String, value: String): String = if (sensitive.matches(key)) "[redacted]" else if(key in versionKeys)version(value) else text(value)
     fun sensitiveKey(key:String)=sensitive.matches(key)
-    fun text(value: String): String = value.replace(headers, "[redacted header]")
+    fun version(value:String):String=sanitize(value,false)
+    fun text(value: String): String = sanitize(value,true)
+    private fun sanitize(value:String,maskAddresses:Boolean):String = value.replace(headers, "[redacted header]")
         .replace(credentials, "[redacted credential]").replace(bearer,"[redacted credential]").replace(links, "[url]")
-        .replace(emails, "[email]").replace(paths, "[path]").replace(addresses,"[ip]").take(1024)
+        .replace(emails, "[email]").replace(paths, "[path]").let{if(maskAddresses)it.replace(addresses,"[ip]") else it}.take(1024)
 }
 
 /** Bounded app-owned JSONL ring; export never includes request bodies or system-wide logcat. */

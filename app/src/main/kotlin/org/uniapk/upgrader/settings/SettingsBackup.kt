@@ -63,7 +63,9 @@ object SettingsBackup {
     internal fun transaction(p:Prefs,preview:BackupPreview,checkpoint:(Int)->Unit={}) {
         val valid=validate(preview.document,p)
         val before=document(SettingsRegistry(p).capture(),AppDiagnostics.state.value)
-        p.restoreJournal.put(before.toString());p.flushSettings()
+        val journal=before.toString()
+        if(journal.toByteArray(Charsets.UTF_8).size>BackupCodec.MAX_PLAIN)throw BackupException("Der vorherige Einstellungszustand ist zu groß für eine sichere Wiederherstellung.")
+        p.restoreJournal.put(journal);p.flushSettings()
         try{
             val registry=SettingsRegistry(p)
             registry.definitions.forEachIndexed{i,definition->definition.write(valid.document.getAsJsonObject("settings")[definition.name]);checkpoint(i)}
@@ -71,6 +73,7 @@ object SettingsBackup {
             applyDiagnostics(valid.document.getAsJsonObject("diagnostics"))
             p.flushSettings();p.restoreJournal.put("");p.flushSettings()
         }catch(e:Exception){
+            AppDiagnostics.safeError("backup.restore.transaction_failed",e)
             // If rollback itself fails, keep the durable journal for recovery before the next UI start.
             runCatching{SettingsRegistry(p).apply(before.getAsJsonObject("settings"));applyDiagnostics(before.getAsJsonObject("diagnostics"));p.flushSettings();p.restoreJournal.put("");p.flushSettings()}
             throw BackupException("Wiederherstellung nicht abgeschlossen. Der vorherige Zustand wird aus der internen Sicherung wiederhergestellt.")

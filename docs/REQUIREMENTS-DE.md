@@ -1,3 +1,7 @@
+# Aktueller Stand: RC5
+
+Die Diagnose-Erweiterung sowie Backup und Wiederherstellung stehen mit Umfang, Datenschutz, Dateiformat und Grenzen in [RC5-CHANGES-DE.md](RC5-CHANGES-DE.md). Die bestehende RC4-Menüstruktur und das gemeinsame Design bleiben erhalten. Tatsächliche Prüfergebnisse: [TEST-RESULTS.md](TEST-RESULTS.md).
+
 # Aktueller Stand: RC4
 
 Die fünf zuletzt angeforderten Phasen sind in [RC4-CHANGES-DE.md](RC4-CHANGES-DE.md) mit Verhalten, Migration und Grenzen aufgeführt. Diese Beschreibung ersetzt die älteren Menü- und Einzelfarbkonzepte der folgenden historischen Anforderungsmatrix. Der tatsächliche Prüfstand steht in [TEST-RESULTS.md](TEST-RESULTS.md).

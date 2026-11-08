@@ -1,3 +1,11 @@
+# 0.7.0-rc5 (1013)
+
+- Diagnose um aktuelle Einstellungen und Laufzeitbericht ergänzt, mit gespeicherten und wirksamen Darstellungswerten, Quellen-, Berechtigungs- und Speicherstatus.
+- Zeitlich zugeordnete Konfigurationsschnappschüsse mit gebündeltem Änderungsbeobachter; sensible Listen nur in erweiterter Diagnose, Zugangsdaten und private Pfade ausgeschlossen.
+- Portable passwortverschlüsselte Einstellungsbackups einschließlich eigener API-Zugänge und selbst gepflegter Listen.
+- Validierung und Vorschau vor Wiederherstellung, Rücknahme und Wiederanlauf nach unterbrochenem Schreiben, sofortiges Neuladen der App-Zustände.
+- Android-Freigaben, APK-Dateien und kurzlebige Anmeldesitzungen werden nicht durch ein Einstellungsbackup übertragen.
+
 # 0.7.0-rc4 (1012)
 
 - Einstellungen auf vier Bereiche und zwei Ebenen reduziert; konfigurierbarer Schnellzugriff, Startansicht und eingebettete Berechtigungen.

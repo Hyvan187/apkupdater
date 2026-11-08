@@ -113,6 +113,10 @@ object AppDiagnostics {
         writer.execute {store?.limitSegments(state.value.maxFiles)}
         if (enabled) {info("diagnostic.configuration", mapOf("verbose" to verbose));settingsHandler.removeCallbacks(settingsCheckpoint);settingsHandler.postDelayed(settingsCheckpoint,600)}
     }
+    fun safeError(event:String,cause:Throwable){
+        val safe=IllegalStateException("Details mit möglichen Backup-Inhalten ausgelassen.").apply{stackTrace=cause.stackTrace.clone()}
+        error(event,mapOf("originalException" to cause.javaClass.name,"classification" to DiagnosticFailure.category(cause)),safe)
+    }
     fun debug(event: String, fields: Map<String, Any?> = emptyMap()) = record(DiagnosticLevel.DEBUG, event, fields)
     fun info(event: String, fields: Map<String, Any?> = emptyMap()) = record(DiagnosticLevel.INFO, event, fields)
     fun error(event: String, fields: Map<String, Any?> = emptyMap(), error: Throwable? = null) = record(DiagnosticLevel.ERROR, event, fields, error)

@@ -33,7 +33,7 @@ import java.util.*
     var preview by remember{mutableStateOf<BackupPreview?>(null)};var detailedConsent by remember{mutableStateOf(false)}
     val create=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")){uri->if(uri!=null)passwordRequest=uri to true}
     val open=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->if(uri!=null)passwordRequest=uri to false}
-    fun failure(e:Exception){status=if(e is BackupException)e.message.orEmpty() else "Die Datei konnte nicht verarbeitet werden. Bitte Zugriff und freien Speicher prüfen.";AppDiagnostics.error("backup.operation.failed",mapOf("failure" to e.javaClass.simpleName))}
+    fun failure(e:Exception){status=if(e is BackupException)e.message.orEmpty() else "Die Datei konnte nicht verarbeitet werden. Bitte Zugriff und freien Speicher prüfen.";AppDiagnostics.safeError("backup.operation.failed",e)}
     GlassPanel {
         HelpTitle("Backup & Wiederherstellung","Sichert alle App-Einstellungen und deine selbst gepflegten Listen: Design, Quellen, Prüflimits, Download- und Installerwahl, Geräteprofile, Favoriten, ignorierte Apps, übersprungene Versionen und Diagnoseoptionen. Eigene API-Zugänge sind enthalten; das Backup ist deshalb immer passwortgeschützt.",showHelp=true)
         SecondaryText("Die Datei wird nur an dem von dir gewählten Ort gespeichert. Das Passwort wird nicht gespeichert und kann nicht zurückgesetzt werden.")
