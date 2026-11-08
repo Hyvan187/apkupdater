@@ -30,9 +30,10 @@ class UpdatesRepository(
         appsRepository.getApps().collect { result ->
             result.onSuccess { apps ->
                 org.uniapk.upgrader.diagnostics.AppDiagnostics.info("scan.app_inventory",mapOf("operationId" to progressId?.let{"scan-$it"},"visibleApps" to apps.size,"scope" to prefs.scanScope.get(),"detectedRegion" to org.uniapk.upgrader.glass.DeviceDetection(context,prefs).region().name,"comparisonRegion" to prefs.manualRegion.get(),"modelSimulation" to prefs.simulatedModel.get().isNotBlank()))
-                val filtered = apps.filter { !it.ignored }.filter {
+                val filtered = apps.filter { !it.ignored && org.uniapk.upgrader.glass.AppExclusions.allowed(it.packageName,prefs) }.filter {
                     org.uniapk.upgrader.glass.CategoryPolicy.matches(org.uniapk.upgrader.glass.AppScope.entries.getOrElse(prefs.scanScope.get()) { org.uniapk.upgrader.glass.AppScope.ALL }, it.system, it.packageName)
                 }
+                if(filtered.isEmpty()){emit(emptyList());return@collect}
                 org.uniapk.upgrader.glass.SourceHealth.reset(progressId?.let{"scan-$it"} ?: org.uniapk.upgrader.diagnostics.DiagnosticContext.current()["operationId"]?.toString())
                 val sources = mutableListOf<Pair<String, Flow<List<AppUpdate>>>>()
                 if (prefs.useApkMirror.get()) sources.add("ApkMirror" to apkMirrorRepository.updates(filtered))
@@ -49,7 +50,7 @@ class UpdatesRepository(
                     sources.map { (name, source) -> org.uniapk.upgrader.glass.SourceHealth.observe(name, emptyList<AppUpdate>(), source.flowOn(org.uniapk.upgrader.glass.ComputeBudget.dispatcher()),progressId) }
                         .combine { updates ->
                             val detection = org.uniapk.upgrader.glass.DeviceDetection(context, prefs)
-                            val assessed = updates.flatMap { it }.filterNot { u -> org.uniapk.upgrader.glass.InstalledUpdatePolicy.sameDisplayVersion(u.version,apps.firstOrNull{it.packageName==u.packageName}?.version.orEmpty()) }.map { u ->
+                            val assessed = updates.flatMap { it }.filter { org.uniapk.upgrader.glass.AppExclusions.allowed(it.packageName,prefs) }.filterNot { u -> org.uniapk.upgrader.glass.InstalledUpdatePolicy.sameDisplayVersion(u.version,apps.firstOrNull{it.packageName==u.packageName}?.version.orEmpty()) }.map { u ->
                                 val installed = apps.firstOrNull { it.packageName == u.packageName }
                                 u.copy(system = installed?.system ?: detection.isSystem(u.packageName), verdict = org.uniapk.upgrader.glass.CompatibilityEngine.evaluate(
                                     detection.profile(),

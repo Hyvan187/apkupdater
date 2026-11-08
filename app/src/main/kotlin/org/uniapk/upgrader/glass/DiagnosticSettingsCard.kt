@@ -31,14 +31,14 @@ import java.util.Locale
         HelpTitle("Diagnoseprotokolle","Automatische Aufzeichnung speichert Ereignisse ausschließlich im privaten Speicher dieser App. Der Ordner ist für andere Apps nicht frei lesbar; Android löscht ihn bei Deinstallation. Erst Exportieren erzeugt eine ZIP an dem von dir gewählten Ort. Im Hintergrund werden nur tatsächlich ausgeführte UniAPK-Vorgänge erfasst. Es gibt keine dauerhafte systemweite Überwachung.",showHelp=true)
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Text("Automatisch lokal aufzeichnen",Modifier.weight(1f));Switch(config.enabled,{AppDiagnostics.configure(enabled=it)})}
         Text("Umfang der Aufzeichnung und des Exports",style=MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(spacing(8))) {
             FilterChip(!config.verbose,{AppDiagnostics.configure(verbose=false)},label={Text("Allgemeine Diagnose")})
             FilterChip(config.verbose,{if(!config.verbose)confirmation="capture"},label={Text("Erweiterte Diagnose")})
         }
         SecondaryText(if(config.verbose)"Enthält allgemeine und tiefe technische Fehler, Geräte-/Displaykonfiguration, Netzart und beteiligte App-Paketnamen. Diese Angaben können Rückschlüsse auf dein Gerät und deine App-Nutzung erlauben." else "Ablaufübersicht und allgemeine Fehler. Im Export werden Geräteprofile, App-Paketnamen, Fehlermeldungstexte und Aufrufketten entfernt. Höchstens 200 Einträge; bei Bedarf erweiterte Diagnose aktivieren und den Fehler erneut auslösen.")
         SecondaryText("Keine Passwörter, Tokens, IMEI, Seriennummern, Nachrichten, Datei- oder Anfrageinhalte. Auch bereinigte Protokolle vor dem Teilen kontrollieren.")
         Text("Alte Logdateien automatisch entfernen",style=MaterialTheme.typography.titleSmall)
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf(3,5,10).forEach{n->FilterChip(config.maxFiles==n,{AppDiagnostics.configure(maxFiles=n)},label={Text("$n Dateien")})}}
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(spacing(8))){listOf(3,5,10).forEach{n->FilterChip(config.maxFiles==n,{AppDiagnostics.configure(maxFiles=n)},label={Text("$n Dateien")})}}
         SecondaryText("Je Datei höchstens 512 KiB, außerdem maximal 7 Tage. Beim Erreichen der Grenze wird die älteste Datei entfernt. Dies betrifft lokale Logdateien, keine bereits exportierten ZIPs.")
         SecondaryText("Aktuell ${ResourcePolicy.label(size)} · Obergrenze ${ResourcePolicy.label(config.maxFiles*512L*1024)}")
         if(AppDiagnostics.storageProblem())SecondaryText("Der Protokollspeicher konnte zuletzt nicht beschrieben werden.")

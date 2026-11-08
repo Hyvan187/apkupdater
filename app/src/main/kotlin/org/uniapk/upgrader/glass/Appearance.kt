@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 data class Appearance(
+    val compact:Boolean=false,val dockStyle:Int=0,val dockSize:Int=1,val iconStyle:Int=0,val palette:Int=0,
     val theme: Int = 1, val dynamic: Boolean = false,
     val accent: Long = 0xffc8b9ff, val background: Long = 0xff080b13,
     val customAccent: Boolean = false, val customBackground: Boolean = false,
@@ -20,6 +21,7 @@ object ColorInput {
 }
 class AppearanceStore(private val prefs: Prefs) {
     private val mutable = MutableStateFlow(Appearance(
+        compact=prefs.compactMode.get(),dockStyle=prefs.dockStyle.get().coerceIn(0,4),dockSize=prefs.dockSize.get().coerceIn(0,2),iconStyle=prefs.iconStyle.get().coerceIn(0,4),palette=prefs.palette.get().coerceIn(0,4),
         motionPalette=prefs.motionPalette.get().coerceIn(0,2),motionColor=prefs.motionColor.get(),motionSecondary=prefs.motionSecondary.get(),progressStyle=prefs.progressStyle.get(),
         oled=prefs.oledMode.get(),motion=prefs.backgroundMotion.get(),speed=prefs.motionSpeed.get()/100f,density=prefs.motionDensity.get()/100f,parallax=prefs.parallax.get(),seasonal=prefs.seasonal.get(),accentAlpha=prefs.accentOpacity.get()/100f,backgroundAlpha=prefs.backgroundOpacity.get()/100f,
         theme = prefs.theme.get(), dynamic = prefs.dynamicColors.get(), accent = prefs.accentColor.get(), background = prefs.backgroundColor.get(),
@@ -35,6 +37,11 @@ class AppearanceStore(private val prefs: Prefs) {
         val old = persisted
         val v = change(mutable.value).let { it.copy(opacity = it.opacity.coerceIn(0f, 1f)) }
         // A slider changes one encrypted preference, not every appearance key.
+        if(old.compact!=v.compact)prefs.compactMode.put(v.compact)
+        if(old.dockStyle!=v.dockStyle)prefs.dockStyle.put(v.dockStyle)
+        if(old.dockSize!=v.dockSize)prefs.dockSize.put(v.dockSize)
+        if(old.iconStyle!=v.iconStyle)prefs.iconStyle.put(v.iconStyle)
+        if(old.palette!=v.palette)prefs.palette.put(v.palette)
         if(old.motionPalette!=v.motionPalette)prefs.motionPalette.put(v.motionPalette)
         if(old.motionColor!=v.motionColor)prefs.motionColor.put(v.motionColor)
         if(old.motionSecondary!=v.motionSecondary)prefs.motionSecondary.put(v.motionSecondary)

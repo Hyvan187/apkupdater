@@ -26,7 +26,10 @@ object ComputeBudget {
     private val mutable=MutableStateFlow(minOf(4,Runtime.getRuntime().availableProcessors()).coerceAtLeast(1))
     val state=mutable.asStateFlow()
     private val dispatchers=java.util.concurrent.ConcurrentHashMap<Int,kotlinx.coroutines.CoroutineDispatcher>()
-    fun set(value:Int){mutable.value=ResourcePolicy.parallelism(value,Runtime.getRuntime().availableProcessors())}
+    private var requested=0
+    fun automatic(available:Int,lowRam:Boolean,powerSave:Boolean,thermal:Int):Int=when{powerSave||thermal>=4->1;lowRam||thermal>=2->minOf(2,available.coerceAtLeast(1));else->minOf(4,available.coerceAtLeast(1))}
+    fun set(value:Int){requested=value.coerceAtLeast(0);mutable.value=if(requested==0)automatic(Runtime.getRuntime().availableProcessors(),false,false,0) else ResourcePolicy.parallelism(requested,Runtime.getRuntime().availableProcessors())}
+    fun refresh(context:Context){if(requested!=0)return;val power=context.getSystemService(Context.POWER_SERVICE) as android.os.PowerManager;val low=(context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).isLowRamDevice;mutable.value=automatic(Runtime.getRuntime().availableProcessors(),low,power.isPowerSaveMode,if(android.os.Build.VERSION.SDK_INT>=29)power.currentThermalStatus else 0)}
     fun dispatcher()=dispatchers.getOrPut(mutable.value){Dispatchers.Default.limitedParallelism(mutable.value)}
     fun fps()=when(mutable.value){1->15;2->24;else->30}
 }

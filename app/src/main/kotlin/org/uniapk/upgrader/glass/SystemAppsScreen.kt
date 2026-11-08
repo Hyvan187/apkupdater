@@ -25,6 +25,7 @@ import org.koin.compose.koinInject
 
 private data class PackageRow(val name: String, val pkg: String, val version: String, val code: Long, val system: Boolean, val updated: Boolean, val enabled: Boolean, val source: String)
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SystemAppsScreen(onSettings: () -> Unit = {}) {
     val context = LocalContext.current
@@ -37,7 +38,8 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
     val favoriteStore=koinInject<FavoriteStore>()
     val favorites by favoriteStore.state.collectAsStateWithLifecycle()
     var mode by remember { mutableIntStateOf(0) }
-    var ignored by remember { mutableStateOf(prefs.ignoredApps.get().toSet()) }
+    val ignoredStore=koinInject<IgnoredAppStore>()
+    val ignored by ignoredStore.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) {
             runCatching {
@@ -65,13 +67,13 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
         ScreenHeader("Deine Apps", "INSTALLIERTE PAKETE", onSettings)
         OutlinedTextField(value = query, onValueChange = { query = it }, label = { Text("App oder Paket suchen") }, modifier = Modifier.fillMaxWidth())
         ScopeChoices(category, selection::select)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            listOf("Alle Zustände", "Deaktiviert", "Ignoriert", "Favoriten").forEachIndexed { i, label ->
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(spacing(6))) {
+            listOf("Alle Zustände", "Deaktiviert", "Ignorierte Apps", "Favorisierte Apps").forEachIndexed { i, label ->
                 FilterChip(selected = mode == i, onClick = { mode = i }, label = { Text(label) })
             }
         }
         error?.let { Text("Paketabfrage fehlgeschlagen: $it") }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)) {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(spacing(10)), contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp)) {
             items(filtered, key = { it.pkg }) { app ->
                 var expanded by remember { mutableStateOf(false) }
                 GlassPanel( modifier = Modifier.clickable { expanded = !expanded }) {
@@ -83,7 +85,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
                             SecondaryText("${app.version} · ${if(app.system || app.updated) "System" else "App"}${if(!app.enabled) " · deaktiviert" else ""}")
                         }
                     }
-                    Row { TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={favoriteStore.toggle(app.pkg)}){Text(if(app.pkg in favorites)"★ Favorit entfernen" else "☆ Als Favorit markieren")} }
+                    Row(verticalAlignment=androidx.compose.ui.Alignment.CenterVertically){FavoriteButton(app.pkg);SecondaryText(if(app.pkg in favorites)"Favorisierte App" else "Als Favorit markieren")}
                     if (expanded) {
                         SecondaryText(app.pkg)
                         Text("Installationsquelle: ${app.source.ifEmpty { "nicht ausgewiesen" }}")
@@ -91,8 +93,7 @@ fun SystemAppsScreen(onSettings: () -> Unit = {}) {
                         OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${app.pkg}"))) }) { Text("Android-App-Einstellungen") }
                         Row {
                             Switch(checked = app.pkg !in ignored, onCheckedChange = { enabled ->
-                                ignored = if (enabled) ignored - app.pkg else ignored + app.pkg
-                                prefs.ignoredApps.put(ignored.toList())
+                                ignoredStore.set(app.pkg,!enabled)
                             })
                             Text("Updates prüfen", Modifier.padding(12.dp));HelpButton("App ignorieren","Aus deaktiviert die Updateabfrage für dieses Paket. Die installierte App wird nicht deaktiviert oder deinstalliert.")
                         }

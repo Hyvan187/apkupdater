@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,18 +27,25 @@ import kotlin.math.*
 val LocalAppearance=staticCompositionLocalOf{Appearance()}
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun AppearanceScreen(onBack:()->Unit) {
+ val context=androidx.compose.ui.platform.LocalContext.current
  val store=koinInject<AppearanceStore>();val a by store.state.collectAsStateWithLifecycle();var picking by remember{mutableStateOf<String?>(null)}
  DisposableEffect(store) { onDispose { store.commitPreview() } }
  CompositionLocalProvider(LocalEffectLevel provides a.quality.coerceAtMost(1)) {
  Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=LocalDeviceLayout.current.horizontalPadding)) {
-  ScreenHeader("Design und Leistung","FARBEN, EFFEKTE UND RESSOURCEN",onBack=onBack)
-  LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+  
+  LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))) {
+   item{SettingsHero("Design und Leistung","Design, Glas, Bewegung und Dichte",UniIcons.Palette,onBack)}
+   item{Text("Design",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
+   item{GlassPanel{ThemePreviewChoices(a){theme,oled->store.update{it.copy(theme=theme,oled=oled,customBackground=false)}};AppearanceToggle("Android-Design folgen","Verwendet das helle oder dunkle Systemdesign.",a.theme==0&&!a.oled){v->store.update{it.copy(theme=if(v)0 else 1,oled=false,customBackground=false)}}}}
+   item{Text("Farbpalette",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
+   item{GlassPanel{PaletteChoices(a){v->store.update{it.copy(palette=v,dynamic=false,customAccent=false)}}}}
+   item{GlassPanel{AppearanceToggle("Kompaktmodus","Kleinere Karten, kürzere Zeilen und engere Abstände in der gesamten App. Bedienelemente bleiben gut erreichbar.",a.compact){v->store.update{it.copy(compact=v)}}}}
+   item{DockSettings(store,a)}
+   item{LauncherIconSettings(store,a)}
    item{GlassPanel(effectLevel=a.quality){HelpTitle("Empfohlenes Liquid Glass","Setzt nur Qualität, Glastransparenz, Unschärfe und Brechung auf ausgewogene Werte. Deine Farben bleiben erhalten.");SecondaryText("Standard · 54 % Glastransparenz · Unschärfe und Brechung an");OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.recommendedGlass()}){Text("Empfohlene Glaswerte anwenden")}}}
    item{GlassPanel{GlassTransparencyControl(store,a)}}
    item{GlassPanel{
-    HelpTitle("Design","System folgt Android. Hell und Dunkel bleiben fest ausgewählt. OLED erzwingt einen schwarzen Hintergrund.")
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)){listOf("System","Hell","Dunkel").forEachIndexed{i,t->val v=listOf(0,2,1)[i];FilterChip(a.theme==v,{store.update{it.copy(theme=v)}},label={Text(t)})}}
-    AppearanceToggle("OLED-Optimierung","Schwarzer Hintergrund; statische Farblichtflächen entfallen.",a.oled){v->store.update{it.copy(oled=v)}}
+    HelpTitle("Farben","Systemfarben folgen dem Android-Hintergrund. Eigene Farben ersetzen die gewählte Palette.")
     AppearanceToggle("Systemfarben","Akzente aus deinem Android-Design.",a.dynamic){v->store.update{it.copy(dynamic=v,customAccent=false)}}
     ColorSetting("Button- und Akzentfarbe",if(a.customAccent)Color(a.accent.toInt()) else MaterialTheme.colorScheme.primary){picking="accent"}
     ColorSetting("Hintergrundfarbe",if(a.customBackground)Color(a.background.toInt()) else MaterialTheme.colorScheme.background){picking="background"}
@@ -82,7 +90,7 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
     if(menu)GlassChoiceSheet("Schrift",a.font.toString(),listOf("Systemschrift","Sans Serif","Serif","Monospace").mapIndexed{i,t->GlassChoice(i.toString(),t)},{menu=false}){id->store.update{it.copy(font=id.toInt())}}
     ValueSlider("Zusätzliche Textgröße: ${(a.textScale*100).toInt()} %",a.textScale,1f,{v->store.preview{it.copy(textScale=v)}},.85f..1.3f,body="100 % entspricht der Android-Schriftgröße ohne zusätzlichen Faktor.",finished={store.commitPreview()})
    }}
-   item{Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.reset()},modifier=Modifier.weight(1f)){Text("Alle Darstellungswerte auf Standard zurücksetzen")};HelpButton("Darstellung zurücksetzen","Stellt das dunkle violett-blaue Standarddesign wieder her. Updatequellen, Downloads und Favoriten bleiben erhalten.")}}
+   item{Row(verticalAlignment=Alignment.CenterVertically){OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={LauncherIcons.select(context,0);store.reset()},modifier=Modifier.weight(1f)){Text("Alle Darstellungswerte auf Standard zurücksetzen")};HelpButton("Darstellung zurücksetzen","Stellt das dunkle violett-blaue Standarddesign wieder her. Updatequellen, Downloads und Favoriten bleiben erhalten.")}}
   }
  }
  }
@@ -93,8 +101,8 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
  ColorPickerDialog(title,initial,alpha,{picking=null},showAlpha=target in listOf("accent","background")){color,opacity->store.update{when(target){"accent"->it.copy(accent=color,accentAlpha=opacity,customAccent=true,dynamic=false);"motion"->it.copy(motionColor=color);"motionSecondary"->it.copy(motionSecondary=color);else->it.copy(background=color,backgroundAlpha=opacity,customBackground=true)}};picking=null}}
 
 }
-@Composable fun AppearanceToggle(title:String,description:String,checked:Boolean,onChange:(Boolean)->Unit){Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.bodyMedium);SecondaryText(description)};Switch(checked,onChange);if(HelpTopics.technical(title))HelpButton(title,description)}}
-@Composable private fun ColorSetting(label:String,color:Color,onClick:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=10.dp),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(30.dp).background(color,CircleShape));Spacer(Modifier.width(12.dp));Text(label,Modifier.weight(1f))}}
+@Composable fun AppearanceToggle(title:String,description:String,checked:Boolean,onChange:(Boolean)->Unit){Row(Modifier.fillMaxWidth().padding(vertical=spacing(8)),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.bodyMedium);SecondaryText(description)};Switch(checked,onChange);if(HelpTopics.technical(title))HelpButton(title,description)}}
+@Composable private fun ColorSetting(label:String,color:Color,onClick:()->Unit){Row(Modifier.fillMaxWidth().clickable(onClick=onClick).padding(vertical=spacing(10)),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(30.dp).background(color,CircleShape));Spacer(Modifier.width(12.dp));Text(label,Modifier.weight(1f))}}
 @Composable fun ColorPickerDialog(title:String,initial:Long,initialAlpha:Float=1f,onDismiss:()->Unit,showAlpha:Boolean=true,onSave:(Long,Float)->Unit){
  val hsv=remember{FloatArray(3).also{AndroidColor.colorToHSV(initial.toInt(),it)}}
  var hue by remember{mutableFloatStateOf(hsv[0])};var saturation by remember{mutableFloatStateOf(hsv[1])};var brightness by remember{mutableFloatStateOf(hsv[2])};var alpha by remember{mutableFloatStateOf(initialAlpha)};var hex by remember{mutableStateOf(ColorInput.hex(initial))}

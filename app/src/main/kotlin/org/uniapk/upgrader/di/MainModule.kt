@@ -167,6 +167,7 @@ val mainModule = module {
     single { org.uniapk.upgrader.glass.AppLanguageStore(get()) }
     single { org.uniapk.upgrader.glass.HistoryStore(get()) }
     single { org.uniapk.upgrader.glass.FavoriteStore(get()) }
+    single { org.uniapk.upgrader.glass.IgnoredAppStore(get()) }
     single { org.uniapk.upgrader.glass.AppearanceStore(get()) }
     single { org.uniapk.upgrader.glass.ReleaseFilterStore(get()) }
     single { org.uniapk.upgrader.glass.AppSelection(get()) }

@@ -61,13 +61,15 @@ fun GlassScene(content: @Composable () -> Unit) {
     val backdrop = rememberGlassBackdrop()
     val dark = MaterialTheme.colorScheme.background.luminance() < .2f
     val accent = MaterialTheme.colorScheme.primary
+    val MaterialBackground=MaterialTheme.colorScheme.background
+    val sceneSecondary=Color(AppearancePalettes.entries[appearance.palette.coerceIn(0,4)].secondary)
     CompositionLocalProvider(LocalSceneBackdrop provides backdrop, LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         Box(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().captureGlass(backdrop)) {
             Canvas(Modifier.fillMaxSize()) {
-                drawRect(if(appearance.oled) Color.Black else if(appearance.customBackground) lerp(if(dark) Color(0xff080b13) else Color(0xffedf0f7),Color(appearance.background.toInt()),appearance.backgroundAlpha) else if (dark) Color(0xff080b13) else Color(0xffedf0f7))
+                drawRect(MaterialBackground)
                 val points = listOf(Offset(.95f * size.width, .16f * size.height), Offset(-.2f * size.width, .6f * size.height), Offset(.85f * size.width, .98f * size.height))
-                val colors = if(appearance.customBackground) listOf(accent, accent, accent) else listOf(Color(0xff6d4bd1), Color(0xff166986), Color(0xff9b7733))
+                val colors = if(appearance.customBackground) listOf(accent, accent, accent) else listOf(accent,sceneSecondary,accent)
                 if(!appearance.oled) points.zip(colors).forEach { (center, color) ->
                     drawCircle(Brush.radialGradient(listOf(color.copy(if(dark) .27f else .12f), Color.Transparent), center, size.width * .95f), size.width * .95f, center)
                 }
@@ -118,14 +120,14 @@ fun GlassPanel(
             drawContext.canvas.restore()
         })
         // Tint opacity must also work in light mode and without RenderEffect support.
-        val tint = if(dark) Color(0xff111723) else Color.White
+        val tint = MaterialTheme.colorScheme.surface
         Box(Modifier.matchParentSize().background(tint.copy(alpha = appearance.opacity.coerceIn(0f, 1f))))
         if(effectLevel > 0) Canvas(Modifier.matchParentSize()) {
             drawRect(Brush.linearGradient(listOf(Color.White.copy(.065f * appearance.opacity), Color.Transparent, Color.White.copy(.02f * appearance.opacity))))
             if(pressed && !appearance.reduceMotion) drawRect(Brush.radialGradient(listOf(Color.White.copy(.12f), Color.Transparent), highlight, size.width * .7f))
         }
         CompositionLocalProvider(LocalContentColor provides foreground) {
-            Column(Modifier.fillMaxWidth().padding(if(compact) 8.dp else 18.dp), content = content)
+            Column(Modifier.fillMaxWidth().padding(if(compact) (if(appearance.compact)5.dp else 8.dp) else if(appearance.compact)12.dp else 18.dp), content = content)
         }
     }
 }

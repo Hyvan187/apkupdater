@@ -31,8 +31,8 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
         try { org.uniapk.upgrader.glass.ApkSetInspector(context, DeviceDetection(context, prefs),ApkAnalyzer(context,DeviceDetection(context,prefs),archiveMetadata)).inspect(file, packageName).also { org.uniapk.upgrader.diagnostics.AppDiagnostics.debug("apk.checked", mapOf("package" to packageName, "status" to it.verdict.status.name)) } }
         catch(e: Exception) { org.uniapk.upgrader.diagnostics.AppDiagnostics.error("apk.check_failed",mapOf("package" to packageName),e); throw e }
     }
-    suspend fun install(id: Int, packageName: String, stream: InputStream, source: String="Direktdownload") = install(id, packageName, listOf(stream),source)
-    suspend fun install(id: Int, packageName: String, streams: List<InputStream>, source: String="Direktdownload") = mutex.withLock {
+    suspend fun install(id: Int, packageName: String, stream: InputStream, source: String="Direktdownload",choice:String=prefs.installerPackage.get()) = install(id, packageName, listOf(stream),source,choice)
+    suspend fun install(id: Int, packageName: String, streams: List<InputStream>, source: String="Direktdownload",choice:String=prefs.installerPackage.get()) = mutex.withLock {
         val lease = org.uniapk.upgrader.glass.AppCache.begin()
         val dir = File(context.cacheDir, "preflight-${randomUUID()}")
         try {
@@ -76,11 +76,16 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
             }
             val published=org.uniapk.upgrader.glass.DownloadArchive(context,prefs).publish(file,packageName,report.candidate.versionName)
             val publishedDigest=prefs.downloadArchive.get().entries.firstOrNull { it.value==published.toString() }?.key
-            val chosen=prefs.installerPackage.get()
+            val chosen=choice
+            require(chosen!=org.uniapk.upgrader.glass.InstallerChoices.ASK){"Bitte zuerst einen Installer im Auswahlfenster wählen."}
             if(chosen!="SYSTEM") {
-                require(prepared.files.size == 1 && prepared.files.single() == file) { "APK-Archive und APK-Sets benötigen den Android PackageInstaller. Bitte diesen in den Einstellungen auswählen." }
-                val staged=org.uniapk.upgrader.glass.InstallerChoices.handoff(context,prepared.files.single(),packageName,chosen)
-                history.pending(org.uniapk.upgrader.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),staged.absolutePath,downloadDigest=publishedDigest))
+                val external=if(prepared.files.size==1)prepared.files.single() else File(dir,"verified.apks").also{archive->
+                    java.util.zip.ZipOutputStream(archive.outputStream()).use{zip->prepared.files.forEachIndexed{index,apk->zip.putNextEntry(java.util.zip.ZipEntry(if(index==0)"base.apk" else "split-$index.apk"));apk.inputStream().use{it.copyTo(zip)};zip.closeEntry()}}
+                }
+                val staged=org.uniapk.upgrader.glass.InstallerChoices.handoff(context,external,packageName,chosen)
+                history.pending(org.uniapk.upgrader.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),staged.absolutePath,installer=chosen,downloadDigest=publishedDigest))
+                org.uniapk.upgrader.diagnostics.AppDiagnostics.info("install.external_handoff",mapOf("installer" to chosen,"format" to org.uniapk.upgrader.glass.InstallerChoices.format(external).name))
+                false
             } else {
                 val pending = org.uniapk.upgrader.glass.PendingInstall(packageName,appName,beforeName,report.candidate.versionName,beforeCode,report.candidate.versionCode ?: -1L,source,System.currentTimeMillis(),installer="Android PackageInstaller",downloadDigest=publishedDigest)
                 // Persist before commit: a self-update can terminate this process.
@@ -101,10 +106,11 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
                 history.complete(pending, actual)
                 org.uniapk.upgrader.glass.DownloadArchive(context,prefs).installed(file)
                 installLog.emitStatus(AppInstallStatus(true,id,true))
+                true
             }
             }
         } catch (e: Exception) {
-            org.uniapk.upgrader.diagnostics.AppDiagnostics.error("install.failed", mapOf("package" to packageName, "cancelled" to (e is kotlinx.coroutines.CancellationException)), e)
+            if(e is InstallAbortedException)org.uniapk.upgrader.diagnostics.AppDiagnostics.info("install.cancelled") else org.uniapk.upgrader.diagnostics.AppDiagnostics.error("install.failed", mapOf("package" to packageName, "cancelled" to (e is kotlinx.coroutines.CancellationException)), e)
             installLog.emitStatus(AppInstallStatus(false,id,true))
             throw e
         } finally {
@@ -141,6 +147,7 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
                                     else runCatching { context.startActivity(confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.onFailure { continuation.resumeWithException(it) }
                                 }
                                 PackageInstaller.STATUS_SUCCESS -> { success = true; continuation.resume(Unit) }
+                                PackageInstaller.STATUS_FAILURE_ABORTED -> continuation.resumeWithException(InstallAbortedException())
                                 else -> continuation.resumeWithException(IllegalStateException("Android-Installerstatus $status: ${statusMessage.ifBlank{"Installation verweigert"}}"))
                             }
                         }
@@ -175,15 +182,10 @@ class SessionInstaller(private val context: Context, private val installLog: Ins
         error("Root-Installation ist in Glass deaktiviert.")
     }
     fun finish() = Unit
-    fun checkPermission(): Boolean {
-        if(prefs.installerPackage.get()!="SYSTEM") {
-            val available=org.uniapk.upgrader.glass.InstallerChoices.available(context).any{it.first==prefs.installerPackage.get()}
-            if(!available)android.os.Handler(android.os.Looper.getMainLooper()).post{android.widget.Toast.makeText(context,"Gewählter Installer nicht verfügbar. Bitte Einstellungen prüfen.",android.widget.Toast.LENGTH_LONG).show()}
-            return available
-        }
-        if (Build.VERSION.SDK_INT >= 26 && !context.packageManager.canRequestPackageInstalls()) {
-            context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, android.net.Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            return false
+    fun checkPermission(choice:String=prefs.installerPackage.get()):Boolean {
+        if(choice!="SYSTEM")return true
+        if(Build.VERSION.SDK_INT>=26&&!context.packageManager.canRequestPackageInstalls()){
+            context.startActivity(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,android.net.Uri.parse("package:${context.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));return false
         }
         return true
     }

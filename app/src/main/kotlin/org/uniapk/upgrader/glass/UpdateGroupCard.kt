@@ -28,7 +28,7 @@ fun UpdateCard(update: AppUpdate, verify: () -> Unit, install: () -> Unit, ignor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) -> Unit, install: (AppUpdate) -> Unit, ignore: (AppUpdate) -> Unit, prefer: (AppUpdate) -> Unit, external: (() -> Unit)? = null,discard:((AppUpdate)->Unit)?=null,deleting:Boolean=false) {
+fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) -> Unit, install: (AppUpdate) -> Unit, ignore: (AppUpdate) -> Unit, prefer: (AppUpdate) -> Unit, external: (() -> Unit)? = null,discard:((AppUpdate)->Unit)?=null,deleting:Boolean=false,ignoreApp:((AppUpdate)->Unit)?=null) {
     val favorites=org.koin.compose.koinInject<FavoriteStore>()
     val flags by favorites.state.collectAsState()
     var chosenKey by remember(group.packageName) { mutableStateOf<String?>(null) }
@@ -38,6 +38,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
     var changelog by remember{mutableStateOf(false)}
     var technical by remember { mutableStateOf(false) };var deletePrepared by remember{mutableStateOf(false)}
     val handler = LocalUriHandler.current
+    val appContext=androidx.compose.ui.platform.LocalContext.current
     val blocked = update.verdict.status == Compatibility.INCOMPATIBLE
     val busy = deleting||group.candidates.any { it.isInstalling }
     val color = if(blocked) MaterialTheme.colorScheme.error else safeStatusColor(update.verdict.installAllowed)
@@ -49,10 +50,10 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                 SecondaryText("${update.oldVersion.ifBlank { "?" }} → ${update.version}")
                 Text(if(deleting)"APKs werden gelöscht …" else if(busy)"APK wird vorbereitet …" else if(blocked) "Abgelehnt" else if(update.verdict.installAllowed) "Geprüft · bereit" else "Datei noch ungeprüft", style = MaterialTheme.typography.labelSmall, color = color)
             }
-            IconButton(onClick={favorites.toggle(update.packageName)}){Icon(if(update.packageName in flags)Icons.Default.Star else Icons.Outlined.Star,if(update.packageName in flags)"Aus Favoriten entfernen" else "Zu Favoriten hinzufügen")}
+            FavoriteButton(update.packageName)
             Icon(if(expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, "Details", Modifier.size(20.dp))
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(spacing(10)))
         SecondaryText("${architectureLabel(update.abis)} · ${group.sources().size} ${if(group.sources().size == 1) "Quelle" else "Quellen"}")
         if(blocked) SecondaryText(update.verdict.summary)
         val assessment=TechnicalAssessment.from(update)
@@ -63,7 +64,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
         RiskSummary(update)
         update.verificationError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         if(expanded) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(spacing(12)))
             FactRow("Version", "${update.oldVersion} → ${update.version}")
             FactRow("Architektur", architectureLabel(update.abis))
             FactRow("Kategorie", if(group.system) "System-App" else "Allgemeine App")
@@ -74,9 +75,9 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { technical = true }) { Text("Technische Details") }
             Row(verticalAlignment=Alignment.CenterVertically) { Text("Prüfverfahren",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium);HelpButton("Prüfverfahren",HelpText.CHECK) }
         }
-        if(busy) { Spacer(Modifier.height(10.dp)); UniProgress(label=if(deleting)"APKs werden gelöscht" else "APK wird vorbereitet") }
+        if(busy) { Spacer(Modifier.height(spacing(10))); UniProgress(label=if(deleting)"APKs werden gelöscht" else "APK wird vorbereitet") }
         else if(!blocked || group.candidates.any { it.verdict.status != Compatibility.INCOMPATIBLE }) {
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(spacing(10)))
             if(update.verdict.installAllowed) Button(onClick = { if(update.fileReady)install(update) else verify(update) }, modifier = Modifier.fillMaxWidth()) { Text(if(update.fileReady)"Installieren" else "APK erneut laden und vorbereiten") }
             OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { picker = true }, modifier = Modifier.fillMaxWidth()) { Text(if(update.verdict.installAllowed) "Andere Quelle / erneut prüfen" else "Quelle wählen · APK vorbereiten") }
         }
@@ -84,6 +85,8 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
         if(update.whatsNew.isNotBlank())TextButton(onClick={changelog=true}){Text("Änderungen dieser Version")}
         else if(expanded)SecondaryText("Die Quelle stellt keinen Änderungsverlauf bereit.")
         if(expanded) HelpButton("Version ausblenden","Blendet diese Versionsbezeichnung dieser App quellenübergreifend aus. Unter Einstellungen lassen sich ausgeblendete Versionen wieder einblenden.")
+        if(ignoreApp!=null)TextButton(onClick={ignoreApp(update)}){Icon(Icons.Default.Close,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("App dauerhaft ignorieren")}
+        if(expanded)TextButton(onClick={PlayInstallPolicy.open(context=appContext,packageName=update.packageName)}){Text("In Google Play öffnen")}
         if(expanded) TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { ignore(update) }) { Text("Diese Version ausblenden") }
     }
     if(picker) {

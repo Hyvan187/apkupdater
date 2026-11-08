@@ -23,7 +23,7 @@ fun GlassSearchScreen(viewModel: SearchViewModel, onBack: () -> Unit,onPrepare:(
     val handler = LocalUriHandler.current
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = 20.dp)) {
         ScreenHeader("Apps entdecken", "QUELLEN DURCHSUCHEN", onBack = onBack)
-        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(spacing(12))) {
         item { OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), placeholder = { Text("App- oder Paketname") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true) }
         item { Button(onClick = { if(query.isNotBlank()) viewModel.search(query.trim()) }, modifier = Modifier.fillMaxWidth(), enabled = query.isNotBlank() && state !is SearchUiState.Loading) { Text("Suchen") } }
         if(state is SearchUiState.Loading) item { UniProgress(label="App-Kataloge werden durchsucht") }

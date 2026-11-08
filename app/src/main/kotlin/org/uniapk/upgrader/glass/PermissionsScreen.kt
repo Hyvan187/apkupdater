@@ -40,7 +40,7 @@ object PermissionPolicy {
     fun open(intent:Intent){runCatching{settings.launch(intent)}.onFailure{message="Diese Systemeinstellung ist nicht erreichbar. Bitte die Android-App-Info öffnen."}}
     Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=LocalDeviceLayout.current.horizontalPadding)){
         ScreenHeader("Berechtigungen",if(firstRun)"UNIAPK EINRICHTEN" else "ZUGRIFFE VERWALTEN",onBack=if(firstRun)null else onBack)
-        LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(spacing(12))){
             item{SecondaryText("Erlaube die Zugriffe, die du nutzen möchtest. Die Update-Suche funktioniert auch ohne Installations- und Benachrichtigungsfreigabe.")}
             item{GlassPanel{
                 StatusLine(if(snapshot.install)StatusTone.SUCCESS else StatusTone.WARNING,"Apps installieren",if(snapshot.install)"Freigegeben" else "Für die Installation erforderlich")

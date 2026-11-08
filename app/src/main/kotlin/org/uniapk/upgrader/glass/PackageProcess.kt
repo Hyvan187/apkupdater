@@ -4,6 +4,7 @@ import org.uniapk.upgrader.data.ui.AppUpdate
 import org.uniapk.upgrader.viewmodel.UpdatesViewModel
 import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.ui.Modifier
@@ -13,10 +14,11 @@ import androidx.compose.ui.unit.dp
 enum class PackagePhase { DOWNLOAD, INSPECT, READY, INSTALLING, DONE, FAILED, CANCELLED }
 data class PackageProcess(val update:AppUpdate,val phase:PackagePhase=PackagePhase.DOWNLOAD,val bytes:Long=0,val total:Long?=null,val evidence:List<Evidence> = emptyList(),val message:String="")
 @Composable fun PackageProcessDialog(viewModel:UpdatesViewModel) {
+    val prompt by viewModel.installerPrompt.collectAsState();if(prompt!=null)return
     val process by viewModel.process.collectAsState();val risk by viewModel.riskConfirmation.collectAsState();if(risk!=null)return;val p=process ?: return;val uri=LocalUriHandler.current
     val active=p.phase in setOf(PackagePhase.DOWNLOAD,PackagePhase.INSPECT,PackagePhase.INSTALLING)
     AlertDialog(onDismissRequest={viewModel.hideProcess()},title={Text(p.update.name)},text={
-        LazyColumn(Modifier.heightIn(max=430.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.heightIn(max=430.dp),verticalArrangement=Arrangement.spacedBy(spacing(10))) {
             item{Text(when(p.phase){PackagePhase.DOWNLOAD->"APK wird heruntergeladen";PackagePhase.INSPECT->"APK und Paketbestandteile werden geprüft";PackagePhase.READY->"Technisch geprüft · bereit zur Installation";PackagePhase.INSTALLING->"Android-Installation";PackagePhase.DONE->"Installiert · im Verlauf gespeichert";PackagePhase.FAILED->"Vorgang nicht abgeschlossen";PackagePhase.CANCELLED->"Vorgang abgebrochen"})}
             if(p.phase==PackagePhase.DOWNLOAD)item{
                 val total=p.total
@@ -40,3 +42,16 @@ data class PackageProcess(val update:AppUpdate,val phase:PackagePhase=PackagePha
 
 @Composable fun RiskSummary(update:AppUpdate){val risk=UpdateRisk.assess(update);StatusLine(when(risk.level){RiskLevel.LOWER->StatusTone.SUCCESS;RiskLevel.BLOCKED->StatusTone.ERROR;else->StatusTone.WARNING},risk.level.label,risk.category);SecondaryText(risk.summary)}
 @Composable fun RiskConfirmationDialog(viewModel:UpdatesViewModel){val update by viewModel.riskConfirmation.collectAsState();val u=update ?: return;AlertDialog(onDismissRequest=viewModel::dismissRisk,title={Text("Kritische Komponente aktualisieren?")},text={Column{Text(u.name);RiskSummary(u);SecondaryText("Die technische Prüfung ersetzt keine Funktionsprüfung. Die vorhandenen Sperren bleiben bestehen.")}},confirmButton={TextButton(onClick=viewModel::confirmRisk){Text("Risiko verstanden · fortfahren")}},dismissButton={TextButton(onClick=viewModel::dismissRisk){Text("Abbrechen")}})}
+
+data class InstallerPrompt(val update:AppUpdate,val choices:List<Pair<String,String>>,val playOrigin:Boolean)
+@Composable fun InstallerPromptDialog(viewModel:UpdatesViewModel){
+ val prompt by viewModel.installerPrompt.collectAsState();val p=prompt ?: return
+ AlertDialog(onDismissRequest=viewModel::dismissInstaller,title={Text("Installationsassistent wählen")},text={Column(Modifier.heightIn(max=480.dp).androidxScroll()){
+  Text(p.update.name,style=MaterialTheme.typography.titleMedium)
+  if(p.playOrigin){SecondaryText("Diese App wurde zuletzt über Google Play installiert. Ein anderer Installer kann die Herkunft ändern; manche Apps verlangen anschließend erneut Play. Nur ein tatsächliches Play-Update erhält die Play-Zuordnung zuverlässig.");OutlinedButton(onClick={viewModel.chooseInstaller(PlayInstallPolicy.PLAY)},modifier=Modifier.fillMaxWidth()){Text("Über Google Play aktualisieren")}}
+  OutlinedButton(onClick={viewModel.chooseInstaller("SYSTEM")},modifier=Modifier.fillMaxWidth()){Text("Android PackageInstaller")}
+  p.choices.forEach{(id,label)->OutlinedButton(onClick={viewModel.chooseInstaller(id)},modifier=Modifier.fillMaxWidth()){Text(label)}}
+  SecondaryText("Angezeigt werden externe Installer, die dieses Dateiformat öffnen können. Jeder Installer kann eine eigene Android-Freigabe benötigen. Eine Übergabe allein gilt noch nicht als Erfolg.")
+ }},confirmButton={TextButton(onClick=viewModel::dismissInstaller){Text("Abbrechen")}})
+}
+@Composable private fun Modifier.androidxScroll()=this.then(Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()))

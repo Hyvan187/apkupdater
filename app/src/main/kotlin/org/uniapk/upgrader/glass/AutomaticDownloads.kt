@@ -21,9 +21,10 @@ object AutomaticDownloads {
         if(!AutomaticChecks.allowed(context,true,prefs.autoVerifyWifiOnly.get()))return
         var budget=ResourcePolicy.budget(context.cacheDir.usableSpace,prefs.autoCheckBudgetMiB.get()*ResourcePolicy.MIB)
         val max=prefs.autoVerifyLimitMiB.get()*ResourcePolicy.MIB
-        val plan=AutoCheckPolicy.plan(candidates.filter{releaseKey(it) !in prefs.discardedDownloads.get()},prefs.preferredSources.get(),max,prefs.autoCheckCount.get(),budget,true)
+        val plan=AutoCheckPolicy.plan(candidates.filter{AppExclusions.allowed(it.packageName,prefs)}.filter{releaseKey(it) !in prefs.discardedDownloads.get()},prefs.preferredSources.get(),max,prefs.autoCheckCount.get(),budget,true)
         for(update in plan){
             currentCoroutineContext().ensureActive()
+            if(!AppExclusions.allowed(update.packageName,prefs))continue
             if(!AutomaticChecks.allowed(context,prefs.autoDownloadUpdates.get(),prefs.autoVerifyWifiOnly.get())||!DownloadFolderPolicy.valid(context,prefs))break
             val receiptKey=receiptKey(update,prefs.simulatedPreset.get(),prefs.simulatedRegion.get(),prefs.downloadTree.get())
             val digest=prefs.autoDownloadReceipts.get()[receiptKey]
@@ -36,7 +37,7 @@ object AutomaticDownloads {
                 file=downloader.download(update.link,DownloadTrigger.AUTOMATIC_SCAN,minOf(max,budget,ResourcePolicy.budget(context.cacheDir.usableSpace,max)))
                 budget-=file.length()
                 val report=withContext(ComputeBudget.dispatcher()){installer.inspect(file,update.packageName)}
-                if(!report.verdict.installAllowed)continue
+                if(!report.verdict.installAllowed||!AppExclusions.allowed(update.packageName,prefs))continue
                 require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)){"Vorabversion ausgeblendet."}
                 // Recheck access after the download in case the user revoked the folder.
                 check(DownloadFolderPolicy.valid(context,prefs)){"Downloadordner nicht mehr verfügbar."}

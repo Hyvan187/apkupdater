@@ -83,7 +83,8 @@ class GitHubRepository(
         currentVersion: String,
         extra: Regex?
     ) = flow {
-        val r = service.getReleases(user, repo)
+        if(!org.uniapk.upgrader.glass.AppExclusions.allowed(packageName,prefs)){emit(emptyList());return@flow}
+        val r = org.uniapk.upgrader.glass.SourceRetry.once { service.getReleases(user, repo) }
         val releases = if (packageName == "org.uniapk.upgrader.ci") {
             // TODO: Find a better way to do this
             r.filter { it.name.contains("CI-Release-3.x")}

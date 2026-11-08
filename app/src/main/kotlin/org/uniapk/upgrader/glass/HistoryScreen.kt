@@ -11,7 +11,7 @@ import java.text.DateFormat
 import java.util.Date
 @Composable fun HistoryScreen(onBack:()->Unit) {
  val store=koinInject<HistoryStore>();val entries by store.state.collectAsState();var confirm by remember{mutableStateOf(false)}
- LazyColumn(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+ LazyColumn(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding(),contentPadding=PaddingValues(20.dp),verticalArrangement=Arrangement.spacedBy(spacing(12))) {
   item {ScreenHeader("Updateverlauf","BESTÄTIGTE INSTALLATIONEN",onBack=onBack)}
   item {HelpTitle("Was wird gespeichert?","Nur über diese App gestartete und bestätigte Updates. Externe Übergaben werden beim nächsten Start anhand des installierten Versionscodes bestätigt. Keine vollständige Systemhistorie.")}
   if(entries.isEmpty())item{StateMessage("Noch keine Updates im Verlauf","Erfolgreiche Installationen erscheinen hier automatisch.")}

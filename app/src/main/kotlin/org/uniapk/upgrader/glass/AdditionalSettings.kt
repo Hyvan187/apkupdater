@@ -33,7 +33,7 @@ import org.koin.compose.koinInject
         if(entries.isEmpty()&&legacy.isEmpty())SecondaryText("Keine Versionen ausgeblendet.")
         LazyColumn(Modifier.weight(1f,fill=false).heightIn(max=420.dp)) {
             items(entries,key={it}){key->val pkg=key.substringBefore('|');val name=remember(pkg){runCatching{context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg,0)).toString()}.getOrDefault(pkg)}
-                Column(Modifier.fillMaxWidth().padding(vertical=8.dp)){Text(name);SecondaryText("$pkg · ${key.substringAfter('|',"?")}");TextButton(onClick={entries=entries-key;prefs.ignoredReleases.put(entries);onChanged()}){Text("Wieder einblenden")}}
+                Column(Modifier.fillMaxWidth().padding(vertical=spacing(8))){Text(name);SecondaryText("$pkg · ${key.substringAfter('|',"?")}");TextButton(onClick={entries=entries-key;prefs.ignoredReleases.put(entries);onChanged()}){Text("Wieder einblenden")}}
             }
             items(legacy,key={it}){id->Row{Text("Älterer Eintrag: $id",Modifier.weight(1f));TextButton(onClick={legacy=legacy-id;prefs.ignoredVersions.put(legacy);onChanged()}){Text("Einblenden")}}}
         }
@@ -41,11 +41,12 @@ import org.koin.compose.koinInject
     }
 }
 @Composable fun ComputeSettings() {
-    val prefs=koinInject<Prefs>();val current by ComputeBudget.state.collectAsState();var menu by remember{mutableStateOf(false)}
+    val context=LocalContext.current
+    val prefs=koinInject<Prefs>();val current by ComputeBudget.state.collectAsState();var requested by remember{mutableIntStateOf(prefs.cpuTasks.get())};var menu by remember{mutableStateOf(false)}
     GlassPanel {
         HelpTitle("Leistungsbudget","Begrenzt gleichzeitig ausgeführte rechenintensive UniAPK-Aufgaben. Android verteilt UI-, Netzwerk- und Grafikthreads weiterhin selbst auf die CPU-Kerne. Dies ist keine feste Kernzuweisung oder prozentuale Gesamtauslastungsgrenze. Weniger Aufgaben reduzieren zusätzlich Bildrate und Dichte des Hintergrunds.")
-        OutlinedButton(onClick={menu=true}){Text("Bis zu $current parallele CPU-Aufgaben")}
+        OutlinedButton(onClick={menu=true}){Text(if(requested==0)"Automatisch · aktuell $current Aufgaben" else "Bis zu $current parallele CPU-Aufgaben")}
         SecondaryText("${Runtime.getRuntime().availableProcessors()} logische Prozessoren verfügbar · Hintergrund bis ${ComputeBudget.fps()} Bilder/s")
     }
-    if(menu)GlassChoiceSheet("CPU-Aufgaben",current.toString(),(1..Runtime.getRuntime().availableProcessors().coerceAtLeast(1)).map{GlassChoice(it.toString(),"$it ${if(it==1)"Aufgabe" else "Aufgaben"}")},{menu=false}){val n=it.toInt();prefs.cpuTasks.put(n);ComputeBudget.set(n)}
+    if(menu)GlassChoiceSheet("CPU-Aufgaben",requested.toString(),listOf(GlassChoice("0","Automatisch","Passt Aufgaben und Effekte an Energiesparmodus, verfügbaren Speicher und Temperatur an."))+(1..Runtime.getRuntime().availableProcessors().coerceAtLeast(1)).map{GlassChoice(it.toString(),"$it ${if(it==1)"Aufgabe" else "Aufgaben"}")},{menu=false}){val n=it.toInt();requested=n;prefs.cpuTasks.put(n);ComputeBudget.set(n);ComputeBudget.refresh(context)}
 }

@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:ignore="RequestInstallPackagesPolicy" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" tools:ignore="PackageVisibilityPolicy,QueryAllPackagesPermission" />
 
-    <queries><intent><action android:name="android.intent.action.VIEW"/><data android:mimeType="application/vnd.android.package-archive"/></intent></queries>
+    <queries><intent><action android:name="android.intent.action.VIEW"/><data android:mimeType="application/vnd.android.package-archive"/></intent><intent><action android:name="android.intent.action.VIEW"/><data android:mimeType="application/x-apks"/></intent><intent><action android:name="android.intent.action.VIEW"/><data android:mimeType="application/vnd.apkm"/></intent><intent><action android:name="android.intent.action.VIEW"/><data android:mimeType="application/zip"/></intent><intent><action android:name="android.intent.action.VIEW"/><data android:mimeType="application/octet-stream"/></intent><package android:name="com.android.vending"/><package android:name="com.apkmirror.helper.prod"/></queries>
     <application
         android:name=".application.App"
         android:allowBackup="true"
@@ -40,11 +40,12 @@
             android:exported="true"
             android:launchMode="singleTask"
         >
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-            </intent-filter>
+
         </activity>
+        <activity-alias android:name=".LauncherOriginal" android:targetActivity=".ui.activity.MainActivity" android:enabled="true" android:exported="true" android:icon="@mipmap/ic_store" android:label="@string/app_short_name"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter></activity-alias>
+        <activity-alias android:name=".LauncherBlack" android:targetActivity=".ui.activity.MainActivity" android:enabled="false" android:exported="true" android:icon="@mipmap/ic_uniapk_black" android:label="@string/app_short_name"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter></activity-alias>
+        <activity-alias android:name=".LauncherWhite" android:targetActivity=".ui.activity.MainActivity" android:enabled="false" android:exported="true" android:icon="@mipmap/ic_uniapk_white" android:label="@string/app_short_name"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter></activity-alias>
+        <activity-alias android:name=".LauncherMilk" android:targetActivity=".ui.activity.MainActivity" android:enabled="false" android:exported="true" android:icon="@mipmap/ic_uniapk_milk" android:label="@string/app_short_name"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter></activity-alias>
+        <activity-alias android:name=".LauncherTransparent" android:targetActivity=".ui.activity.MainActivity" android:enabled="false" android:exported="true" android:icon="@mipmap/ic_uniapk_transparent" android:label="@string/app_short_name"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter></activity-alias>
     </application>
 </manifest>

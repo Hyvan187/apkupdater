@@ -61,6 +61,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     val nav = rememberNavController()
     val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "overview"
     val storedAppearance = koinInject<AppearanceStore>().state.collectAsStateWithLifecycle().value
+    LaunchedEffect(context){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){ComputeBudget.refresh(context);kotlinx.coroutines.delay(5000)}}}
     val cpuTasks by ComputeBudget.state.collectAsStateWithLifecycle()
     val appearance=storedAppearance.copy(quality=minOf(storedAppearance.quality,if(cpuTasks==1)1 else if(cpuTasks==2)2 else 3))
     val language by koinInject<AppLanguageStore>().state.collectAsStateWithLifecycle()
@@ -80,7 +81,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     }
     DeviceLayoutProvider {
     CompositionLocalProvider(LocalDisplayLanguage provides if(displayLanguage=="de") "de" else "en",LocalAppearance provides appearance,LocalBackgroundFrameRate provides if(route in listOf("appearance","settings"))24 else if(appearance.quality>=3)45 else 30) {
-    AppTheme(if(appearance.theme == 0) androidx.compose.foundation.isSystemInDarkTheme() else appearance.theme == 1, appearance.dynamic) {
+    AppTheme(if(appearance.theme == 0) androidx.compose.foundation.isSystemInDarkTheme() else appearance.theme in listOf(1,3), appearance.dynamic) {
         CompositionLocalProvider(LocalEffectLevel provides appearance.quality) {
             GlassScene {
                 val contentBackdrop = rememberGlassBackdrop()
@@ -102,6 +103,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
                     if(route !in listOf("settings", "search", "appearance", "history", "permissions")) FloatingGlassNavigation(route, contentBackdrop, Modifier.align(Alignment.BottomCenter), ::go)
                     PackageProcessDialog(updates)
                     RiskConfirmationDialog(updates)
+                    InstallerPromptDialog(updates)
                     SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 100.dp, start = 16.dp, end = 16.dp))
                 }
             }
@@ -113,18 +115,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
 
 @Composable
 private fun FloatingGlassNavigation(route: String, backdrop: GlassBackdrop, modifier: Modifier, navigate: (String) -> Unit) {
-    Row(modifier.navigationBarsPadding().padding(horizontal = 18.dp, vertical = 12.dp).widthIn(max = 540.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        GlassPanel(Modifier.weight(1f), backdrop = backdrop, compact = true, pill = true) {
-            Row(Modifier.fillMaxWidth()) {
-                NavPillItem("Start", Icons.Default.Home, route == "overview", Modifier.weight(1f)) { navigate("overview") }
-                NavPillItem("Updates", Icons.Default.Refresh, route == "updates", Modifier.weight(1f)) { navigate("updates") }
-                NavPillItem("Apps", Icons.AutoMirrored.Filled.List, route == "apps", Modifier.weight(1f)) { navigate("apps") }
-            }
-        }
-        GlassPanel(Modifier.width(66.dp), backdrop = backdrop, compact = true, pill = true) {
-            IconButton(onClick = { navigate("search") }, modifier = Modifier.size(50.dp)) { Icon(Icons.Default.Search, "Apps suchen", Modifier.size(27.dp)) }
-        }
-    }
+    DockNavigation(route,backdrop,modifier.navigationBarsPadding().padding(horizontal=12.dp,vertical=spacing(12)),navigate)
 }
 @Composable
 private fun NavPillItem(label: String, icon: ImageVector, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {

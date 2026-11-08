@@ -37,7 +37,8 @@ class GlassTransparencyUiTest {
     @Test fun transparencyHasOneLogicalHomeAndSurvivesStoreReload() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
         compose.onNodeWithContentDescription("Glastransparenz").assertDoesNotExist()
-        compose.onNodeWithText("Design anpassen").performClick()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Design und Leistung"));compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Design und Leistung"));compose.onNodeWithText("Design und Leistung").performClick()
+        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasContentDescription("Glastransparenz"))
         compose.onAllNodesWithContentDescription("Glastransparenz").assertCountEquals(1)
         compose.onNodeWithContentDescription("Glastransparenz").assertIsDisplayed()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(.8f) }

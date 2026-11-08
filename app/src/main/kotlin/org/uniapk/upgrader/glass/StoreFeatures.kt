@@ -42,7 +42,7 @@ class HistoryStore(private val prefs: Prefs) {
 class FavoriteStore(private val prefs: Prefs) {
  private val mutable=MutableStateFlow(prefs.favorites.get().toSet())
  val state: StateFlow<Set<String>> = mutable
- fun toggle(pkg: String){mutable.value=if(pkg in mutable.value) mutable.value-pkg else mutable.value+pkg;prefs.favorites.put(mutable.value.toList())}
+ @Synchronized fun toggle(pkg: String){mutable.value=if(pkg in mutable.value) mutable.value-pkg else mutable.value+pkg;prefs.favorites.put(mutable.value.toList())}
 }
 data class SourceRisk(val level: String,val detail: String)
 object RiskPolicy {
