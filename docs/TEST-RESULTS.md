@@ -1,35 +1,35 @@
-# UniAPK 0.7.0-rc2: abschließender Prüfstand
+# UniAPK 0.7.0-rc3: abschließender Prüfstand
 
-App-Fingerabdruck: `b0cba08402d67a9e83404fef8b06dd7ac36914b6be3698d9187efcb3cb2b78be`. Der gleiche Wert ist in jeder der vier ausgelieferten APKs enthalten und wurde unabhängig aus den App-Quelldateien neu berechnet. Der vollständige Quellbaum mit Dateimodi und SHA-256-Werten steht in reports/SOURCE-MANIFEST.json. Abschließende Dokumentationsänderungen verändern den App-Fingerabdruck nicht.
+App-Fingerabdruck: `cbb840f116e62c541a8e70b2799742788b458467b3dbebc81a553be5ed8604ea`. Die App-Quelldateien und die eingebetteten Werte aller vier APKs werden unabhängig abgeglichen. Dokumentations- und Prüferänderungen verändern diesen App-Fingerabdruck nicht.
 
-| Prüfung | Tatsächliches Ergebnis |
+| Prüfung | Ergebnis |
 |---|---|
-| Vollständige lokale Regression | 250 Tests, 0 Fehler, 0 fehlgeschlagen, 0 übersprungen |
-| Neue Prüfungen gegenüber RC1 | 33 zusätzliche Tests; bisherige Schutztests erhalten |
-| Release-Lint | 0 Fehler / Fatals, 282 Warnungen; vollständige Berichte beigefügt |
-| Release-Bau | Alle vier optimierten APKs erfolgreich, Version 0.7.0-rc2 / 1010 |
-| Signaturen | Erwartetes beibehaltenes Zertifikat, v1/v2/v3 gültig; nicht debuggable |
-| Tatsächliche Architekturen | ARM64, ARM32, x86_64 separat; Universal zusätzlich mit x86 |
-| Speicher-Seitengröße | ZIP- und native ELF-LOAD-Ausrichtung mit 16-KiB-Prüfung bestanden |
-| Native Grafikprüfungen | Android-17-Hostgrafik, alle Hintergrundmodi in Hoch-/Querformat, neue Dialoge und Fortschrittsstile |
-| Launcher | Transparenter freistehender Vordergrund; native Vorschau mit runder, abgerundeter und eckiger Maske |
-| Unabhängige CI | Externe Prüfung durch Infrastrukturfehler begrenzt; Details in reports/ci-summary.json |
-| Lokaler Android-17-Release-Test | Kein zusätzlicher bestandener Android-Systemstart behauptet |
+| Vollständige lokale Regression | 288 Tests, 0 fehlgeschlagen, 0 Fehler, 0 übersprungen |
+| Ergänzung gegenüber RC2 | 38 zusätzliche Prüfungen, bestehende Schutztests erhalten |
+| Release-Lint | 0 Fehler / Fatals, 286 Warnungen |
+| Release-Bau | Vier optimierte signierte APKs, 0.7.0-rc3 / 1011, nicht debuggable |
+| Signaturkontinuität | Gleiches Zertifikat wie RC1/RC2, v1/v2/v3 überprüft |
+| Tatsächliche Architekturen | ARM64, ARM32, x86_64 separat; Universal zusätzlich x86 |
+| Ausrichtung | ZIP und native ELF-LOAD-Segmente mit 16-KiB-Prüfung |
+| Launcher | Kompilierte fünf Aliasdefinitionen, genau Original standardmäßig aktiviert, korrekte Zielaktivität und UniAPK-Labelressource geprüft; Formen und Vorschauen nativ gerendert |
+| Sichtprüfung | Themenkarten, Designauswahl, Bereit-Zeilen, Favoriten, Dock, Polarlichter und Leuchtwürmchen auf künstlichen Android-17-Hostansichten |
+| Unabhängige CI | Vorbereitung nach reparierter Variantenauflösung passiert; weitere App-Tests liefen beim Berichtstand noch. Aktueller Beobachtungsstand in reports/ci-summary.json |
+| Physische Herstellergeräte | Kein zusätzlicher RC3-Gerätestart auf den privaten Telefonen behauptet |
 
-## Geprüfte neue Abläufe
+## Neue Regressionen
 
-Die Tests prüfen die erste Einrichtung ohne erzwungene Freigaben, erneutes Öffnen der Berechtigungsseite, beschreibbare und schreibgeschützte Ordner, angezeigten Unterordnerpfad und entzogene Berechtigung. Sie unterscheiden tatsächliche Dateilöschung von fehlendem Zugriff. Die Löschfunktion entfernt mehrere vorbereitete Quellenvarianten, setzt sie zurück zu Funde und verhindert einen unbemerkten erneuten automatischen Download. Bewusst aufbewahrte öffentliche Kopien bleiben bei privater Cachealterung erhalten.
+Favoriten werden tatsächlich umgeschaltet, gespeichert und zugänglich als Schaltzustand angezeigt. Die App-Liste stellt die Favoritenkategorie ohne seitliches Wegscrollen bereit. Ignorierte Pakete verschwinden quellenübergreifend aus Updates, bleiben gespeichert und lassen sich wieder zulassen. Die Download- und Installationspfade prüfen den Ausschluss erneut. Automatische Downloads sind weiterhin standardmäßig aus.
 
-Weitere Prüfungen decken die Einstufung allgemeiner, Google-System- und Herstellerkomponenten, kritische Bestätigung vor Installer-/Netzwerkaufrufen, unverändert wirksame technische Sperren, lokale APK-Berichte, unveränderte gespeicherte Modusindizes, Matrix, Dichte aller Effekte, gespeicherte Animationsfarben sowie tatsächliche und unbestimmte Fortschrittswerte ab.
+Installer-Übergaben verwenden echte signierte APK-Testdateien: direkte APK, einzelne APK in einem Archiv und vollständiges APK-Set. Die äußere Set-Datei wird für geeignete Handler als APKS erzeugt, ohne die signierten inneren APKs zu verändern. URI und Lesefreigabe werden geprüft. Verschiedene Signierer bleiben gesperrt. Externes Öffnen ist kein bestätigter Installationserfolg. Der Host-Metadatenleser wird dort ersetzt, wo Androids nativer Paketmetadatenleser im Host nicht verfügbar ist; die Signatur- und Manifestbytes bleiben real.
 
-Die APK-Vorbereitung verwendet weiterhin reale signierte Test-APKs und Paketsets. Der im Host nicht verfügbare Android-Paketmetadatenleser wird in diesen Fällen ersetzt; Signatur-, Manifest-, Datei- und Setdaten bleiben tatsächlich geprüft. Einige Koordinatortests setzen synthetischen vorbereiteten Zustand ein, um die Lösch-/Abgleichlogik isoliert ohne echten Download zu prüfen. Die Screenshotdaten stammen aus künstlichen Test-/Emulatorumgebungen.
+Weitere Prüfungen decken die private Wiederherstellung vorbereiteter Dateien ohne Download, verworfene/gelöschte/abgelaufene Dateien, Speicherkorridore, automatische CPU-Budgets bei Energiesparen und thermischer Belastung, gespeicherte Design-/Dock-/Kompaktwerte, fünf Launcher-Zustände, vier Designmodi, alle Dockgrößen, wirksame Kartenverdichtung und mindestens 48 dp hohe Bedienziele ab. Der Zurück-Pfeil in den neuen Übersichten bleibt nach dem Scrollen erreichbar.
 
-## Einschränkungen
+Die Testumgebung erhält pro Fall neue App-Verzeichnisse. Ihr statisch zwischengespeicherter AndroidX-FileProvider-Wurzelpfad wird zwischen den Übergabetests zurückgesetzt; Produktionsfreigaben werden dafür nicht erweitert. Die adaptive Symbolvorschau nutzt konfigurationsabhängige Android-Ressourcen. Es wurden keine neuen pauschalen Lint-Unterdrückungen oder Fehlerbaselines eingeführt.
 
-Lint ist nicht warnungsfrei. Die verbleibenden Hinweise betreffen überwiegend Übersetzungen/Ressourcen, Stil, Bibliotheksstände und bestehende Plattformhinweise. Es wurden keine pauschalen neuen Fehlerunterdrückungen oder Baselines eingeführt. Die lokal gebauten APKs sind signierte Release-Builds; eine etwaige unabhängige CI installiert eine Debug-APK desselben App-Quellstands, keine zusätzliche Produktvariante.
+## Grenzen
 
-Die externe CI wurde vor den App-Tests durch HTTP-504-Antworten der Downloadserver blockiert. Der zusätzliche lokale Android-17-Softwareemulator erreichte ohne verfügbare Hardwarebeschleunigung innerhalb von acht Minuten keinen abgeschlossenen Systemstart. Die APK wurde dort daher nicht gestartet; dieser Zusatztest gilt ausdrücklich nicht als bestanden.
+Lint ist nicht warnungsfrei; die vollständigen Berichte sind beigefügt. Es bleiben überwiegend Übersetzungs-, Ressourcen-, Stil- und Bibliothekshinweise. Ein alter manueller CI-Vorbereitungsschritt löste AGP-Varianten mehrdeutig auf; er wurde durch den regulären Kompilierungsschritt ersetzt. Ein noch laufender externer Auftrag wird nicht als bestandener Test oder Android-Systemstart ausgewiesen.
 
-Die alten OnePlus-Installerablehnungen bleiben rückwirkend ohne die damals fehlende Android-Statusmeldung nicht eindeutig erklärbar. Das neu bereitgestellte RC1-Protokoll enthält einen erfolgreichen Suchlauf, aber keine Downloads oder Installationsversuche. Daraus wird kein Nachweis für unaufgezeichnete Vorgänge abgeleitet.
+Die Hostgrafik ist ein Android-17-Grafiktest und keine Ausführung von OxygenOS oder One UI. Die tatsächlichen Dialoge installierter Drittanbieter-Installer, Launcher-Maskierung und Hintergrundtransparenz müssen auf den Telefonen bestätigt werden. Die konkrete Fremd-App-Meldung zur Play-Herkunft wird nicht als nachgewiesener UniAPK-Absturz ausgegeben. Ein tatsächlich über Play durchgeführtes Update ist der reguläre Weg, die Play-Zuordnung zu erhalten; keine fremde Lizenz oder Herkunft wird vorgetäuscht.
 
-Herstellerspezifische Dialoge, reale Store-/Kontoländerfreigaben, Funktionsfähigkeit kritischer Systemkomponenten, Launcher-Eigenheiten und gemessene Akku-/Leistungsauswirkungen bleiben Geräteabnahme. Risikoangaben sind konservative Hinweise und keine Crash-Prozentwerte, Malwareprüfung, externe Zertifizierung oder vollständige Funktionsgarantie.
+Screenshots und Testpakete enthalten ausschließlich künstliche Testdaten. Persönliche Diagnoseoriginale, private Schlüssel und Zugangsdaten werden nicht ausgeliefert. Quellzuordnung und Prüfsummen: reports/SOURCE-MANIFEST.json und SHA256SUMS.txt.

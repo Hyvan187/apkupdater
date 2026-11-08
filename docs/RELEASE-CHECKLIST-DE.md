@@ -1,3 +1,16 @@
+# RC3-Geräteabnahme
+
+Die signierten Release-APKs sind gebaut und technisch geprüft. Für OnePlus 15 und Samsung S23: arm64-v8a.apk. UniAPK RC1/RC2 kann mit gleicher Signatur und Paketkennung aktualisiert werden.
+
+- Favorit in Updates setzen, unter Apps > Favorisierte Apps kontrollieren und wieder entfernen.
+- Eine App dauerhaft ignorieren, eine neue Suche starten und unter Ignorierte Apps wieder zulassen.
+- Eine APK vorbereiten, Prozessfenster für später schließen, direkt auf Start installieren oder die vorbereitete Datei löschen.
+- Einstellungen > Downloads und Installer > Bei jeder Installation fragen wählen. Android-Installer sowie den tatsächlich installierten APKMirror-Installer mit unterstützter APK beziehungsweise APKS bestätigen. Erfolg muss erst nach installiertem Versionswechsel im Verlauf stehen.
+- Bei einer bisher über Play installierten App den tatsächlichen Play-Weg testen. Eine fremde Herkunfts-/Lizenzprüfung kann nicht universell abgeschaltet werden.
+- Light, Dusk, Dark, OLED, Glas, Farben, Kompaktmodus, automatische Leistung, Dock und Launcher-Varianten auf dem jeweiligen Telefon prüfen. Transparenz und alte Verknüpfungen hängen vom Launcher ab.
+
+Neue Probleme mit der passend gewählten Diagnose erfassen; die erweiterte Diagnose kann technische Geräte-/Paketdaten enthalten. Keine persönlichen Originale in öffentlichen Quellcode übernehmen. Tatsächlicher Testumfang und Grenzen stehen in TEST-RESULTS.md.
+
 # UniAPK 0.7.0-rc2: Installation und Geräteabnahme
 
 Für OnePlus 15 und Galaxy S23 ist **arm64-v8a.apk** vorgesehen. Universal ist eine Alternative. Pro Gerät nur eine Variante installieren.

@@ -58,15 +58,34 @@ for name, expected_abis in variants.items():
     assert "sdkVersion:'23'" in badging and "targetSdkVersion:'37'" in badging
     assert "application-debuggable" not in badging
     assert "application-label:'Universal APK Upgrader'" in badging
-    assert re.search(r"launchable-activity:.*label='UniAPK'",badging), "Wrong launcher abbreviation"
+    # Legacy aapt badging omits launcher aliases; verify their compiled nodes and label resource below.
     (reports/f"badging-{name}.txt").write_text(badging)
     alignment = run([tools/"zipalign", "-c", "-P", "16", "-v", "4", target])
     (reports/f"alignment-{name}.txt").write_text(alignment)
     manifest = run([tools/"aapt", "dump", "xmltree", target, "AndroidManifest.xml"])
-    icon_ids = re.findall(r"android:icon\([^)]*\)=(@0x[0-9a-f]+)",manifest)
-    assert len(icon_ids) == 7 and len(set(icon_ids)) == 5 and len(set(icon_ids[:3])) == 1, "Expected original installer icon and five launcher variants"
-    for alias in ("Original","Black","White","Milk","Transparent"):
-        assert f".Launcher{alias}" in manifest, f"Missing launcher alias: {alias}"
+    app_icon = re.search(r"android:icon\([^)]*\)=(@0x[0-9a-f]+)",manifest).group(1)
+    resources = run([tools/"aapt", "dump", "--values", "resources", target])
+    short = re.search(r'resource (0x[0-9a-f]+) [^\n]*:string/app_short_name:[^\n]*\n\s+\(string8\) "UniAPK"',resources)
+    assert short, "Missing UniAPK launcher label resource"
+    nodes = re.findall(r"^      E: (activity(?:-alias)?) [^\n]*\n(.*?)(?=^      E: |\Z)",manifest,re.M|re.S)
+    aliases = {}
+    main = None
+    for kind,body in nodes:
+        attrs = dict(re.findall(r"^        A: android:([A-Za-z]+)\([^)]*\)=(.*)$",body,re.M))
+        if kind == "activity-alias":
+            name = re.search(r'"([^"]+)"',attrs["name"]).group(1).split(".")[-1]
+            assert "android.intent.action.MAIN" in body and "android.intent.category.LAUNCHER" in body
+            assert attrs["label"] == "@"+short.group(1), name
+            assert "org.uniapk.upgrader.ui.activity.MainActivity" in attrs["targetActivity"], name
+            assert attrs["exported"].endswith("0xffffffff"), name
+            aliases[name] = attrs
+        elif "org.uniapk.upgrader.ui.activity.MainActivity" in attrs.get("name",""):
+            main=attrs
+    assert set(aliases)=={"Launcher"+v for v in ("Original","Black","White","Milk","Transparent")}
+    assert main is not None and main["icon"]==app_icon and aliases["LauncherOriginal"]["icon"]==app_icon
+    assert len({a["icon"] for a in aliases.values()})==5
+    assert aliases["LauncherOriginal"]["enabled"].endswith("0xffffffff")
+    assert all(a["enabled"].endswith("0x0") for n,a in aliases.items() if n!="LauncherOriginal")
     debug = re.search(r"android:debuggable\([^)]*\)=\(type 0x12\)0x([0-9a-f]+)",manifest)
     assert debug is None or int(debug[1],16) == 0
     (reports/f"manifest-{name}.txt").write_text(manifest)

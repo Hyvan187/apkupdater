@@ -1,3 +1,5 @@
+Aktueller RC3-Anforderungsstand und neue Diagnoseauswertung: [RC3-CHANGES-DE.md](RC3-CHANGES-DE.md). Die folgenden Abschnitte enthalten den zuvor abgearbeiteten Stand.
+
 # Anforderungsabgleich: UniAPK 0.7.0-rc2
 
 Die Anforderungen wurden vor der Umsetzung vollständig geordnet: Datenschutz/Identität, Profile und ROM-Erkennung, Downloads und Installation, Quellen, Speicher, Diagnose, Oberfläche, Verifikation. Die vorherige RC3-Quelle wurde anhand sämtlicher 327 Dateiprüfsummen wiederhergestellt. Neue Funktionen ersetzen die bisherigen Schutzregeln nur dort, wo ausdrücklich gewünscht.
