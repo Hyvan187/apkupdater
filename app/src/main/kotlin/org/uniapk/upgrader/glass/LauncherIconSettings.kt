@@ -13,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.core.graphics.drawable.toBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
@@ -29,12 +31,12 @@ object LauncherIcons {
  }
 }
 @Composable fun LauncherIconSettings(store:AppearanceStore,a:Appearance){
- val context=LocalContext.current;var error by remember{mutableStateOf<String?>(null)}
+ val context=LocalContext.current;val resources=LocalResources.current;val configuration=LocalConfiguration.current;var error by remember{mutableStateOf<String?>(null)}
  GlassPanel{
   HelpTitle("App-Symbol","Original oder vier zusätzliche Varianten. Form und Systemfarben passen sich über adaptive und monochrome Symbole an unterstützte Launcher an. Transparenz und die Aktualisierung vorhandener Verknüpfungen bestimmt der Launcher.")
   Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(10.dp)){
    LauncherIcons.names.forEachIndexed{i,_->Column(Modifier.width(78.dp).clickable{runCatching{LauncherIcons.select(context,i);store.update{it.copy(iconStyle=i)};error=null}.onFailure{error="App-Symbol konnte nicht geändert werden."}},horizontalAlignment=Alignment.CenterHorizontally){
-    val preview=remember(i){requireNotNull(context.getDrawable(LauncherIcons.resources[i])).toBitmap(256,256).asImageBitmap()}
+    val preview=remember(i,configuration){requireNotNull(resources.getDrawable(LauncherIcons.resources[i],context.theme)).toBitmap(256,256).asImageBitmap()}
     Image(preview,LauncherIcons.labels[i],Modifier.size(58.dp))
     Text(LauncherIcons.labels[i],style=MaterialTheme.typography.labelSmall)
     RadioButton(a.iconStyle==i,onClick={runCatching{LauncherIcons.select(context,i);store.update{it.copy(iconStyle=i)};error=null}.onFailure{error="App-Symbol konnte nicht geändert werden."}})
