@@ -1,5 +1,6 @@
 package org.uniapk.upgrader.glass
 
+import androidx.compose.animation.togetherWith
 import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -58,23 +59,18 @@ import org.koin.compose.koinInject
     val choices=remember(installerMenu){InstallerChoices.allAvailable(context)}
     Box(Modifier.fillMaxSize(),contentAlignment=Alignment.TopCenter) {
         Column(Modifier.widthIn(max=layout.contentMaxWidth).fillMaxSize().statusBarsPadding().padding(horizontal=layout.horizontalPadding)) {
-            ScreenHeader(listOf("Berechtigungen","Sprache und Anzeige","Updateprüfung","Gerät und ROM","Quellen und Verbindung","Downloads und Installer","Verlauf und Speicher","Diagnose","Über UniAPK")[section],"EINSTELLUNGEN",onBack=onBack)
+            ScreenHeader(SettingsCategory.entries[section].title,"EINSTELLUNGEN",onBack=onBack)
             LazyColumn(Modifier.weight(1f).navigationBarsPadding(),contentPadding=PaddingValues(bottom=32.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))) {
                 if(section==0){
-                item {GlassPanel{Text("Berechtigungen",style=MaterialTheme.typography.titleSmall);SecondaryText("Installationsfreigabe, Benachrichtigungen und APK-Ordner prüfen.");OutlinedButton(onClick=onPermissions,modifier=Modifier.fillMaxWidth()){Text("Berechtigungen verwalten")}}}
-                }
-                if(section==1){
-                item { SettingsSection("Design und Sprache") }
                 item { GlassPanel {
-                    Row(Modifier.fillMaxWidth().clickable(onClick=onAppearance),verticalAlignment=Alignment.CenterVertically) {
-                        Text("Design und Leistung",Modifier.weight(1f),style=MaterialTheme.typography.titleSmall)
-                        TextButton(onClick=onAppearance){Text("Design anpassen")}
-                    }
                     Text("Sprache",style=MaterialTheme.typography.titleSmall)
                     val tag=languages.current(context)
-                    OutlinedButton(onClick={languageMenu=true},modifier=Modifier.fillMaxWidth()) { Text(when(tag){"de"->"Deutsch";"en"->"Englisch";else->"Systemsprache verwenden"}) }
-                    SecondaryText("Display automatisch: ${layout.dpi} dpi · ${layout.widthDp} × ${layout.heightDp} dp")
+                    OutlinedButton(onClick={languageMenu=true},modifier=Modifier.fillMaxWidth()){Text(when(tag){"de"->"Deutsch";"en"->"Englisch";else->"Systemsprache verwenden"})}
+                    SecondaryText("Automatische Anzeige: ${layout.dpi} dpi · ${layout.widthDp} × ${layout.heightDp} dp")
                 } }
+                item { GeneralSettings() }
+                item { QuickAccessSettings() }
+                item { PermissionAccessSettings() }
                 }
                 if(section==2){
                 item { SettingsSection("Updateprüfung") }
@@ -84,6 +80,9 @@ import org.koin.compose.koinInject
                     SettingSwitch("Beta-Versionen ausblenden","Erkennbare Beta-Versionen nicht anbieten.",{prefs.ignoreBeta.get()},{filters.change(beta=it);onFiltersChanged()})
                     SettingSwitch("Alpha-Versionen ausblenden","Erkennbare Alpha-Versionen nicht anbieten.",{prefs.ignoreAlpha.get()},{filters.change(alpha=it);onFiltersChanged()})
                     SettingSwitch("Alle Vorabversionen ausblenden","Auch Beta, Alpha, RC, Preview und markierte Testversionen.",{prefs.ignorePreRelease.get()},{filters.change(preview=it);onFiltersChanged()})
+                    HelpTitle("Ausgeblendete Versionen",HelpText.RESTORE,showHelp=true)
+                    SecondaryText("Ausgeblendete Versionsfunde wieder in die Updateprüfung aufnehmen.")
+                    HiddenVersions(onFiltersChanged)
                     HelpTitle("Wie werden APKs geprüft?",HelpText.CHECK)
                 } }
                 item { GlassPanel {
@@ -102,11 +101,11 @@ import org.koin.compose.koinInject
                     SettingSwitch("Hintergrundsuche nur ungetaktet","Startet geplante Suchen nur über Verbindungen, die Android ohne Datenlimit meldet, meist WLAN. Mobilfunk mit Datenlimit und als getaktet markiertes WLAN werden übersprungen. Es wird dabei kein Datenvolumen selbst gemessen.",{prefs.wifiOnly.get()},{prefs.wifiOnly.put(it);if(prefs.enableAlarm.get())UpdatesWorker.launch(WorkManager.getInstance(context))})
                 } }
                 }
-                if(section==3){
+                if(section==2){
                 item { SettingsSection("Gerät und ROM") }
                 item { DeviceProfileSettings() }
                 }
-                if(section==4){
+                if(section==2){
                 item { SettingsSection("Quellen und Verbindung") }
                 item { GlassPanel {
                     Text("Updatequellen",style=MaterialTheme.typography.titleSmall)
@@ -130,7 +129,7 @@ import org.koin.compose.koinInject
                 } }
                 item { SourceApiSettings(onFiltersChanged) }
                 }
-                if(section==5){
+                if(section==2){
                 item { SettingsSection("Downloads und Installation") }
                 item { GlassPanel {
                     val currentFolder=folderStatus
@@ -150,15 +149,18 @@ import org.koin.compose.koinInject
                     OutlinedButton(onClick={installerMenu=true},modifier=Modifier.fillMaxWidth()){Text(if(installer==InstallerChoices.ASK)"Bei jeder Installation fragen" else if(installer=="SYSTEM")"Android PackageInstaller" else choices.find{it.first==installer}?.second ?: "Gewählter Installer nicht verfügbar")}
                 } }
                 }
-                if(section==6){
+                if(section==3){
                 item { SettingsSection("Verlauf und Speicher") }
                 item { GlassPanel {
                     Text("Updateverlauf",style=MaterialTheme.typography.titleSmall)
-                    OutlinedButton(onClick=onHistory){Text("Updateverlauf öffnen")}
+                    var showHistory by remember{mutableStateOf(false)}
+                    TextButton(onClick={showHistory=!showHistory}){Text(if(showHistory)"Verlauf einklappen" else "Updateverlauf anzeigen (${entries.size})")}
+                    androidx.compose.animation.AnimatedVisibility(showHistory,enter=androidx.compose.animation.expandVertically(UniMotion.spec(motionAllowed())),exit=androidx.compose.animation.shrinkVertically(UniMotion.spec(motionAllowed()))){Column{
+                        if(entries.isEmpty())SecondaryText("Noch keine bestätigten Installationen.")
+                        entries.forEach{entry->Text(entry.name,style=MaterialTheme.typography.labelLarge);SecondaryText("${entry.fromVersion} → ${entry.toVersion} · ${java.text.DateFormat.getDateTimeInstance().format(java.util.Date(entry.time))}")}
+                    }}
                     TextButton(onClick={clearHistory=true},enabled=entries.isNotEmpty()){Text("Updateverlauf löschen")}
-                    HelpTitle("Ausgeblendete Versionen",HelpText.RESTORE,showHelp=true)
-                    SecondaryText("Ausgeblendete Versionsfunde wieder in die Updateprüfung aufnehmen.")
-                    HiddenVersions(onFiltersChanged)
+
                 } }
                 item { GlassPanel {
                     HelpTitle("Cache", "Entfernt Netzwerk- und Bildcache sowie private APK-Prüfdateien. Einstellungen, Diagnoseprotokolle, öffentliche Downloads und ausstehende externe Installationen bleiben erhalten. Aktive Prüfungen und Installationen müssen zuerst abgeschlossen sein.",showHelp=true)
@@ -170,11 +172,11 @@ import org.koin.compose.koinInject
                     if(cacheMessage.isNotBlank())SecondaryText(cacheMessage)
                 } }
                 }
-                if(section==7){
+                if(section==3){
                 item { SettingsSection("Diagnose und Entwicklung") }
                 item { DiagnosticSettingsCard() }
                 }
-                if(section==8){
+                if(section==3){
                 item { SettingsSection("Projekt") }
                 item { GlassPanel {
                     OutlinedButton(onClick={runCatching{uri.openUri(SupportLink.uri())}.onFailure{AppDiagnostics.error("support.open_failed",error=it)}},modifier=Modifier.fillMaxWidth()){Text("☕ Like my project? Buy me a coffee :)")}
@@ -208,39 +210,22 @@ import org.koin.compose.koinInject
 @Composable fun GlassSettingsScreen(onBack:()->Unit,onAppearance:()->Unit,onFiltersChanged:()->Unit={},onHistory:()->Unit={},onCacheCleared:()->Unit={},onPermissions:()->Unit={}){
  var section by androidx.compose.runtime.saveable.rememberSaveable{mutableStateOf<Int?>(null)}
  androidx.activity.compose.BackHandler(enabled=section!=null){section=null}
- section?.let{chosen->GlassSettingsDetailScreen(chosen,{section=null},onAppearance,onFiltersChanged,onHistory,onCacheCleared,onPermissions);return}
- val prefs=koinInject<Prefs>();val context=LocalContext.current;val a=LocalAppearance.current
- var stable by remember{mutableStateOf(prefs.ignorePreRelease.get())};var background by remember{mutableStateOf(prefs.enableAlarm.get())}
- val rowHeight=if(a.compact)118.dp else 144.dp
- Box(Modifier.fillMaxSize()){
- LazyColumn(Modifier.fillMaxSize().statusBarsPadding(),contentPadding=PaddingValues(start=16.dp,end=16.dp,bottom=32.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))){
-  item{SettingsHero("Einstellungen","Universal APK Upgrader ${BuildConfig.VERSION_NAME}",Icons.Default.Settings,onBack,showBack=false)}
-  item{Text("Schnellzugriff",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
-  item{Row(horizontalArrangement=Arrangement.spacedBy(10.dp)){
-   FilterChip(stable,{stable=!stable;prefs.ignorePreRelease.put(stable);org.koin.core.context.GlobalContext.get().get<ReleaseFilterStore>().change(preview=stable);onFiltersChanged()},modifier=Modifier.weight(1f).heightIn(min=64.dp),label={Column{Text("Nur stabile Versionen");SecondaryText(if(stable)"Aktiv" else "Aus")}})
-   FilterChip(background,{background=!background;prefs.enableAlarm.put(background);if(background)UpdatesWorker.launch(WorkManager.getInstance(context))else UpdatesWorker.cancel(WorkManager.getInstance(context))},modifier=Modifier.weight(1f).heightIn(min=64.dp),label={Column{Text("Hintergrundsuche");SecondaryText(if(background)"Aktiv" else "Aus")}})
-  }}
-  item{Text("Alle Einstellungen",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
-  item{SettingsTile("Downloads und Installer","APK-Ordner, automatische Downloads und Installation",Color(0xff244570),UniIcons.Download,Modifier.fillMaxWidth().height(rowHeight)){section=5}}
-  item{Row(Modifier.fillMaxWidth().height(rowHeight*2+12.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)){
-   SettingsTile("Design und Leistung","Design, Glas, Bewegung, Dock und Dichte",Color(0xff4a246b),UniIcons.Palette,Modifier.weight(1f).fillMaxHeight(),onAppearance)
-   Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(12.dp)){
-    SettingsTile("Quellen","Anbieter und Verbindung",Color(0xff1f6278),UniIcons.Wifi,Modifier.weight(1f).fillMaxWidth()){section=4}
-    SettingsTile("Speicher","Cache und Verlauf",Color(0xff70431e),UniIcons.Storage,Modifier.weight(1f).fillMaxWidth()){section=6}
+ val animate=motionAllowed()
+ androidx.compose.animation.AnimatedContent(targetState=section,transitionSpec={
+   (androidx.compose.animation.fadeIn(UniMotion.spec(animate))+androidx.compose.animation.slideInVertically(UniMotion.spec(animate)){it/24}) togetherWith
+     androidx.compose.animation.fadeOut(UniMotion.spec(animate))
+ },label="settings-level"){chosen->
+  if(chosen!=null)GlassSettingsDetailScreen(chosen,{section=null},onAppearance,onFiltersChanged,onHistory,onCacheCleared,onPermissions)
+  else Box(Modifier.fillMaxSize()){
+   LazyColumn(Modifier.fillMaxSize().statusBarsPadding(),contentPadding=PaddingValues(start=LocalDeviceLayout.current.horizontalPadding,end=LocalDeviceLayout.current.horizontalPadding,bottom=32.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))){
+    item{SettingsHero("Einstellungen","Universal APK Upgrader ${BuildConfig.VERSION_NAME}",Icons.Default.Settings,onBack,showBack=false)}
+    items(SettingsCategory.entries.size){index->val category=SettingsCategory.entries[index]
+     SettingsCategoryCard(category,when(category){SettingsCategory.GENERAL->Icons.Default.Settings;SettingsCategory.APPEARANCE->UniIcons.Palette;SettingsCategory.UPDATES->UniIcons.Download;SettingsCategory.SYSTEM->UniIcons.Storage}){
+      if(category==SettingsCategory.APPEARANCE)onAppearance() else section=index
+     }
+    }
    }
-  }}
-  item{SettingsTile("Updateprüfung","App-Auswahl, Versionsfilter und Prüflimits",Color(0xff286344),UniIcons.Security,Modifier.fillMaxWidth().height(rowHeight)){section=2}}
-  item{Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
-   SettingsTile("Gerät und ROM","Region und Testprofil",Color(0xff704064),UniIcons.PhoneAndroid,Modifier.weight(1f).height(rowHeight)){section=3}
-   SettingsTile("Sprache","Sprache und Anzeige",Color(0xff246b68),UniIcons.Language,Modifier.weight(1f).height(rowHeight)){section=1}
-  }}
-  item{Row(horizontalArrangement=Arrangement.spacedBy(12.dp)){
-   SettingsTile("Berechtigungen","Zugriffe verwalten",Color(0xff66551f),Icons.Default.Check,Modifier.weight(1f).height(rowHeight),onPermissions)
-   SettingsTile("Diagnose","Protokolle und Fehler",Color(0xff414d76),Icons.Default.Info,Modifier.weight(1f).height(rowHeight)){section=7}
-  }}
-  item{SettingsTile("Über UniAPK","Version, Lizenzen und Projekt unterstützen",Color(0xff3d4050),Icons.Default.Favorite,Modifier.fillMaxWidth().height(rowHeight)){section=8}}
- }
- PinnedSettingsBack(onBack,Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start=32.dp,top=12.dp))
+   PinnedSettingsBack(onBack,Modifier.align(Alignment.TopStart).statusBarsPadding().padding(start=32.dp,top=12.dp))
+  }
  }
 }
-

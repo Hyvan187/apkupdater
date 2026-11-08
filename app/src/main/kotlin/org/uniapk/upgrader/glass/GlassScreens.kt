@@ -129,6 +129,7 @@ fun OverviewScreen(viewModel: UpdatesViewModel, onUpdates: () -> Unit = {}, onSe
             if(since>0L&&all.isEmpty()&&!working){val days=((System.currentTimeMillis()-since)/86400000L).coerceAtLeast(0);SecondaryText(if(days>0)"Seit $days Tagen bei deinen Suchen keine neueren Versionen gefunden." else "Bei der letzten vollständigen Suche keine neueren Versionen gefunden.")}
             SecondaryText("${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} · ${rom?.label ?: "ROM wird erkannt …"}")
         } }
+        item { QuickAccessBar { viewModel.refresh(debounceMillis=350) } }
         if(health.any { it.problem != null }) item { StateMessage("Quellen teilweise nicht erreichbar", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
         if(inspecting)item{GlassPanel{Text("APK wird untersucht");UniProgress(label="Lokale APK wird untersucht")}}
         item { Row(verticalAlignment=Alignment.CenterVertically){Text("WERKZEUGE",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium,color=MaterialTheme.colorScheme.onSurfaceVariant);HelpButton("Lokale APK-Prüfung",HelpText.CHECK+" Die Dateiauswahl analysiert nur deine Datei; es findet keine Installation statt.")} }
@@ -193,6 +194,7 @@ fun GlassUpdatesScreen(viewModel: UpdatesViewModel, onSettings: () -> Unit = {})
         item { OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), placeholder = { Text("Updates durchsuchen") }, leadingIcon = { Icon(Icons.Default.Search, null) }, shape = CircleShape, singleLine = true) }
         if(all.any{it.isInstalling}) item {TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={viewModel.cancelVerification()}){Text("APK-Prüfung abbrechen")};HelpButton("Prüfung abbrechen","Stoppt die manuell gestartete Einzel- oder Sammelprüfung nach Freigabe des laufenden Netzwerkaufrufs. Es wird nichts installiert. Bereits gespeicherte öffentliche APK-Kopien bleiben erhalten.")}
 
+        item { QuickAccessBar { viewModel.refresh(debounceMillis=350) } }
         if(health.any { it.problem != null }) item { StateMessage("Quellenfehler", health.filter { it.problem != null }.joinToString("\n") { "${it.name}: ${it.problem}" }) }
         if(state is UpdatesUiState.Error) item { StateMessage("Suche fehlgeschlagen", "Bitte Verbindung und aktivierte Quellen prüfen.") }
         if(visible.isEmpty() && !working) item { StateMessage(when(selected) { 0 -> "Keine vorbereiteten APKs"; 1 -> "Keine neuen Funde"; else -> "Keine blockierten Varianten" }, when(selected) { 0 -> "Nur tatsächlich geprüfte APKs erscheinen hier. Weitere Funde findest du unter Funde."; 1 -> "Starte eine neue Suche oder prüfe die Quellen in den Einstellungen."; else -> "Ältere Systemzweige und nachweislich unpassende APKs erscheinen separat in diesem Bereich." }) }

@@ -23,13 +23,27 @@ class Prefs(
         if(limitsSchema.get()<1){autoVerifyLimitMiB.put(512);autoCheckBudgetMiB.put(2048);autoCheckCount.put(10);limitsSchema.put(1)}
         org.uniapk.upgrader.glass.ComputeBudget.set(cpuTasks.get())
     }
-	val permissionSetupVersion = int("permissions.setup",0,true)
+	val startView = string("general.startView","overview",true)
+    val quickAccess = json("general.quickAccess",listOf("stable","background"),true)
+    val skippedReleases = json("updates.skippedBuilds",emptyList<org.uniapk.upgrader.glass.SkippedRelease>(),true)
+    val paletteSeed = long("appearance.paletteSeed",0xffc8b9ff,true)
+    val customPalette = boolean("appearance.customPalette",false,true)
+    val paletteSchema = int("appearance.paletteSchema",0,true)
+    fun migratePalette() {
+        if(paletteSchema.get()<1){
+            if(customAccent.get()||customBackground.get()){
+                paletteSeed.put(if(customAccent.get())accentColor.get() else backgroundColor.get());customPalette.put(true)
+            }
+            customAccent.put(false);customBackground.put(false);paletteSchema.put(1)
+        }
+    }
+    val permissionSetupVersion = int("permissions.setup",0,true)
     val readyRecords = json("downloads.readyRecords",emptyList<org.uniapk.upgrader.glass.ReadyRecord>(),true)
     val discardedDownloads = json("downloads.discarded",emptyList<String>(),true)
     val motionPalette = int("appearance.motionPalette",0,true)
     val motionColor = long("appearance.motionColor",0xff39e898,true)
     val motionSecondary = long("appearance.motionSecondary",0xffa27bff,true)
-    val progressStyle = int("appearance.progressStyle",0,true)
+    val progressStyle = int("appearance.progressStyle",2,true)
     val autoDownloadReceipts = json("downloads.receipts",emptyMap<String,String>(),true)
     val autoDownloadUpdates = boolean("downloads.automatic",false,true)
     val simulatedPreset = string("profile.preset","ACTUAL",true)

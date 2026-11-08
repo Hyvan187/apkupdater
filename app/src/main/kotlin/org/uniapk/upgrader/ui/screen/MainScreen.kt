@@ -56,7 +56,7 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
         onDispose { context.unregisterReceiver(receiver) }
     }
     val firstSetup=remember{prefs.permissionSetupVersion.get()<1}
-    val initialRoute=remember{if(firstSetup)"permissions" else "overview"}
+    val initialRoute=remember{if(firstSetup)"permissions" else StartViews.valid(prefs.startView.get())}
     LaunchedEffect(lifecycle){lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED){while(true){updates.reconcilePreparedFiles();kotlinx.coroutines.delay(4000)}}}
     val nav = rememberNavController()
     val route = nav.currentBackStackEntryAsState().value?.destination?.route ?: "overview"
@@ -83,20 +83,23 @@ fun MainScreen(mainViewModel: MainViewModel = koinViewModel()) {
     CompositionLocalProvider(LocalDisplayLanguage provides if(displayLanguage=="de") "de" else "en",LocalAppearance provides appearance,LocalBackgroundFrameRate provides if(route in listOf("appearance","settings"))24 else if(appearance.quality>=3)45 else 30) {
     AppTheme(if(appearance.theme == 0) androidx.compose.foundation.isSystemInDarkTheme() else appearance.theme in listOf(1,3), appearance.dynamic) {
         CompositionLocalProvider(LocalEffectLevel provides appearance.quality) {
+            val moving=motionAllowed()
             GlassScene {
                 val contentBackdrop = rememberGlassBackdrop()
                 Box(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize().captureGlass(contentBackdrop)) {
                         NavHost(navController = nav, startDestination = initialRoute, modifier = Modifier.fillMaxSize(),
-                            enterTransition = { androidx.compose.animation.EnterTransition.None },
-                            exitTransition = { androidx.compose.animation.ExitTransition.None }) {
+                            enterTransition = { androidx.compose.animation.fadeIn(UniMotion.spec(moving)) + androidx.compose.animation.slideInVertically(UniMotion.spec(moving)){it/40} },
+                            exitTransition = { androidx.compose.animation.fadeOut(UniMotion.spec(moving)) },
+                            popEnterTransition = { androidx.compose.animation.fadeIn(UniMotion.spec(moving)) },
+                            popExitTransition = { androidx.compose.animation.fadeOut(UniMotion.spec(moving)) }) {
                             composable("overview") { OverviewScreen(updates, onUpdates = { go("updates") }, onSettings = { go("settings") }) }
                             composable("updates") { GlassUpdatesScreen(updates, onSettings = { go("settings") }) }
                             composable("apps") { SystemAppsScreen(onSettings = { go("settings") }) }
                             composable("search") { GlassSearchScreen(search,onBack={go("overview")},onPrepare=updates::prepareFromSearch) }
                             composable("settings") { GlassSettingsScreen(onBack = { go("overview") }, onAppearance = { nav.navigate("appearance") { launchSingleTop=true } }, onFiltersChanged = { updates.refresh(debounceMillis=350) },onHistory={nav.navigate("history")},onCacheCleared={updates.invalidateVerificationCache()},onPermissions={nav.navigate("permissions")}) }
                             composable("history") { HistoryScreen(onBack={nav.popBackStack()}) }
-                            composable("permissions"){PermissionsScreen(firstRun=prefs.permissionSetupVersion.get()<1,onBack={prefs.permissionSetupVersion.put(1);if(nav.previousBackStackEntry!=null)nav.popBackStack() else nav.navigate("overview"){popUpTo("permissions"){inclusive=true}}})}
+                            composable("permissions"){PermissionsScreen(firstRun=prefs.permissionSetupVersion.get()<1,onBack={prefs.permissionSetupVersion.put(1);if(nav.previousBackStackEntry!=null)nav.popBackStack() else nav.navigate(StartViews.valid(prefs.startView.get())){popUpTo("permissions"){inclusive=true}}})}
                             composable("appearance") { AppearanceScreen(onBack = { nav.popBackStack() }) }
                         }
                     }

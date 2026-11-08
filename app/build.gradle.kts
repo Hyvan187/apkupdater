@@ -24,8 +24,8 @@ android {
         applicationId = "org.uniapk.upgrader"
         minSdk = 23
         targetSdk = 37
-        versionCode = 1011
-        versionName = "0.7.0-rc3"
+        versionCode = 1012
+        versionName = "0.7.0-rc4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         val fingerprint = MessageDigest.getInstance("SHA-256")

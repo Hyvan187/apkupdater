@@ -26,14 +26,14 @@ import org.koin.compose.koinInject
 }
 @Composable fun HiddenVersions(onChanged:()->Unit) {
     val prefs=koinInject<Prefs>();val context=LocalContext.current
-    var entries by remember{mutableStateOf(prefs.ignoredReleases.get())};var legacy by remember{mutableStateOf(prefs.ignoredVersions.get())};var open by remember{mutableStateOf(false)}
-    OutlinedButton(onClick={entries=prefs.ignoredReleases.get();legacy=prefs.ignoredVersions.get();open=true}){Text("Ausgeblendete Versionen (${entries.size+legacy.size})")}
+    var entries by remember{mutableStateOf(SkippedVersions.entries(prefs))};var legacy by remember{mutableStateOf(prefs.ignoredVersions.get())};var open by remember{mutableStateOf(false)}
+    OutlinedButton(onClick={entries=SkippedVersions.entries(prefs);legacy=prefs.ignoredVersions.get();open=true}){Text("Ausgeblendete Versionen (${entries.size+legacy.size})")}
     if(open)GlassMenuSheet(onDismiss={open=false}) {
         Text("Ausgeblendete Versionen",style=MaterialTheme.typography.titleMedium)
         if(entries.isEmpty()&&legacy.isEmpty())SecondaryText("Keine Versionen ausgeblendet.")
         LazyColumn(Modifier.weight(1f,fill=false).heightIn(max=420.dp)) {
-            items(entries,key={it}){key->val pkg=key.substringBefore('|');val name=remember(pkg){runCatching{context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg,0)).toString()}.getOrDefault(pkg)}
-                Column(Modifier.fillMaxWidth().padding(vertical=spacing(8))){Text(name);SecondaryText("$pkg · ${key.substringAfter('|',"?")}");TextButton(onClick={entries=entries-key;prefs.ignoredReleases.put(entries);onChanged()}){Text("Wieder einblenden")}}
+            items(entries.distinct(),key={it}){key->val pkg=key.packageName;val name=remember(pkg){runCatching{context.packageManager.getApplicationLabel(context.packageManager.getApplicationInfo(pkg,0)).toString()}.getOrDefault(pkg)}
+                Column(Modifier.fillMaxWidth().padding(vertical=spacing(8))){Text(name);SecondaryText("$pkg · ${key.version}${if(key.code>0)" · Build ${key.code}" else " · ohne Build-Code"}");TextButton(onClick={SkippedVersions.restore(key,prefs);entries=SkippedVersions.entries(prefs);onChanged()}){Text("Wieder einblenden")}}
             }
             items(legacy,key={it}){id->Row{Text("Älterer Eintrag: $id",Modifier.weight(1f));TextButton(onClick={legacy=legacy-id;prefs.ignoredVersions.put(legacy);onChanged()}){Text("Einblenden")}}}
         }

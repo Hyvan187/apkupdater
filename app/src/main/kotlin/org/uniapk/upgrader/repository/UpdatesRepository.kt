@@ -60,7 +60,7 @@ class UpdatesRepository(
                             }
                             // No hash means identity is unproven. Keep regional/ABI variants separate.
 
-                            emit(assessed.filter { org.uniapk.upgrader.glass.ReleasePolicy.allowed(it, prefs) }.filter { it.id !in prefs.ignoredVersions.get() && org.uniapk.upgrader.glass.releaseKey(it) !in prefs.ignoredReleases.get() }.distinctBy { it.artifactKey })
+                            emit(assessed.filter { org.uniapk.upgrader.glass.ReleasePolicy.allowed(it, prefs) }.filter { org.uniapk.upgrader.glass.SkippedVersions.allowed(it,prefs) }.distinctBy { it.artifactKey })
                         }
                         .collect()
                 } else {

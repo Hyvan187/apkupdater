@@ -1,5 +1,10 @@
 package org.uniapk.upgrader.glass
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -63,7 +68,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
         }
         RiskSummary(update)
         update.verificationError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        if(expanded) {
+        AnimatedVisibility(expanded,enter=expandVertically(UniMotion.spec(motionAllowed()))+fadeIn(UniMotion.spec(motionAllowed())),exit=shrinkVertically(UniMotion.spec(motionAllowed()))+fadeOut(UniMotion.spec(motionAllowed()))) { Column {
             Spacer(Modifier.height(spacing(12)))
             FactRow("Version", "${update.oldVersion} → ${update.version}")
             FactRow("Architektur", architectureLabel(update.abis))
@@ -75,6 +80,7 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
             TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { technical = true }) { Text("Technische Details") }
             Row(verticalAlignment=Alignment.CenterVertically) { Text("Prüfverfahren",Modifier.weight(1f),style=MaterialTheme.typography.labelMedium);HelpButton("Prüfverfahren",HelpText.CHECK) }
         }
+        }
         if(busy) { Spacer(Modifier.height(spacing(10))); UniProgress(label=if(deleting)"APKs werden gelöscht" else "APK wird vorbereitet") }
         else if(!blocked || group.candidates.any { it.verdict.status != Compatibility.INCOMPATIBLE }) {
             Spacer(Modifier.height(spacing(10)))
@@ -84,10 +90,10 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
         if(discard!=null&&group.candidates.any{it.fileReady}&&!busy)TextButton(onClick={deletePrepared=true}){Icon(Icons.Default.Delete,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("Vorbereitete APKs löschen")}
         if(update.whatsNew.isNotBlank())TextButton(onClick={changelog=true}){Text("Änderungen dieser Version")}
         else if(expanded)SecondaryText("Die Quelle stellt keinen Änderungsverlauf bereit.")
-        if(expanded) HelpButton("Version ausblenden","Blendet diese Versionsbezeichnung dieser App quellenübergreifend aus. Unter Einstellungen lassen sich ausgeblendete Versionen wieder einblenden.")
+        TextButton(onClick={ignore(update)}){Text("Diese Version überspringen")}
         if(ignoreApp!=null)TextButton(onClick={ignoreApp(update)}){Icon(Icons.Default.Close,null,Modifier.size(18.dp));Spacer(Modifier.width(6.dp));Text("App dauerhaft ignorieren")}
         if(expanded)TextButton(onClick={PlayInstallPolicy.open(context=appContext,packageName=update.packageName)}){Text("In Google Play öffnen")}
-        if(expanded) TextButton(colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick = { ignore(update) }) { Text("Diese Version ausblenden") }
+
     }
     if(picker) {
         var selected by remember { mutableStateOf(update) }
@@ -119,6 +125,11 @@ fun UpdateGroupCard(group: UpdateGroup, preferred: String?, verify: (AppUpdate) 
                         }
                     }
                 }
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                    TextButton(onClick={picker=false;ignore(selected)},modifier=Modifier.weight(1f)){Text("Diese Version überspringen")}
+                    if(ignoreApp!=null)TextButton(onClick={picker=false;ignoreApp(selected)},modifier=Modifier.weight(1f)){Text("App dauerhaft ignorieren")}
+                }
+                SecondaryText("Überspringen betrifft diesen Build. Ein höherer Build erscheint wieder; bei fehlendem Build-Code gilt der Versionsname.")
                 Button(onClick = {
                     if(selected.verdict.status != Compatibility.INCOMPATIBLE && (selected.link is Link.Url || selected.link is Link.Xapk || selected.link is Link.Play)) {
                         chosenKey = selected.artifactKey; prefer(selected); picker = false

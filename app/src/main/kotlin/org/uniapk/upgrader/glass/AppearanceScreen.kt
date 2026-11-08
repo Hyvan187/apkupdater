@@ -34,22 +34,22 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
  Box(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal=LocalDeviceLayout.current.horizontalPadding)) {
   
   LazyColumn(Modifier.fillMaxSize().navigationBarsPadding(),contentPadding=PaddingValues(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(spacing(14))) {
-   item{SettingsHero("Design und Leistung","Design, Glas, Bewegung und Dichte",UniIcons.Palette,onBack,showBack=false)}
+   item{SettingsHero("Erscheinungsbild","Design, Farbpalette, Glas und Leistung",UniIcons.Palette,onBack,showBack=false)}
    item{Text("Design",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
    item{GlassPanel{ThemePreviewChoices(a){theme,oled->store.update{it.copy(theme=theme,oled=oled,customBackground=false)}};AppearanceToggle("Android-Design folgen","Verwendet das helle oder dunkle Systemdesign.",a.theme==0&&!a.oled){v->store.update{it.copy(theme=if(v)0 else 1,oled=false,customBackground=false)}}}}
    item{Text("Farbpalette",style=MaterialTheme.typography.titleSmall,color=MaterialTheme.colorScheme.primary)}
-   item{GlassPanel{PaletteChoices(a){v->store.update{it.copy(palette=v,dynamic=false,customAccent=false)}}}}
+   item{GlassPanel{
+    PaletteChoices(a){v->store.update{it.copy(palette=v,dynamic=false,customPalette=false)}}
+    Spacer(Modifier.height(spacing(12)))
+    ColorSetting("Basisfarbe anpassen",PaletteModel.seed(a)){picking="palette"}
+    SecondaryText("Eine Basisfarbe bestimmt Akzente, Schaltflächen und Glastönungen. Die Kontraste passen sich dem Design an.")
+    AppearanceToggle("Systemfarben","Verwendet die zusammenhängende Android-Farbpalette statt deiner Basisfarbe.",a.dynamic){v->store.update{it.copy(dynamic=v)}}
+   } }
    item{GlassPanel{AppearanceToggle("Kompaktmodus","Kleinere Karten, kürzere Zeilen und engere Abstände in der gesamten App. Bedienelemente bleiben gut erreichbar.",a.compact){v->store.update{it.copy(compact=v)}}}}
    item{DockSettings(store,a)}
    item{LauncherIconSettings(store,a)}
    item{GlassPanel(effectLevel=a.quality){HelpTitle("Empfohlenes Liquid Glass","Setzt nur Qualität, Glastransparenz, Unschärfe und Brechung auf ausgewogene Werte. Deine Farben bleiben erhalten.");SecondaryText("Standard · 54 % Glastransparenz · Unschärfe und Brechung an");OutlinedButton(colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface), onClick={store.recommendedGlass()}){Text("Empfohlene Glaswerte anwenden")}}}
    item{GlassPanel{GlassTransparencyControl(store,a)}}
-   item{GlassPanel{
-    HelpTitle("Farben","Systemfarben folgen dem Android-Hintergrund. Eigene Farben ersetzen die gewählte Palette.")
-    AppearanceToggle("Systemfarben","Akzente aus deinem Android-Design.",a.dynamic){v->store.update{it.copy(dynamic=v,customAccent=false)}}
-    ColorSetting("Button- und Akzentfarbe",if(a.customAccent)Color(a.accent.toInt()) else MaterialTheme.colorScheme.primary){picking="accent"}
-    ColorSetting("Hintergrundfarbe",if(a.customBackground)Color(a.background.toInt()) else MaterialTheme.colorScheme.background){picking="background"}
-   }}
    item{GlassPanel{
     HelpTitle("Glas und Bewegung","Effekte sind rein optisch. Aus ist der sparsamste Modus; Standard ist die Empfehlung. Die Systemvorgabe für reduzierte Animationen wird berücksichtigt.")
     AppearanceToggle("Animationen reduzieren","Pausiert Hintergrundbewegung und Parallaxe.",a.reduceMotion){v->store.update{it.copy(reduceMotion=v)}}
@@ -96,10 +96,10 @@ val LocalAppearance=staticCompositionLocalOf{Appearance()}
  }
  }
  picking?.let{target->
- val title=when(target){"accent"->"Akzentfarbe";"motion"->"Animationsfarbe";"motionSecondary"->"Zweite Animationsfarbe";else->"Hintergrundfarbe"}
- val initial=when(target){"accent"->a.accent;"motion"->a.motionColor;"motionSecondary"->a.motionSecondary;else->a.background}
- val alpha=when(target){"accent"->a.accentAlpha;"background"->a.backgroundAlpha;else->1f}
- ColorPickerDialog(title,initial,alpha,{picking=null},showAlpha=target in listOf("accent","background")){color,opacity->store.update{when(target){"accent"->it.copy(accent=color,accentAlpha=opacity,customAccent=true,dynamic=false);"motion"->it.copy(motionColor=color);"motionSecondary"->it.copy(motionSecondary=color);else->it.copy(background=color,backgroundAlpha=opacity,customBackground=true)}};picking=null}}
+ val title=when(target){"palette"->"Basisfarbe";"motion"->"Animationsfarbe";"motionSecondary"->"Zweite Animationsfarbe";else->"Hintergrundfarbe"}
+ val initial=when(target){"palette"->PaletteModel.seed(a).toArgb().toLong();"motion"->a.motionColor;"motionSecondary"->a.motionSecondary;else->a.background}
+ ColorPickerDialog(title,initial,1f,{picking=null},showAlpha=false){color,_->store.update{when(target){"palette"->it.copy(paletteSeed=color,customPalette=true,dynamic=false);"motion"->it.copy(motionColor=color);else->it.copy(motionSecondary=color)}};picking=null}}
+
 
 }
 @Composable fun AppearanceToggle(title:String,description:String,checked:Boolean,onChange:(Boolean)->Unit){Row(Modifier.fillMaxWidth().padding(vertical=spacing(8)),verticalAlignment=Alignment.CenterVertically){Column(Modifier.weight(1f)){Text(title,style=MaterialTheme.typography.bodyMedium);SecondaryText(description)};Switch(checked,onChange);if(HelpTopics.technical(title))HelpButton(title,description)}}

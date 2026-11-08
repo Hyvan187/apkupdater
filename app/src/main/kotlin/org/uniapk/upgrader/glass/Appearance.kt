@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 data class Appearance(
+    val paletteSeed:Long=0xffc8b9ff,val customPalette:Boolean=false,
     val compact:Boolean=false,val dockStyle:Int=2,val dockSize:Int=1,val iconStyle:Int=0,val palette:Int=0,
     val theme: Int = 1, val dynamic: Boolean = false,
     val accent: Long = 0xffc8b9ff, val background: Long = 0xff080b13,
@@ -12,7 +13,7 @@ data class Appearance(
     val quality: Int = 2, val reduceMotion: Boolean = false,
     val blur: Boolean = true, val refraction: Boolean = true, val progressiveBlur: Boolean = false,
     val oled: Boolean=false,val motion: Int=0,val speed: Float=.5f,val density: Float=.35f,val parallax: Boolean=false,val seasonal: Boolean=false,val accentAlpha: Float=1f,val backgroundAlpha: Float=1f,
-    val motionPalette:Int=0,val motionColor:Long=0xff39e898,val motionSecondary:Long=0xffa27bff,val progressStyle:Int=0,
+    val motionPalette:Int=0,val motionColor:Long=0xff39e898,val motionSecondary:Long=0xffa27bff,val progressStyle:Int=2,
     val opacity: Float = .46f, val font: Int = 0, val textScale: Float = 1f
 )
 object ColorInput {
@@ -20,7 +21,9 @@ object ColorInput {
     fun hex(value: Long) = "%06X".format(value and 0xffffff)
 }
 class AppearanceStore(private val prefs: Prefs) {
+    init { prefs.migratePalette() }
     private val mutable = MutableStateFlow(Appearance(
+        paletteSeed=prefs.paletteSeed.get(),customPalette=prefs.customPalette.get(),
         compact=prefs.compactMode.get(),dockStyle=prefs.dockStyle.get().coerceIn(0,4),dockSize=prefs.dockSize.get().coerceIn(0,2),iconStyle=prefs.iconStyle.get().coerceIn(0,4),palette=prefs.palette.get().coerceIn(0,4),
         motionPalette=prefs.motionPalette.get().coerceIn(0,2),motionColor=prefs.motionColor.get(),motionSecondary=prefs.motionSecondary.get(),progressStyle=prefs.progressStyle.get(),
         oled=prefs.oledMode.get(),motion=prefs.backgroundMotion.get(),speed=prefs.motionSpeed.get()/100f,density=prefs.motionDensity.get()/100f,parallax=prefs.parallax.get(),seasonal=prefs.seasonal.get(),accentAlpha=prefs.accentOpacity.get()/100f,backgroundAlpha=prefs.backgroundOpacity.get()/100f,
@@ -37,6 +40,8 @@ class AppearanceStore(private val prefs: Prefs) {
         val old = persisted
         val v = change(mutable.value).let { it.copy(opacity = it.opacity.coerceIn(0f, 1f)) }
         // A slider changes one encrypted preference, not every appearance key.
+        if(old.paletteSeed!=v.paletteSeed)prefs.paletteSeed.put(v.paletteSeed)
+        if(old.customPalette!=v.customPalette)prefs.customPalette.put(v.customPalette)
         if(old.compact!=v.compact)prefs.compactMode.put(v.compact)
         if(old.dockStyle!=v.dockStyle)prefs.dockStyle.put(v.dockStyle)
         if(old.dockSize!=v.dockSize)prefs.dockSize.put(v.dockSize)

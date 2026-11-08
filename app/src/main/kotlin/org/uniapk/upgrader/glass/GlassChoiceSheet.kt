@@ -1,6 +1,9 @@
 package org.uniapk.upgrader.glass
 
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -45,8 +48,12 @@ data class GlassChoice(val id: String, val title: String, val detail: String = "
 @Composable fun AlertDialog(onDismissRequest: () -> Unit, confirmButton: @Composable () -> Unit,
     title: @Composable () -> Unit, text: @Composable () -> Unit,
     dismissButton: (@Composable () -> Unit)? = null) {
+    val moving=motionAllowed()
+    var shown by remember{mutableStateOf(false)}
+    LaunchedEffect(Unit){shown=true}
+    val reveal by animateFloatAsState(if(shown)1f else 0f,UniMotion.spec(moving),label="glass-dialog")
     BasicAlertDialog(onDismissRequest = onDismissRequest) {
-        GlassPanel(Modifier.widthIn(max = 560.dp).heightIn(max = (LocalDeviceLayout.current.heightDp * .9f).dp)) {
+        GlassPanel(Modifier.graphicsLayer{alpha=if(moving)reveal else 1f;scaleX=if(moving).98f+.02f*reveal else 1f;scaleY=scaleX}.widthIn(max = 560.dp).heightIn(max = (LocalDeviceLayout.current.heightDp * .9f).dp)) {
             CompositionLocalProvider(LocalTextStyle provides MaterialTheme.typography.titleLarge) { title() }
             Spacer(Modifier.height(16.dp))
             Box(Modifier.weight(1f, fill = false)) {

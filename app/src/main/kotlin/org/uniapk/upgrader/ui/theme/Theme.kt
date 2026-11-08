@@ -19,20 +19,14 @@ import org.uniapk.upgrader.util.isDark
 @Composable
 fun AppTheme(darkTheme: Boolean, dynamicColor: Boolean = false, content: @Composable () -> Unit) {
     val a = LocalAppearance.current
-    val effectiveDark = if(a.oled) true else if(a.customBackground) Color(a.background.toInt()).luminance() < .3f else darkTheme
+    val effectiveDark = a.oled || darkTheme
     val dusk=a.theme==3&&!a.oled
-    val p=AppearancePalettes.entries[a.palette.coerceIn(0,4)]
-    val base = when {
-        dusk -> darkColorScheme(primary=if(dynamicColor&&Build.VERSION.SDK_INT>=31)dynamicDarkColorScheme(LocalContext.current).primary else Color(p.accent),secondary=Color(p.secondary),background=Color(0xff22212e),surface=Color(0xff302e40),onSurface=Color(0xfff2ecff),onBackground=Color(0xfff2ecff),onSurfaceVariant=Color(0xffc5c0d2))
-        dynamicColor && Build.VERSION.SDK_INT >= 31 -> if(effectiveDark) dynamicDarkColorScheme(LocalContext.current) else dynamicLightColorScheme(LocalContext.current)
-        effectiveDark -> darkColorScheme(primary = Color(0xffc8b9ff), onPrimary = Color(0xff25164a), secondary = Color(0xff8cdae2), background = Color(0xff080b13), onBackground = Color(0xfff4f3fb), surface = Color(0xff121724), onSurface = Color(0xfff4f3fb), onSurfaceVariant = Color(0xffb9bfce), outline = Color(0xff4c5266))
-        else -> lightColorScheme(primary = Color(0xff5f43ae), background = Color(0xffedf0f7), onBackground = Color(0xff172033), surface = Color.White, onSurface = Color(0xff172033), onSurfaceVariant = Color(0xff50596d))
-    }
-    val accentRaw = if(a.customAccent) Color(a.accent.toInt()) else if(a.dynamic)base.primary else Color(if(effectiveDark)p.accent else p.lightAccent)
-    val accent=lerp(base.surface,accentRaw,a.accentAlpha)
-    val background = if(a.oled) Color.Black else if(a.customBackground) lerp(base.background,Color(a.background.toInt()),a.backgroundAlpha) else base.background
-    val scheme = base.copy(primary = accent, onPrimary = if(accent.luminance() > .4f) Color(0xff10131c) else Color.White,
-        primaryContainer = lerp(base.surface, accent, .2f), secondary=if(a.dynamic)base.secondary else Color(p.secondary), secondaryContainer=lerp(base.surface,if(a.dynamic)base.secondary else Color(p.secondary),.2f), background = background)
+    val seed=org.uniapk.upgrader.glass.PaletteModel.seed(a)
+    val localScheme=remember(seed,effectiveDark,dusk,a.oled){org.uniapk.upgrader.glass.PaletteModel.scheme(seed,effectiveDark,dusk,a.oled)}
+    val scheme=if(dynamicColor&&Build.VERSION.SDK_INT>=31){
+        val system=if(effectiveDark)dynamicDarkColorScheme(LocalContext.current) else dynamicLightColorScheme(LocalContext.current)
+        if(a.oled)system.copy(background=Color.Black) else if(dusk)org.uniapk.upgrader.glass.PaletteModel.scheme(system.primary,true,true) else system
+    }else localScheme
     val family = when(a.font) { 1 -> FontFamily.SansSerif; 2 -> FontFamily.Serif; 3 -> FontFamily.Monospace; else -> FontFamily.Default }
     fun scaled(style: androidx.compose.ui.text.TextStyle) = style.copy(fontFamily = family, fontSize = style.fontSize * a.textScale * (if(a.compact).96f else 1f), lineHeight = style.lineHeight * a.textScale * (if(a.compact).96f else 1f))
     val typography = Typography().let { t -> t.copy(

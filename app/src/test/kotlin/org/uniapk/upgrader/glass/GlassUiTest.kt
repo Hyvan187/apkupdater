@@ -69,7 +69,7 @@ class GlassUiTest {
         compose.onNodeWithText("Keine blockierten Varianten").assertIsDisplayed()
         compose.onNodeWithContentDescription("Einstellungen").performClick()
         compose.onNodeWithText("Einstellungen").assertIsDisplayed()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updateprüfung"));compose.onNodeWithText("Updateprüfung").assertIsDisplayed()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updates & Versionen"));compose.onNodeWithText("Updates & Versionen").assertIsDisplayed()
         screenshot("03-settings")
         compose.onNodeWithText("ROM: IN").assertDoesNotExist()
         compose.onNodeWithContentDescription("Zurück").performClick()
@@ -89,8 +89,8 @@ class GlassUiTest {
     @Test
     fun lightThemeRendersReadableDashboard() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Design und Leistung"))
-        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Design und Leistung"));compose.onNodeWithText("Design und Leistung").performClick()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Erscheinungsbild"))
+        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Erscheinungsbild"));compose.onNodeWithText("Erscheinungsbild").performClick()
         compose.onNodeWithText("Light").assertIsDisplayed()
         compose.onNodeWithText("Light").performClick()
         screenshot("08-appearance-light")
@@ -204,7 +204,7 @@ class GlassUiTest {
             org.junit.Assert.assertEquals(0xff121020, loaded.background)
         }
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updateprüfung"));compose.onNodeWithText("Updateprüfung").performClick();compose.onNodeWithText("Allgemeine").performClick()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updates & Versionen"));compose.onNodeWithText("Updates & Versionen").performClick();compose.onNodeWithText("Allgemeine").performClick()
         compose.runOnIdle { org.junit.Assert.assertEquals(AppScope.GENERAL, koin.get<AppSelection>().scope.value) }
         compose.onNodeWithContentDescription("Zurück").performClick()
         compose.onNodeWithContentDescription("Zurück").performClick()
@@ -215,10 +215,10 @@ class GlassUiTest {
 
     @Test fun singleAppearanceEntryAndRecommendedResetWork() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Design und Leistung"))
-        compose.onAllNodesWithText("Design und Leistung").assertCountEquals(1)
-        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Design und Leistung"));compose.onNodeWithText("Design und Leistung").performClick()
-        compose.onAllNodesWithText("Design und Leistung").assertCountEquals(1)
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Erscheinungsbild"))
+        compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
+        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Erscheinungsbild"));compose.onNodeWithText("Erscheinungsbild").performClick()
+        compose.onAllNodesWithText("Erscheinungsbild").assertCountEquals(1)
         val store=GlobalContext.get().get<AppearanceStore>()
         compose.runOnIdle { store.update{it.copy(quality=0,opacity=.9f,blur=false,accent=0xff123456,customAccent=true)} }
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Empfohlene Glaswerte anwenden"));compose.onNodeWithText("Empfohlene Glaswerte anwenden").performClick()
@@ -264,20 +264,20 @@ class GlassUiTest {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
         compose.onNodeWithContentDescription("Hilfe: Erscheinungsbild").assertDoesNotExist()
         compose.onNodeWithContentDescription("Hilfe: Sprache").assertDoesNotExist()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updateprüfung"));compose.onNodeWithText("Updateprüfung").performClick();compose.onNodeWithContentDescription("Hilfe: App-Auswahl").performClick()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updates & Versionen"));compose.onNodeWithText("Updates & Versionen").performClick();compose.onNodeWithContentDescription("Hilfe: App-Auswahl").performClick()
         compose.onNodeWithText("Verstanden").assertIsDisplayed().performClick()
         screenshot("14-selective-info-buttons")
     }
     @Test @Config(qualifiers = "de-w915dp-h412dp-xhdpi") fun landscapeKeepsNavigationAndSettingsUsable() {
         compose.onNodeWithText("Start").assertIsDisplayed()
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Gerät und ROM"))
-        compose.onNodeWithText("Gerät und ROM").assertIsDisplayed()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Updates & Versionen"))
+        compose.onNodeWithText("Updates & Versionen").assertIsDisplayed()
         screenshot("15-landscape-settings")
     }
     @Test fun appearanceOffersAllAnimationModesAndOled() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Design und Leistung"));compose.onNodeWithText("Design und Leistung").performClick()
+        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Erscheinungsbild"));compose.onNodeWithText("Erscheinungsbild").performClick()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("OLED"))
         compose.onNodeWithText("OLED").assertIsDisplayed()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Hintergrundanimation"))
@@ -292,16 +292,16 @@ class GlassUiTest {
     }
     @Test fun colorWheelHasCodeAndOpacityControl() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Design und Leistung"));compose.onNodeWithText("Design und Leistung").performClick()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Button- und Akzentfarbe"))
-        compose.onNodeWithText("Button- und Akzentfarbe").performClick()
+        compose.onAllNodes(hasScrollAction()).onLast().performScrollToNode(hasText("Erscheinungsbild"));compose.onNodeWithText("Erscheinungsbild").performClick()
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Basisfarbe anpassen"))
+        compose.onNodeWithText("Basisfarbe anpassen").performClick()
         compose.onNodeWithText("HEX-Farbe").assertIsDisplayed()
-        compose.onNodeWithText("Deckkraft: 100 %").assertIsDisplayed()
+        compose.onNodeWithText("Deckkraft: 100 %").assertDoesNotExist()
         compose.onNodeWithText("Abbrechen").performClick()
     }
     @Test fun donationAndLegalAreSeparateFromProductPresentation() {
         compose.onNodeWithContentDescription("Einstellungen").performClick()
-        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Über UniAPK"));compose.onNodeWithText("Über UniAPK").performClick();compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("☕ Like my project? Buy me a coffee :)"))
+        compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Erweitert / System"));compose.onNodeWithText("Erweitert / System").performClick();compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("☕ Like my project? Buy me a coffee :)"))
         compose.onNodeWithText("☕ Like my project? Buy me a coffee :)").assertIsDisplayed()
         compose.onNodeWithText("APKUpdater",substring=true).assertDoesNotExist()
         compose.onAllNodes(hasScrollAction()).onFirst().performScrollToNode(hasText("Lizenzen und Rechtliches"))

@@ -66,7 +66,7 @@ class UpdatesViewModel(
     private fun identity(u: AppUpdate) = "${u.artifactKey}:${u.oldVersionCode}"
     init {
         viewModelScope.launch(Dispatchers.IO){operationMutex.withLock{
-            val restored=savedReady.mapNotNull{record->val file=record.file(context) ?: return@mapNotNull null;val u=record.update();if(!AppExclusions.allowed(u.packageName,prefs))return@mapNotNull null;verified[identity(u)]=Checked(file,record.report,record.checkedAt,record.published);u}
+            val restored=savedReady.mapNotNull{record->val file=record.file(context) ?: return@mapNotNull null;val u=record.update();if(!AppExclusions.allowed(u.packageName,prefs)||!SkippedVersions.allowed(u,prefs))return@mapNotNull null;verified[identity(u)]=Checked(file,record.report,record.checkedAt,record.published);u}
             if(restored.isNotEmpty()){restored.forEach{preparedEntries[it.artifactKey]=it};setSuccess(state.value.updates()+restored);reconcileInstalledUpdates()}
         }}
         selection.scope.drop(1).onEach { refresh(debounceMillis=350) }.launchIn(viewModelScope)
@@ -143,7 +143,7 @@ class UpdatesViewModel(
         }
     }
     fun verify(update: AppUpdate): Job {
-        if(!AppExclusions.allowed(update.packageName,prefs))return viewModelScope.launch{snackBar.snackBar(viewModelScope,TextSnack("Diese App ist ignoriert. Erst wieder zulassen."))}
+        if(!(AppExclusions.allowed(update.packageName,prefs)&&SkippedVersions.allowed(update,prefs)))return viewModelScope.launch{snackBar.snackBar(viewModelScope,TextSnack("Diese App ist ignoriert. Erst wieder zulassen."))}
         prefs.discardedDownloads.put(prefs.discardedDownloads.get()-releaseKey(update))
         processState.value=PackageProcess(update)
         return startVerification {
@@ -187,7 +187,7 @@ class UpdatesViewModel(
         }.also { batchJob = it }
     }
     private suspend fun verifyCandidate(update: AppUpdate,trigger:org.uniapk.upgrader.util.DownloadTrigger): Boolean {
-        if(!AppExclusions.allowed(update.packageName,prefs)||update.verdict.status == Compatibility.INCOMPATIBLE || !verifying.add(update.id)) return false
+        if(!(AppExclusions.allowed(update.packageName,prefs)&&SkippedVersions.allowed(update,prefs))||update.verdict.status == Compatibility.INCOMPATIBLE || !verifying.add(update.id)) return false
         val supported = update.link is Link.Url || update.link is Link.Xapk || update.link is Link.Play
         if(!supported || update.source == ApkMirrorSource) {
             verifying.remove(update.id)
@@ -201,11 +201,12 @@ class UpdatesViewModel(
         try {
             lease = AppCache.begin()
             require(ResourcePolicy.budget(context.cacheDir.usableSpace,prefs.autoVerifyLimitMiB.get()*ResourcePolicy.MIB)>0){"Zu wenig freier Speicher: Für sichere Downloads und Installationskopien muss mindestens 1 GiB Reserve verfügbar bleiben."}
-            file = downloader.download(update.link, trigger, ResourcePolicy.budget(context.cacheDir.usableSpace,prefs.autoVerifyLimitMiB.get()*ResourcePolicy.MIB)){read,total->check(AppExclusions.allowed(update.packageName,prefs)){"App inzwischen ignoriert."};if(trigger==org.uniapk.upgrader.util.DownloadTrigger.SINGLE_CHECK)processState.update{it?.copy(bytes=read,total=total)}}
+            file = downloader.download(update.link, trigger, ResourcePolicy.budget(context.cacheDir.usableSpace,prefs.autoVerifyLimitMiB.get()*ResourcePolicy.MIB)){read,total->check((AppExclusions.allowed(update.packageName,prefs)&&SkippedVersions.allowed(update,prefs))){"App inzwischen ignoriert."};if(trigger==org.uniapk.upgrader.util.DownloadTrigger.SINGLE_CHECK)processState.update{it?.copy(bytes=read,total=total)}}
             currentCoroutineContext().ensureActive()
-            require(AppExclusions.allowed(update.packageName,prefs)){"App wurde während des Downloads ignoriert. Prüfdatei wird gelöscht."}
+            require((AppExclusions.allowed(update.packageName,prefs)&&SkippedVersions.allowed(update,prefs))){"App wurde während des Downloads ignoriert. Prüfdatei wird gelöscht."}
             if(trigger==org.uniapk.upgrader.util.DownloadTrigger.SINGLE_CHECK)processState.update{it?.copy(phase=PackagePhase.INSPECT)}
             val report = withContext(ComputeBudget.dispatcher()){installer.inspect(file, update.packageName)}
+            require(SkippedVersions.allowed(update.copy(version=report.candidate.versionName,versionCode=report.candidate.versionCode ?: update.versionCode),prefs)){"Diese Version wird übersprungen."}
             require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)) { "Vorabversion durch deine Filter ausgeblendet." }
             if(trigger!=org.uniapk.upgrader.util.DownloadTrigger.BATCH_CHECK)runCatching { DownloadArchive(context,prefs).publish(file,update.packageName,report.candidate.versionName) }.onFailure { snackBar.snackBar(viewModelScope,TextSnack("Öffentliche Kopie nicht gespeichert: ${it.message}")) }
             // Bound private verification cache; old evidence may require re-checking before installation.
@@ -271,8 +272,16 @@ class UpdatesViewModel(
     fun prefer(update: AppUpdate) { prefs.preferredSources.put(prefs.preferredSources.get() + (update.packageName to update.source.name)) }
     fun preferred(packageName: String) = prefs.preferredSources.get()[packageName]
     fun ignoreRelease(update: AppUpdate) {
-        prefs.ignoredReleases.put((prefs.ignoredReleases.get() + releaseKey(update)).distinct())
+        val entry=SkippedVersions.entry(update)
+        SkippedVersions.skip(update,prefs)
+        if(processState.value?.update?.let{SkippedVersions.matches(entry,it)}==true){batchJob?.cancel();processState.value=null}
+        val matching=state.value.updates().filter{SkippedVersions.matches(entry,it)}
         setSuccess(state.value.updates())
+        viewModelScope.launch(Dispatchers.IO){operationMutex.withLock{
+            matching.forEach{u->verified.remove(identity(u))?.file?.delete();preparedEntries.remove(u.artifactKey)}
+            setSuccess(state.value.updates())
+        }}
+        snackBar.snackBar(viewModelScope,TextSnack("Version ${update.version}${if(update.versionCode>0)" · Build ${update.versionCode}" else ""} übersprungen. Höhere Builds bleiben sichtbar."))
     }
     fun ignoreVersion(id: Int) = viewModelScope.launch {
         prefs.ignoredVersions.put((prefs.ignoredVersions.get() + id).distinct())
@@ -284,7 +293,7 @@ class UpdatesViewModel(
     override fun downloadAndInstall(update: AppUpdate) = performInstall(update)
     private fun performInstall(update:AppUpdate,selectedInstaller:String?=null) = viewModelScope.launch(Dispatchers.IO) {
         operationMutex.withLock {
-        if(!AppExclusions.allowed(update.packageName,prefs)){snackBar.snackBar(viewModelScope,TextSnack("Ignorierte Apps werden nicht installiert."));return@launch}
+        if(!(AppExclusions.allowed(update.packageName,prefs)&&SkippedVersions.allowed(update,prefs))){snackBar.snackBar(viewModelScope,TextSnack("Ignorierte Apps werden nicht installiert."));return@launch}
         if(!update.verdict.installAllowed) { snackBar.snackBar(viewModelScope, TextSnack("Diese APK hat keine Installationsfreigabe.")); return@launch }
         if(UpdateRisk.assess(update).requiresConfirmation&&!riskConsent.contains(consentKey(update))){riskState.value=update;return@launch}
         if(processState.value==null)processState.value=PackageProcess(update,PackagePhase.READY,evidence=update.verdict.evidence)
@@ -307,6 +316,7 @@ class UpdatesViewModel(
         try {
             installLease = AppCache.begin()
             val report = installer.inspect(checked.file, update.packageName)
+            require(SkippedVersions.allowed(update.copy(version=report.candidate.versionName,versionCode=report.candidate.versionCode ?: update.versionCode),prefs)){"Diese Version wird übersprungen."}
             require(ReleasePolicy.allowed(update.copy(version=report.candidate.versionName),prefs)) { "Vorabversion durch deine Filter ausgeblendet." }
             require(report.sha256 == checked.report.sha256) { "Die geprüfte Datei wurde verändert." }
             require(report.verdict.installAllowed) { report.verdict.summary }
@@ -330,7 +340,7 @@ class UpdatesViewModel(
             val filtered = (updates+retained).distinctBy{it.artifactKey}.filter { AppExclusions.allowed(it.packageName,prefs) }.filter { !InstalledUpdatePolicy.sameDisplayVersion(it.version,it.oldVersion) }.filter { it.packageName !in removedPackages }.mapNotNull { update ->
                 val actual=installedFacts[update.packageName]
                 if(actual==null) update else InstalledUpdatePolicy.reconcile(update,actual)
-            }.filter { ReleasePolicy.allowed(it,prefs) }.filter { it.id !in prefs.ignoredVersions.get() && releaseKey(it) !in prefs.ignoredReleases.get() }.distinctBy { it.artifactKey }
+            }.filter { ReleasePolicy.allowed(it,prefs) }.filter { SkippedVersions.allowed(it,prefs) }.distinctBy { it.artifactKey }
             UpdatesUiState.Success(filtered)
         }
         val filtered = state.value.updates()

@@ -62,14 +62,14 @@ fun GlassScene(content: @Composable () -> Unit) {
     val dark = MaterialTheme.colorScheme.background.luminance() < .2f
     val accent = MaterialTheme.colorScheme.primary
     val MaterialBackground=MaterialTheme.colorScheme.background
-    val sceneSecondary=Color(AppearancePalettes.entries[appearance.palette.coerceIn(0,4)].secondary)
+    val sceneSecondary=MaterialTheme.colorScheme.secondary
     CompositionLocalProvider(LocalSceneBackdrop provides backdrop, LocalContentColor provides MaterialTheme.colorScheme.onBackground) {
         Box(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().captureGlass(backdrop)) {
             Canvas(Modifier.fillMaxSize()) {
                 drawRect(MaterialBackground)
                 val points = listOf(Offset(.95f * size.width, .16f * size.height), Offset(-.2f * size.width, .6f * size.height), Offset(.85f * size.width, .98f * size.height))
-                val colors = if(appearance.customBackground) listOf(accent, accent, accent) else listOf(accent,sceneSecondary,accent)
+                val colors = listOf(accent,sceneSecondary,accent)
                 if(!appearance.oled) points.zip(colors).forEach { (center, color) ->
                     drawCircle(Brush.radialGradient(listOf(color.copy(if(dark) .27f else .12f), Color.Transparent), center, size.width * .95f), size.width * .95f, center)
                 }
@@ -96,7 +96,8 @@ fun GlassPanel(
     var pos by remember { mutableStateOf(Offset.Zero) }
     var pressed by remember { mutableStateOf(false) }
     var highlight by remember { mutableStateOf(Offset(80f, 12f)) }
-    val scale by animateFloatAsState(if (pressed && effectLevel > 0 && !appearance.reduceMotion) .985f else 1f, label = "glass-pressure")
+    val moving=motionAllowed()
+    val scale by animateFloatAsState(if (pressed && effectLevel > 0 && moving) .985f else 1f, animationSpec=UniMotion.spec(moving), label = "glass-pressure")
     val shape = RoundedCornerShape(if(pill) 100.dp else 28.dp)
     val dark = MaterialTheme.colorScheme.background.luminance() < .2f
     val density=androidx.compose.ui.platform.LocalDensity.current.density
@@ -111,7 +112,7 @@ fun GlassPanel(
         .pointerInput(effectLevel) {
             awaitPointerEventScope { while(true) { val e = awaitPointerEvent(); pressed = e.changes.any { it.pressed }; e.changes.firstOrNull()?.let { highlight = it.position } } }
         }.onGloballyPositioned { pos = it.screenPosition(view) }
-        .border(.7.dp, Brush.linearGradient(listOf(Color.White.copy(if(dark) .40f else .9f), Color.White.copy(.025f), Color.White.copy(.13f), Color.White.copy(.28f))), shape)) {
+        .border(.7.dp, Brush.linearGradient(listOf(Color.White.copy(if(dark) .26f else .75f), Color.White.copy(.025f), Color.White.copy(.13f), Color.White.copy(.28f))), shape)) {
         if(sample != null && effect != null) Box(Modifier.matchParentSize().graphicsLayer { renderEffect = effect }.drawWithContent {
             drawContext.canvas.save()
             val offset = sample.origin - pos
@@ -127,7 +128,7 @@ fun GlassPanel(
             if(pressed && !appearance.reduceMotion) drawRect(Brush.radialGradient(listOf(Color.White.copy(.12f), Color.Transparent), highlight, size.width * .7f))
         }
         CompositionLocalProvider(LocalContentColor provides foreground) {
-            Column(Modifier.fillMaxWidth().padding(if(compact) (if(appearance.compact)5.dp else 8.dp) else if(appearance.compact)12.dp else 18.dp), content = content)
+            Column(Modifier.fillMaxWidth().padding(if(compact) (if(appearance.compact)5.dp else 8.dp) else if(appearance.compact)UniLayout.COMPACT_CARD.dp else UniLayout.CARD.dp), content = content)
         }
     }
 }

@@ -30,6 +30,22 @@ class AppLanguageStore(private val prefs:Prefs) {
 }
 object UiEnglish {
  private val exact=mapOf(
+  "Allgemein" to "General", "Updates & Versionen" to "Updates & versions", "Erweitert / System" to "Advanced / system",
+  "Startansicht" to "Start view", "Startübersicht" to "Overview", "Installierte Apps" to "Installed apps",
+  "Basisfarbe" to "Base color", "Basisfarbe anpassen" to "Customize base color", "Diese Version überspringen" to "Skip this version",
+  "Installationsfreigabe verwalten" to "Manage installation permission",
+  "Design, Farbpalette, Glas und Leistung" to "Theme, palette, glass and performance",
+  "Sprache, Startansicht, Schnellzugriff und Berechtigungen" to "Language, start view, shortcuts and permissions",
+  "Design, Farbpalette, Glas, Icons und Leistung" to "Theme, palette, glass, icons and performance",
+  "Quellen, Versionsfilter, Downloads und Installation" to "Sources, version filters, downloads and installation",
+  "Cache, Verlauf, Diagnose und App-Informationen" to "Cache, history, diagnostics and app information",
+  "Diese Ansicht öffnet sich beim nächsten App-Start." to "This view opens the next time you start the app.",
+  "Wähle die Schalter für die Schnellstart-Leiste auf der Startübersicht." to "Choose the toggles for the overview shortcut bar.",
+  "Die Schnellstart-Leiste ist ausgeblendet." to "The shortcut bar is hidden.",
+  "Eine Basisfarbe bestimmt Akzente, Schaltflächen und Glastönungen. Die Kontraste passen sich dem Design an." to "One base color defines accents, buttons and glass tints. Contrast adapts to the theme.",
+  "Verwendet die zusammenhängende Android-Farbpalette statt deiner Basisfarbe." to "Uses the coordinated Android palette instead of your base color.",
+  "Überspringen betrifft diesen Build. Ein höherer Build erscheint wieder; bei fehlendem Build-Code gilt der Versionsname." to "Skips this build. A higher build is shown again; without a build code, the version name is used.",
+
   "Design und Leistung" to "Design and performance",
   "Leistungsbudget" to "Performance budget",
   "Berechtigungen" to "Permissions",

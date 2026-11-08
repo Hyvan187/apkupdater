@@ -48,8 +48,8 @@ enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Lon
     Box(Modifier.fillMaxWidth().height(if(a.compact)102.dp else 126.dp).border(if(selected)3.dp else 1.dp,if(selected)MaterialTheme.colorScheme.primary else Color(0xff656573),RoundedCornerShape(19.dp)).padding(4.dp).clip(RoundedCornerShape(16.dp)).background(bg)){
      Column(Modifier.fillMaxSize().padding(6.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
       Box(Modifier.fillMaxWidth().height(9.dp).background(if(i==0)Color(0xffe5e1ec)else Color(0xff474550),CircleShape))
-      Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){Box(Modifier.weight(1f).height(28.dp).background(Color(0xff7465ec),RoundedCornerShape(7.dp)));Box(Modifier.weight(1f).height(28.dp).background(Color(0xffc7fc79),RoundedCornerShape(7.dp)))}
-      Box(Modifier.fillMaxWidth(.8f).height(6.dp).background(Color(0xff97939f),CircleShape));Box(Modifier.fillMaxWidth(.55f).height(5.dp).background(Color(0xff686575),CircleShape));Spacer(Modifier.weight(1f));Box(Modifier.fillMaxWidth().height(13.dp).background(if(i==0)Color(0xff5c4bc9)else Color(0xffcac1ff),CircleShape))
+      Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){Box(Modifier.weight(1f).height(28.dp).background(MaterialTheme.colorScheme.primary,RoundedCornerShape(7.dp)));Box(Modifier.weight(1f).height(28.dp).background(MaterialTheme.colorScheme.secondary,RoundedCornerShape(7.dp)))}
+      Box(Modifier.fillMaxWidth(.8f).height(6.dp).background(Color(0xff97939f),CircleShape));Box(Modifier.fillMaxWidth(.55f).height(5.dp).background(Color(0xff686575),CircleShape));Spacer(Modifier.weight(1f));Box(Modifier.fillMaxWidth().height(13.dp).background(if(i==0)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,CircleShape))
      }
      if(selected)Icon(Icons.Default.Check,"Ausgewählt",Modifier.align(Alignment.TopEnd).size(22.dp).background(MaterialTheme.colorScheme.primary,CircleShape),tint=MaterialTheme.colorScheme.onPrimary)
     }
@@ -61,25 +61,21 @@ enum class AppearancePalettes(val label:String,val accent:Long,val secondary:Lon
 @Composable fun PaletteChoices(a:Appearance,choose:(Int)->Unit){
  Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(18.dp)){
   AppearancePalettes.entries.forEachIndexed{i,p->Column(Modifier.clip(RoundedCornerShape(16.dp)).clickable{choose(i)}.padding(3.dp),horizontalAlignment=Alignment.CenterHorizontally){
-   Canvas(Modifier.size(if(a.compact)58.dp else 66.dp).border(if(a.palette==i&&!a.dynamic)3.dp else 0.dp,MaterialTheme.colorScheme.primary,CircleShape)){
+   Canvas(Modifier.size(if(a.compact)58.dp else 66.dp).border(if(a.palette==i&&!a.dynamic&&!a.customPalette)3.dp else 0.dp,MaterialTheme.colorScheme.primary,CircleShape)){
     drawArc(Color(p.accent),180f,180f,true);drawArc(Color(p.secondary),0f,90f,true);drawArc(Color(0xff343346),90f,90f,true)
    };Text(p.label,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(top=8.dp))
   }}
  }
 }
-@Composable fun SettingsTile(title:String,subtitle:String,color:Color,icon:ImageVector,modifier:Modifier=Modifier,onClick:()->Unit){
- val compact=LocalAppearance.current.compact
- Box(modifier.clip(RoundedCornerShape(30.dp)).background(color).clickable(onClick=onClick).padding(if(compact)16.dp else 20.dp)){
-  Canvas(Modifier.matchParentSize()){
-   drawCircle(Color.White.copy(alpha=.055f),size.width*.58f,androidx.compose.ui.geometry.Offset(size.width*.96f,size.height*.98f));drawCircle(Color.White.copy(alpha=.025f),size.width*.42f,androidx.compose.ui.geometry.Offset(size.width*.45f,size.height*1.2f))
-  }
-  Column(Modifier.fillMaxSize(),verticalArrangement=Arrangement.SpaceBetween){
-   Icon(icon,null,Modifier.size(if(compact)35.dp else 42.dp).background(Color.White.copy(alpha=.1f),RoundedCornerShape(14.dp)).padding(7.dp),tint=Color.White.copy(alpha=.86f))
-   Column{Text(title,style=MaterialTheme.typography.titleLarge,color=Color.White,maxLines=2);if(subtitle.isNotBlank())Text(subtitle,style=MaterialTheme.typography.bodySmall,color=Color.White.copy(alpha=.78f))}
+@Composable fun SettingsCategoryCard(category:SettingsCategory,icon:ImageVector,onClick:()->Unit){
+ GlassPanel(Modifier.fillMaxWidth().clickable(onClick=onClick)){
+  Row(Modifier.heightIn(min=if(LocalAppearance.current.compact)58.dp else 72.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){
+   Icon(icon,null,Modifier.size(44.dp).background(MaterialTheme.colorScheme.primary.copy(alpha=.1f),RoundedCornerShape(15.dp)).padding(10.dp),tint=MaterialTheme.colorScheme.primary)
+   Column(Modifier.weight(1f)){Text(category.title,style=MaterialTheme.typography.titleMedium);Spacer(Modifier.height(4.dp));SecondaryText(category.summary)}
+   Icon(Icons.Default.KeyboardArrowRight,null,Modifier.size(22.dp),tint=MaterialTheme.colorScheme.onSurfaceVariant)
   }
  }
 }
-
 
 @Composable fun PinnedSettingsBack(onBack:()->Unit,modifier:Modifier=Modifier){
  IconButton(onClick=onBack,modifier=modifier.size(48.dp).background(MaterialTheme.colorScheme.surface.copy(alpha=.86f),CircleShape)){Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft,"Zurück")}
