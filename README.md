@@ -1,67 +1,64 @@
-# APKUpdater [![](https://github.com/rumboalla/apkupdater/workflows/Android%20Build/badge.svg)](https://github.com/rumboalla/apkupdater/actions?query=workflow%3A%22Android+Build%22)
-**APKUpdater** is an open source tool that simplifies the process of **finding updates** for your installed apps.  
-It provides similar functionality to an app store, but instead of depending on a single source, it aggregates the results from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab** and **GitHub**.
+# Liquid-APK-Store 0.5
 
-The 3.x branch is a full rewrite using modern technologies like **Jetpack Compose**, **Flow** and **WorkManager**.
+A native Android APK discovery, inspection and update application with configurable liquid-glass visuals. Package `com.hyvan187.apkupdater`, version code 1005, minimum API 23, compile/target API 37.
 
-# Features
-* **Update Sources**: Find updates from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
-* **Search Sources**: Find new apps to install from **APKMirror**, **Aptoide**, **F-Droid**, **IzzyOnDroid**, **APKPure**, **GitLab**, **GitHub** and **Google Play**.
-* Schedule **background update checks** and receive a **notification** when updates are found.
-* Supports **Android 5** (**21**) to **Android 14** (**34**).
-* Supports **Android TV**.
-* **Material Design 3** with **Dark**, **Light** and **System** theme support.
-* Supports **Material You** on Android 12+.
-* **Direct install** of updates for sources that support it.
-* Supports **installs without user interaction** on Android 12+.
-* **Root install** of updates.
-* No ads. No tracking.
-* **Languages**: Albanian, Arabic, Burmese, Dutch, English, German, Hebrew, Hungarian, Indonesian, Italian, Korean, Malay, Portuguese, Romanian, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.
+## Updates and safety
 
-# Download
-* [Stable Release (3.0.3)](https://github.com/rumboalla/apkupdater/releases/download/3.0.3/com.apkupdater-release.apk)
-* [CI Pre-release Builds](https://github.com/rumboalla/apkupdater/releases?q=CI&expanded=true)
-* [Older releases](https://github.com/rumboalla/apkupdater/releases)
+- One update card per package; each source/variant retains its own evidence. Choose a source before manually downloading.
+- **Ready:** the inspectable technical requirements passed. **Check:** important evidence is missing. **Blocked:** a concrete technical mismatch was found. Ready is not a runtime or malware-safety guarantee.
+- Package name, numeric version code, recognizable system branch, signature, Android SDK, ABI, split requirements and detectable dependencies are checked. A higher code alone cannot authorize an older DocumentsUI branch (17 → 14).
+- Downloaded APKs are never executed during inspection. ZIP/manifest size and decoded-text limits reject oversized or malformed structures. Installation re-inspects private bytes and requires Android confirmation.
+- Manual batch checking covers eligible direct APKs sequentially, one per app. Web-only providers/unsupported archives are excluded. Cached evidence does not transfer between sources. Manual cancellation is available; an in-flight blocking network call may finish before stopping.
+- Automatic default: 12 apps, 128 MiB per APK, 768 MiB total reserved budget, unmetered networks. Limits are configurable. Unknown file sizes reserve the entire per-file limit. Private inspection cache and free-storage headroom are bounded.
+- Risk is separate from technical status. Prereleases, system dependencies and another update owner raise warnings even when technical conditions pass.
 
-# Translations
-If you want to help with translations, open a [Pull Request](https://github.com/rumboalla/apkupdater/pulls) or an [Issue](https://github.com/rumboalla/apkupdater/issues) with the translated [strings.xml](https://github.com/rumboalla/apkupdater/blob/3.x/app/src/main/res/values/strings.xml).
+## Sources and diagnostics
 
-* Albanian by [Jvr2022](https://github.com/Jvr2022)
-* Arabic by [Muhammadbahaa2001](https://github.com/Muhammadbahaa2001)
-* Burmese by [kyawlinnthant](https://github.com/kyawlinnthant)
-* Dutch by [AnonymousWP](https://github.com/AnonymousWP)
-* German by [peat80](https://github.com/peat80)
-* Hebrew by [electriquo](https://github.com/electriquo)
-* Hungarian by [gidano](https://github.com/gidano)
-* Indonesian by [HazakuraID](https://github.com/HazakuraID)
-* Italian by [NicKoehler](https://github.com/NicKoehler)
-* Korean by [Apious](https://github.com/Apious)
-* Malay by [HazakuraID](https://github.com/HazakuraID)
-* Portuguese by [zekabra](https://github.com/zekabra)
-* Romanian by [StormProductionsMusic](https://github.com/StormProductionsMusic)
-* Russian by [Xenorant](https://github.com/Xenorant)
-* Simplified Chinese by [Nriver](https://github.com/Nriver)
-* Traditional Chinese by [abc0922001](https://github.com/abc0922001)
-* Turkish by [kyoyacchi](https://github.com/kyoyacchi)
-* Japanese by [anonym499](https://github.com/anonym499)
+APKMirror, GitHub, GitLab, F-Droid, IzzyOnDroid, APKPure, Aptoide and the existing experimental Play integration are enabled on the first 0.5 migration. Preferences persist afterward. Google Play uses the existing Aurora authentication service and shares device-profile fields needed by that integration; service availability is not guaranteed.
 
-# Feedback
-- To give feedback and request new features go to [Discussions](https://github.com/rumboalla/apkupdater/discussions).
-- To report bugs, crashes, typos and translations go to [Issues](https://github.com/rumboalla/apkupdater/issues).
+The missing ACCESS_NETWORK_STATE declaration has been added. DNS uses the current Android network and its private-DNS/VPN policy, without third-party DNS replacement. APKMirror transient DNS/timeouts get one bounded retry; denied/rate-limited API access is not retried. Partial batches can appear independently. Settings provides concrete failure advice, a DNS/HTTPS test and browser fallback. A working website does not prove API access. A network or provider failure on an unattached phone is not declared fixed by host tests.
 
-# Screenshots
+## Interface
 
-| ![1](https://github.com/rumboalla/apkupdater/assets/21153554/b5b4943b-e12a-43e2-a056-26d6f06f9bc4) | ![2](https://github.com/rumboalla/apkupdater/assets/21153554/c4679c1b-09d4-429d-9160-77d4d33b0a0f) | ![3](https://github.com/rumboalla/apkupdater/assets/21153554/7b89c5a6-672c-44e4-836e-e01f51f33591) | ![4](https://github.com/rumboalla/apkupdater/assets/21153554/7ec15783-e719-4feb-9e07-a14c0f1defcc) |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+- Shared All / User / System / Google System filters, persistent favorite stars and filters.
+- Contextual question-mark help for settings and major actions; restoring hidden releases only clears exclusion records, never downgrades installed apps.
+- Per-slider default reset; hue/saturation wheel, HEX input and independent color opacity.
+- Recommended glass preset plus full appearance reset, font controls, OLED black base.
+- Optional circles, rings, network, space, shapes, snow, grid, particles, lava lamp, none/random; speed, density, gravity parallax and local seasonal winter/New Year modes. Motion pauses outside RESUMED state, under reduced-motion preferences or power saving. No measured FPS/battery claim.
+- Native Android 13+ app-language settings via LocaleManager and LocaleConfig, German/English selection and system default. Older Android has an app-local selector. English covers core controls and main help; some descriptions/technical/legal messages remain German. Unsupported system languages fall back to English. Arbitrary languages are not automatically translated or falsely declared supported.
+- Voluntary coffee donation button opens the owner's PayPal page; the app initiates no payment.
 
-| ![5](https://github.com/rumboalla/apkupdater/assets/21153554/bbf1132a-b0b6-4890-aed7-8fe95c0da11b) | ![6](https://github.com/rumboalla/apkupdater/assets/21153554/32236bfb-b53e-4999-8363-e957fa8f77a9) |
-|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|
+## Files, installation and history
 
-# Other Projects
-* [CoolRs](https://github.com/rumboalla/coolrs): A collection of Android RenderScript effects. 
-* [KryptoPrefs](https://github.com/rumboalla/KryptoPrefs): Kotlin library for handling encrypted SharedPreferences.
-* [KryptoStore](https://github.com/rumboalla/kryptostore): A thin wrapper around Jetpack Datastore Preferences that provides useful features.
+Manual direct APKs are copied to `Download/Liquid-APK-Store`, or a user-selected persisted document tree on any supported Android version. Android may restrict root directories; a subfolder can be created in its picker. Existing files are not moved. Temporary automatic inspection files stay private.
 
-# License
-Copyright &copy; 2016-2024 rumboalla.  
-Licensed under the [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html).
+Keep-APKs defaults off. Public copies are deleted only after confirmed installation success; aborted/failed attempts retain them. Identical files are reused by SHA-256. Private checked bytes remain the installation input. Browser downloads are outside app management.
+
+Android PackageInstaller remains recommended. An optional installed, exported APK handler can receive an already-inspected file through a restricted FileProvider after explicit choice. External progress/success may not be available. Pending handoffs are reconciled with observed version codes on resume; those records explicitly say that the package state was observed, not that an external actor's execution was proven. Private staged files have size/time limits. No installer setting bypasses Android security.
+
+The history records confirmed system-installer results and separately identified observed external-handoff outcomes, up to 500 entries. It is not a complete system history. Clearing it leaves apps and APKs unchanged.
+
+## Region and test profiles
+
+Automatic ROM detection remains independent from system language/location/SIM. Manual region is saved as a comparison hint. An explicitly simulated model is sent only on the next Play authentication request; resetting it invalidates cached Play authentication. No global Build identity, ABI or SDK is changed. Actual-device checks always govern installation. Unknown APK-region provenance is never approved by a manual choice.
+
+## Install and build
+
+Extract `Liquid-APK-Store-Debug.zip` and install `Liquid-APK-Store-Debug.apk`. The retained 0.2/0.3/0.4 signer and package ID allow an in-place update. Independently signed CI builds may use another key. Private signing material is excluded from the distribution and source.
+
+Use JDK 21 for API-37 Robolectric tests; app bytecode targets Java 17:
+
+```sh
+sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+```
+
+Incremental Kotlin compilation is disabled for this pinned build baseline because its incremental cache produced duplicate declarations. For the retained development signer set `GLASS_DEBUG_KEYSTORE`; production release signing uses the existing `GLASS_KEYSTORE`/password/alias environment variables. No permanent release key is supplied.
+
+See [task audit](docs/TASKS-0.5.md), [validation](docs/TEST-RESULTS.md), [architecture](docs/ARCHITECTURE.md) and [changelog](CHANGELOG.md). Physical OnePlus 15, real OEM file-manager/installer behavior, all live sources and performance/energy have not been tested here. Split/APKM/XAPK installation remains blocked when complete dependency proof is unavailable.
+
+## License and credits
+
+GNU GPLv3; see [LICENSE](LICENSE). Includes APKUpdater code, copyright rumboalla and contributors, with modifications by Hyvan187 and contributors. Original notices and [upstream README](docs/UPSTREAM-README.md) are retained. Robot artwork attribution and modification information are in [NOTICE](NOTICE); in-app legal notices are separate from product settings copy.
+
+Platform references: [app languages](https://developer.android.com/guide/topics/resources/app-languages), [PackageInstaller](https://developer.android.com/reference/android/content/pm/PackageInstaller), [FileProvider](https://developer.android.com/reference/androidx/core/content/FileProvider), [Android robot](https://developer.android.com/distribute/marketing-tools/brand-guidelines).

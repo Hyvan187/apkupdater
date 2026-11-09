@@ -32,4 +32,4 @@ fun AppExistsResponseApk.toAppUpdate(app: AppInstalled, release: AppExistsRespon
 	app.iconUri,
 	Link.Url("https://www.apkmirror.com$link"),
 	release.whatsNew.orEmpty()
-)
+).copy(minSdk = minapi.toIntOrNull()?.takeIf { it > 0 }, abis = arches.takeIf { it.isNotEmpty() }?.toSet())

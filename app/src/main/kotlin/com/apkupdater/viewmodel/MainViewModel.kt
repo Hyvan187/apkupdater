@@ -28,7 +28,7 @@ class MainViewModel(
 	private val installLog: InstallLog
 ) : ViewModel() {
 
-	val screens = listOf(Screen.Apps, Screen.Search, Screen.Updates, Screen.Settings)
+	val screens = listOf(Screen.Overview, Screen.Updates, Screen.Apps, Screen.Search, Screen.Settings)
 
 	val isRefreshing = MutableStateFlow(false)
 
@@ -51,7 +51,7 @@ class MainViewModel(
 	) {
 		when {
 			intent.action == UpdatesNotification.UpdateAction -> processUpdateIntent(navController, updatesViewModel)
-			intent.action?.contains(SessionInstaller.INSTALL_ACTION).orFalse() -> processInstallIntent(intent, launcher)
+			intent.action?.contains(SessionInstaller.INSTALL_ACTION).orFalse() -> Unit
 			else -> {}
 		}
 	}

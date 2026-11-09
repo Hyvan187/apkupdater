@@ -14,35 +14,34 @@ class Downloader(
     private val dir: File
 ) {
 
-    fun download(url: String): File {
+    fun download(url: String, maxBytes: Long = 512L * 1024 * 1024): File {
         val file = File(dir, randomUUID())
-        client.newCall(downloadRequest(url)).execute().use {
-            if (it.isSuccessful) {
-                it.body.byteStream().copyTo(file.outputStream())
+        try {
+            requireNotNull(downloadStream(url)) { "Quelle nicht erreichbar oder HTTP-Fehler" }.use { input ->
+                file.outputStream().use { out ->
+                    val buffer = ByteArray(65536); var total = 0L
+                    while (true) {
+                        val n = input.read(buffer); if (n < 0) break
+                        total += n; if(total > maxBytes) throw com.apkupdater.glass.AutomaticSizeLimit()
+                        out.write(buffer, 0, n)
+                    }
+                }
             }
-        }
-        return file
+            return file
+        } catch (e: Exception) { file.delete(); throw e }
     }
 
-    fun downloadStream(url: String): InputStream? = runCatching {
-        val c = when {
-            url.contains("apkpure") -> apkPureClient
-            url.contains("aurora") -> auroraClient
-            else -> client
-        }
+    fun downloadStream(url: String): InputStream? {
+        val c = when { url.contains("apkpure") -> apkPureClient; url.contains("aurora") -> auroraClient; else -> client }
         val response = c.newCall(downloadRequest(url)).execute()
-        if (response.isSuccessful) {
-            return response.body.byteStream()
-        } else {
-            response.close()
-            Log.e("Downloader", "Download failed with error code: ${response.code}")
-        }
-        return null
-    }.getOrElse {
-        Log.e("Downloader", "Error downloading", it)
-        null
+        if(!response.isSuccessful) { val code = response.code; response.close(); throw com.apkupdater.glass.DownloadHttpException(code) }
+        if(!response.request.url.isHttps) { response.close(); error("Der Download wurde auf eine unsichere Adresse umgeleitet.") }
+        return response.body.byteStream()
     }
 
-    private fun downloadRequest(url: String) = Request.Builder().url(url).build()
+    private fun downloadRequest(url: String): Request {
+        require(url.startsWith("https://", true)) { "Downloads erfordern HTTPS" }
+        return Request.Builder().url(url).build()
+    }
 
 }

@@ -4,6 +4,7 @@ import android.net.Uri
 
 data class AppUpdate(
 	val name: String,
+
 	val packageName: String,
 	val version: String,
 	val oldVersion: String,
@@ -16,7 +17,19 @@ data class AppUpdate(
 	val isInstalling: Boolean = false,
 	val total: Long = 0L,
 	val progress: Long = 0L,
-	val id: Int = "${source.name}.$packageName.$versionCode.$version".hashCode()
+	val id: Int = "${source.name}.$packageName.$versionCode.$version.$link".hashCode(),
+    val verdict: com.apkupdater.glass.Verdict = com.apkupdater.glass.Verdict(com.apkupdater.glass.Compatibility.UNKNOWN, emptyList()),
+    val sha256: String? = null,
+    val updateOwner: String? = null,
+    val additionalSources: List<String> = emptyList(),
+    val prerelease: Boolean = false,
+    val system: Boolean = false,
+    val minSdk: Int? = null,
+    val targetSdk: Int? = null,
+    val abis: Set<String>? = null,
+    val verifiedAt: Long? = null,
+    val verificationError: String? = null,
+    val artifactKey: String = "${source.name}:$packageName:$versionCode:$version:$link"
 )
 
 fun List<AppUpdate>.indexOf(id: Int) = indexOfFirst { it.id == id }

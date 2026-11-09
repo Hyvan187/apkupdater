@@ -20,7 +20,9 @@ fun PackageInfo.toAppInstalled(context: Context, ignored: List<String>) = AppIns
 	iconUri(packageName, applicationInfo?.icon ?: 0),
 	ignored.contains(packageName),
 	getSignatureSha1(),
-	getSignatureSha256()
+	getSignatureSha256(),
+    applicationInfo?.targetSdkVersion,
+    ((applicationInfo?.flags ?: 0) and (android.content.pm.ApplicationInfo.FLAG_SYSTEM or android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
 )
 
 fun iconUri(packageName: String, id: Int): Uri = "android.resource://$packageName/$id".toUri()

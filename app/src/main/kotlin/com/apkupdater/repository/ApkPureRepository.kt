@@ -34,6 +34,8 @@ class ApkPureRepository(
             .map { it.toAppUpdate(apps.getApp(it.package_name)) }
         emit(updates)
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkPure", it)
         Log.e("ApkPureRepository", it.message, it)
         emit(emptyList())
     }
@@ -52,17 +54,19 @@ class ApkPureRepository(
             .map { it.toAppUpdate(null) }
         emit(Result.success(updates))
     }.catch {
+        if (it is kotlinx.coroutines.CancellationException) throw it
+        com.apkupdater.glass.SourceHealth.failed("ApkPure", it)
         Log.e("ApkPureRepository", it.message, it)
         emit(Result.failure(it))
     }
 
     private fun filterAlpha(update: AppUpdateResponse) = when {
-        prefs.ignoreAlpha.get() && update.version_name.contains("alpha", true) -> false
+        (prefs.ignoreAlpha.get() || prefs.ignorePreRelease.get()) && update.version_name.contains("alpha", true) -> false
         else -> true
     }
 
     private fun filterBeta(update: AppUpdateResponse) = when {
-        prefs.ignoreBeta.get() && update.version_name.contains("beta", true) -> false
+        (prefs.ignoreBeta.get() || prefs.ignorePreRelease.get()) && update.version_name.contains("beta", true) -> false
         else -> true
     }
 

@@ -16,39 +16,35 @@ kotlin {
 
 android {
     namespace = "com.apkupdater"
-    compileSdk = 36
+    compileSdk = 37
 
     val buildNumber = System.getenv("BUILD_NUMBER").orEmpty()
     defaultConfig {
-        applicationId = "com.apkupdater" + System.getenv("BUILD_TAG").orEmpty()
+        applicationId = "com.hyvan187.apkupdater"
         minSdk = 23
-        targetSdk = 36
-        versionCode = if (buildNumber.isEmpty()) 52 else buildNumber.toInt()
-        versionName = if (buildNumber.isEmpty()) "3.0.3" else "0.0.$buildNumber"
+        targetSdk = 37
+        versionCode = 1005
+        versionName = "0.5.0-store"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
 
     signingConfigs {
+        getByName("debug") {
+            System.getenv("GLASS_DEBUG_KEYSTORE")?.let { storeFile = file(it) }
+        }
         create("release") {
-            try {
-                val props = Properties()
-                props.load(FileInputStream(file("../local.properties")))
-                storeFile = file(props.getProperty("keystore.file"))
-                storePassword = props.getProperty("keystore.password")
-                keyAlias = props.getProperty("keystore.keyalias")
-                keyPassword = props.getProperty("keystore.keypassword")
-            } catch (_: Exception) {
-                val config = signingConfigs.getByName("debug")
-                storeFile = config.storeFile
-                storePassword = config.storePassword
-                keyAlias = config.keyAlias
-                keyPassword = config.keyPassword
-                println("Signing config not found. Using debug settings.")
+            val path = System.getenv("GLASS_KEYSTORE")
+            if (path != null) {
+                storeFile = file(path)
+                storePassword = System.getenv("GLASS_STORE_PASSWORD")
+                keyAlias = System.getenv("GLASS_KEY_ALIAS")
+                keyPassword = System.getenv("GLASS_KEY_PASSWORD")
             }
             enableV3Signing = true
         }
     }
+    dependenciesInfo { includeInApk = false; includeInBundle = false }
 
     buildTypes {
         getByName("release") {
@@ -75,12 +71,24 @@ android {
         }
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.all { task ->
+            task.jvmArgs("--add-opens=java.base/jdk.internal.access=ALL-UNNAMED", "--add-opens=java.base/java.io=ALL-UNNAMED", "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED")
+            task.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
+            listOf("http.proxyHost", "http.proxyPort", "https.proxyHost", "https.proxyPort", "javax.net.ssl.trustStore").forEach { key ->
+                System.getProperty(key)?.let { task.systemProperty(key, it) }
+            }
+        }
+    }
+
     lint {
         warning.addAll(arrayOf("ExtraTranslation", "MissingTranslation", "MissingQuantity"))
     }
 }
 
 dependencies {
+    implementation("com.android.tools.build:apksig:9.1.1")
 
     val composeBom = platform("androidx.compose:compose-bom:2026.02.01")
     implementation(composeBom)
@@ -111,6 +119,11 @@ dependencies {
     implementation("org.jsoup:jsoup:1.22.1")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.17")
+    testImplementation("androidx.test.espresso:espresso-core:3.7.0")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.test:core-ktx:1.7.0")
+    testImplementation("androidx.test.ext:junit:1.3.0")
 
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
@@ -120,20 +133,4 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
-}
-
-androidComponents {
-    onVariants { variant ->
-        variant.outputs.forEach { _ ->
-            tasks.configureEach {
-                if (name == "package${variant.name.replaceFirstChar { it.uppercase() }}") {
-                    doLast {
-                        outputs.files.files
-                            .flatMap { it.walkTopDown().filter { f -> f.extension == "apk" }.toList() }
-                            .forEach { apk -> runCatching { apk.copyTo(File(apk.parentFile, "${android.defaultConfig.applicationId}-${variant.buildType}.apk"), true) }.getOrNull() }
-                    }
-                }
-            }
-        }
-    }
 }

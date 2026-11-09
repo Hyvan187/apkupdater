@@ -32,10 +32,11 @@ abstract class InstallViewModel(
 ): ViewModel() {
 
     fun install(update: AppUpdate, uriHandler: UriHandler) {
+        if(!com.apkupdater.glass.ReleasePolicy.allowed(update,prefs)) { snackBar.snackBar(viewModelScope,TextSnack("Vorabversion durch deine Filter ausgeblendet.")); return }
         when (update.source) {
             ApkMirrorSource -> uriHandler.openUri((update.link as Link.Url).link)
             else -> {
-                if (prefs.rootInstall.get()) {
+                if (false) {
                     downloadAndRootInstall(update)
                 } else {
                     downloadAndInstall(update)
@@ -96,6 +97,7 @@ abstract class InstallViewModel(
         }
     }.getOrElse {
         Log.e("InstallViewModel", "Error in downloadAndInstall.", it)
+        snackBar.snackBar(viewModelScope, TextSnack(it.message ?: "Installation verweigert"))
         cancelInstall(id)
     }
 
